@@ -199,7 +199,7 @@ def monitor_redis_stream(redis_connection, stream_name, last_id=0):
                 with open(input_path, "w", encoding="UTF-8") as fp:
                     json.dump(data, fp)
 
-                method_name = data["method"].split('.')[-1]
+                method_name = data["method"].split(".")[-1]
                 method_path = os.path.join("/scripts", f"{method_name}.py")
                 command_line = f"python {method_path}"
 
