@@ -162,9 +162,9 @@ def monitor_redis_stream(redis_connection, stream_name, last_id=0):
                 block=sleep_ms)
             if resp:
                 _, messages = resp[0]
-                last_id, data = messages[0]
+                last_id, request = messages[0]
                 logging.info("REDIS ID: %s", str(last_id))
-                logging.info("      --> %s", str(data))
+                logging.info("      --> %s", str(request))
 
                 # This just checks the request status.
                 # If it is different than submitted,
@@ -197,9 +197,9 @@ def monitor_redis_stream(redis_connection, stream_name, last_id=0):
                 # Create input json file
                 input_path = os.path.join(working_dir, "input.json")
                 with open(input_path, "w", encoding="UTF-8") as fp:
-                    json.dump(data, fp)
+                    fp.write(request["params"])
 
-                method_name = data["method"].split(".")[-1]
+                method_name = request["method"].split(".")[-1]
                 method_path = os.path.join("/scripts", f"{method_name}.py")
                 command_line = f"python {method_path}"
 
