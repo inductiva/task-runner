@@ -13,6 +13,7 @@ import shlex
 import shutil
 # import signal
 import subprocess
+import zipfile
 import time
 import json
 
@@ -181,7 +182,7 @@ def monitor_redis_stream(redis_connection, stream_name, last_stream_id=0):
                 # before the web api sets the request as submitted
                 # solution could be making the web api submitting the
                 # request and setting it as submitted in a transaction
-                if request_status != "submitted" or request_status is None:
+                if request_status != "submitted" and request_status is not None:
                     continue
 
                 # Create working dir for the script that will accomplish
@@ -191,12 +192,25 @@ def monitor_redis_stream(redis_connection, stream_name, last_stream_id=0):
                 working_dir = os.path.join(os.path.abspath(os.sep),
                                            "working_dir", request_id)
                 os.makedirs(working_dir)
-                print(working_dir)
 
-                # Create input json file
-                input_path = os.path.join(working_dir, "input.json")
-                with open(input_path, "w", encoding="UTF-8") as fp:
-                    fp.write(request["params"])
+                # If "params" is not in the request, it means
+                # that the input is a zip file
+                if "params" not in request:
+                    input_zip_path = os.path.join(
+                        artifact_dest, "inputs", f"{request_id}.zip")
+
+                    # Extract files to the working_dir
+                    # NOTE: it is expected that the input.json is
+                    # inside the zip file
+                    with zipfile.ZipFile(input_zip_path, 'r') as zip_fp:
+                        zip_fp.extractall(working_dir)
+
+                    logging.info("Extracted input zip %s to %s", input_zip_path, working_dir)
+                else:
+                    # Create input json file
+                    input_json_path = os.path.join(working_dir, "input.json")
+                    with open(input_json_path, "w", encoding="UTF-8") as fp:
+                        fp.write(request["params"])
 
                 method_name = request["method"].split(".")[-1]
                 method_path = os.path.join("/scripts", f"{method_name}.py")
