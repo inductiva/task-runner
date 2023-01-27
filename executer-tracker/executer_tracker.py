@@ -196,16 +196,17 @@ def monitor_redis_stream(redis_connection, stream_name, last_stream_id=0):
                 # If "params" is not in the request, it means
                 # that the input is a zip file
                 if "params" not in request:
-                    input_zip_path = os.path.join(
-                        artifact_dest, "inputs", f"{request_id}.zip")
+                    input_zip_path = os.path.join(artifact_dest, "inputs",
+                                                  f"{request_id}.zip")
 
                     # Extract files to the working_dir
                     # NOTE: it is expected that the input.json is
                     # inside the zip file
-                    with zipfile.ZipFile(input_zip_path, 'r') as zip_fp:
+                    with zipfile.ZipFile(input_zip_path, "r") as zip_fp:
                         zip_fp.extractall(working_dir)
 
-                    logging.info("Extracted input zip %s to %s", input_zip_path, working_dir)
+                    logging.info("Extracted input zip %s to %s", input_zip_path,
+                                 working_dir)
                 else:
                     # Create input json file
                     input_json_path = os.path.join(working_dir, "input.json")
