@@ -15,7 +15,6 @@ import shutil
 import subprocess
 import zipfile
 import time
-import json
 
 from absl import app
 from absl import flags
@@ -233,12 +232,13 @@ def monitor_redis_stream(redis_connection, stream_name, last_stream_id=0):
 
                 # Compress outputs, storing them in the shared drive
                 output_dir = os.path.join(working_dir, "output")
-                output_zip_name = os.path.join(artifact_dest, request_id, "output")
+                output_zip_name = os.path.join(artifact_dest, request_id,
+                                               "output")
 
-                output_zip_path = shutil.make_archive(output_zip_name, "zip", output_dir)
+                output_zip_path = shutil.make_archive(output_zip_name, "zip",
+                                                      output_dir)
 
                 logging.info("Compressed output to %s", output_zip_path)
-
 
                 # Assuming everything ran successfully for now
 
