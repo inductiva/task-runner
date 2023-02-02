@@ -27,12 +27,14 @@ def monitor_redis_stream(redis_connection,
                          stream_name,
                          consumer: RequestConsumer,
                          last_stream_id=0):
-    """
+    """Monitors Redis stream, calling a consumer callback to
+    handle each request.
+
     Args:
-        redis_connection: connection to Redis server
-        stream_name: name of Redis Stream
-        consumer: RequestConsumer object that will consume the received request
-        last_id: unique id of the stream item you want to start
+        redis_connection: Connection to Redis server
+        stream_name: Name of Redis Stream.
+        consumer: RequestConsumer object that will consume the received request.
+        last_id: Unique id of the stream item you want to start
             listing from (every item after that will be logged).
             Redis stream ids are sorted, based on timestamps.
             Default: 0 (will log the whole stream).
@@ -62,7 +64,9 @@ def monitor_redis_stream(redis_connection,
 def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
+
     artifact_dest = os.getenv("ARTIFACT_STORE")  # drive shared with the Web API
+
     working_dir_root = os.path.join(os.path.abspath(os.sep), "working_dir")
     os.makedirs(working_dir_root, exist_ok=True)
 
