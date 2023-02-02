@@ -1,3 +1,4 @@
+"""Module that defines the SubprocessTracker class."""
 import shlex
 # import signal
 import subprocess
