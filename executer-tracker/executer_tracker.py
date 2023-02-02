@@ -8,9 +8,6 @@ Usage:
   python stream_listener.py --redis_stream all_requests
 """
 import os
-import shutil
-# import signal
-import zipfile
 
 from absl import app
 from absl import flags
@@ -20,20 +17,21 @@ from redis import Redis
 
 from request_consumer import RequestConsumer
 
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("redis_stream", "all_requests",
                     "Name of the Redis Stream to subscribe to.")
 
 
-
-def monitor_redis_stream(redis_connection, stream_name, consumer: RequestConsumer, last_stream_id=0):
+def monitor_redis_stream(redis_connection,
+                         stream_name,
+                         consumer: RequestConsumer,
+                         last_stream_id=0):
     """
     Args:
         redis_connection: connection to Redis server
         stream_name: name of Redis Stream
-        consumer: object that will consume the received request
+        consumer: RequestConsumer object that will consume the received request
         last_id: unique id of the stream item you want to start
             listing from (every item after that will be logged).
             Redis stream ids are sorted, based on timestamps.
@@ -57,7 +55,6 @@ def monitor_redis_stream(redis_connection, stream_name, consumer: RequestConsume
 
                 consumer(request)
 
-
         except ConnectionError as e:
             logging.info("ERROR REDIS CONNECTION: %s", str(e))
 
@@ -65,8 +62,9 @@ def monitor_redis_stream(redis_connection, stream_name, consumer: RequestConsume
 def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
-    artifact_dest = os.getenv("ARTIFACT_STORE") # drive shared with the Web API
+    artifact_dest = os.getenv("ARTIFACT_STORE")  # drive shared with the Web API
     working_dir_root = os.path.join(os.path.abspath(os.sep), "working_dir")
+    os.makedirs(working_dir_root, exist_ok=True)
 
     redis_conn = Redis(redis_hostname,
                        redis_port,
@@ -77,7 +75,7 @@ def main(_):
         redis_connection=redis_conn,
         artifact_dest=artifact_dest,
         working_dir_root=working_dir_root,
-        )
+    )
 
     monitor_redis_stream(
         redis_connection=redis_conn,
