@@ -5,6 +5,9 @@ FROM python:3.11
 WORKDIR /code
 
 COPY ./executer_tracker.py /code/executer_tracker.py
+COPY ./task_request_handler.py /code/task_request_handler.py
+COPY ./subprocess_tracker.py /code/subprocess_tracker.py
+COPY ./utils /code/utils
 
 COPY ./requirements.txt /code/requirements.txt
 
