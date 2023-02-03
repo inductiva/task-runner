@@ -26,7 +26,7 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     "redis_consumer_name",
     None,
-    "Name of the consumer group to use when reading from Redis Stream.",
+    "Unique name to use when reading from the consumer group.",
     required=True)
 
 DELIVER_NEW_MESSAGES = ">"
