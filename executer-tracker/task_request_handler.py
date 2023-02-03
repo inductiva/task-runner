@@ -1,6 +1,6 @@
-"""Module that defines the RequestConsumer class.
+"""Module that defines the TaskRequestHandler class.
 
-The RequestConsumer class serves as a consumer of requests, i.e.,
+The TaskRequestHandler class serves as a handler of task requests, i.e.,
 handles the logic related to setting up the working_dir of an executer,
 launching said executer, and providing the outputs to the Web API.
 Note that, currently, request consumption is blocking.
@@ -15,16 +15,17 @@ from utils.files import extract_zip_archive, write_input_json
 from subprocess_tracker import SubprocessTracker
 
 
-class RequestConsumer:
+class TaskRequestHandler:
     """Class that implements the request consumption logic.
 
-    The RequestConsumer represents a stateful consumer of requests. Its
+    The TaskRequestHandler represents a stateful handler of requests. Its
     intended usage is within a loop where requests are listened for.
-    After a request arrives, it is passed to an instance of RequestConsumer
-    for blocking execution of the request. The RequestConsumer defines
-    the __call__ method, so passing a request to an instance of RequestConsume
-    is a call like `consumer(request)`, where `consumer` is the
-    RequestConsumer instance and `request` is the request for consumption.
+    After a request arrives, it is passed to an instance of TaskRequestHandler
+    for blocking execution of the request. The TaskRequestHandler defines
+    the __call__ method, so passing a request to an instance of
+    TaskRequestHandler is a call like `request_handler(request)`, where
+    `request_handler` is the TaskRequestHandler instance and `request` is
+    the request for consumption.
 
     Attributes:
         redis: Connection to Redis.
@@ -33,7 +34,7 @@ class RequestConsumer:
     """
 
     def __init__(self, redis_connection, working_dir_root, artifact_dest):
-        """Initialize an instance of the RequestConsumer class."""
+        """Initialize an instance of the TaskRequestHandler class."""
         self.redis = redis_connection
         self.working_dir_root = working_dir_root
         self.artifact_dest = artifact_dest

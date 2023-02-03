@@ -1,11 +1,10 @@
-"""
-Simple example of a program that listens to events published to a REDIS STREAM.
-If the stream already contains some items, it will gradually get each of them
-and print to stdout. Then it will block on new content being added, and print
-new items as they arrive to the stream.
+"""Main script for managing executers.
+
+This script reads from a Redis stream, handling received requests
+by launching the corresponding Python script.
 
 Usage:
-  python stream_listener.py --redis_stream all_requests
+  python executer_tracker.py
 """
 import os
 
@@ -15,7 +14,7 @@ from absl import logging
 
 from redis import Redis
 
-from request_consumer import RequestConsumer
+from task_request_handler import TaskRequestHandler
 
 FLAGS = flags.FLAGS
 
@@ -25,15 +24,15 @@ flags.DEFINE_string("redis_stream", "all_requests",
 
 def monitor_redis_stream(redis_connection,
                          stream_name,
-                         consumer: RequestConsumer,
+                         request_handler: TaskRequestHandler,
                          last_stream_id=0):
-    """Monitors Redis stream, calling a consumer callback to
-    handle each request.
+    """Monitors Redis stream, calling a callback to handle requests.
 
     Args:
         redis_connection: Connection to Redis server
         stream_name: Name of Redis Stream.
-        consumer: RequestConsumer object that will consume the received request.
+        request_handler: TaskRequestHandler instance that will handle
+            the received request.
         last_id: Unique id of the stream item you want to start
             listing from (every item after that will be logged).
             Redis stream ids are sorted, based on timestamps.
@@ -55,7 +54,7 @@ def monitor_redis_stream(redis_connection,
                 logging.info("REDIS ID: %s", str(last_stream_id))
                 logging.info("      --> %s", str(request))
 
-                consumer(request)
+                request_handler(request)
 
         except ConnectionError as e:
             logging.info("ERROR REDIS CONNECTION: %s", str(e))
@@ -75,7 +74,7 @@ def main(_):
                        retry_on_timeout=True,
                        decode_responses=True)
 
-    request_consumer = RequestConsumer(
+    request_handler = TaskRequestHandler(
         redis_connection=redis_conn,
         artifact_dest=artifact_dest,
         working_dir_root=working_dir_root,
@@ -84,7 +83,7 @@ def main(_):
     monitor_redis_stream(
         redis_connection=redis_conn,
         stream_name=FLAGS.redis_stream,
-        consumer=request_consumer,
+        request_handler=request_handler,
     )
 
 
