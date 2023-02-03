@@ -20,41 +20,61 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string("redis_stream", "all_requests",
                     "Name of the Redis Stream to subscribe to.")
+flags.DEFINE_string("redis_consumer_group", "all_consumers",
+                    "Name of the consumer group to use when reading from Redis Stream.")
+flags.DEFINE_string("redis_consumer_name", None,
+                    "Name of the consumer group to use when reading from Redis Stream.",
+                    required=True)
+
+
+DELIVER_NEW_MESSAGES = ">"
 
 
 def monitor_redis_stream(redis_connection,
-                         stream_name,
-                         request_handler: TaskRequestHandler,
-                         last_stream_id=0):
+                         stream_name: str,
+                         consumer_group: str,
+                         consumer_name: str,
+                         request_handler: TaskRequestHandler):
     """Monitors Redis stream, calling a callback to handle requests.
+
+    The stream is read from via a consumer group. This requires that
+    each executer reading from the stream has a name that is unique within
+    the consumer group. Only one member of each consumer group receives
+    a message, so this way only one executer handles each request.
+    There's also an Ack response to notify the message as being
+    successfully processed.
 
     Args:
         redis_connection: Connection to Redis server
         stream_name: Name of Redis Stream.
+        consumer_group: Name of the consumer group.
+        consumer_name: Name of the consumer: it should be
         request_handler: TaskRequestHandler instance that will handle
             the received request.
-        last_id: Unique id of the stream item you want to start
-            listing from (every item after that will be logged).
-            Redis stream ids are sorted, based on timestamps.
-            Default: 0 (will log the whole stream).
-
     """
     sleep_ms = 0  # 0ms means block forever
 
     while True:
         try:
-            resp = redis_connection.xread(
-                {stream_name: last_stream_id},
-                count=1,  # reads one item at a time.
-                block=sleep_ms)
+            resp = redis_connection.xreadgroup(
+                groupname=consumer_group,
+                consumername=consumer_name,
+                # Using the following ID will get messages that haven't
+                # been delivered to any consumer.
+                streams={stream_name: DELIVER_NEW_MESSAGES},
+                count=1, # reads one item at a time.
+                block=sleep_ms,
+            )
             if resp:
                 _, messages = resp[0]
-                last_stream_id, request = messages[0]
-
-                logging.info("REDIS ID: %s", str(last_stream_id))
+                stream_entry_id, request = messages[0]
+                logging.info("REDIS ID: %s", str(stream_entry_id))
                 logging.info("      --> %s", str(request))
 
                 request_handler(request)
+
+                # Acknowledge successful processing of the received message
+                redis_connection.xack(consumer_name, consumer_group, stream_entry_id)
 
         except ConnectionError as e:
             logging.info("ERROR REDIS CONNECTION: %s", str(e))
@@ -83,11 +103,12 @@ def main(_):
     monitor_redis_stream(
         redis_connection=redis_conn,
         stream_name=FLAGS.redis_stream,
+        consumer_group=FLAGS.redis_consumer_group,
+        consumer_name=FLAGS.redis_consumer_name,
         request_handler=request_handler,
     )
 
 
 if __name__ == "__main__":
     logging.set_verbosity(logging.INFO)
-    logging.info("hello")
     app.run(main)
