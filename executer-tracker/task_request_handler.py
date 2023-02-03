@@ -76,11 +76,11 @@ class TaskRequestHandler:
 
         This method performs initial setup of the working directory
         for an executer. More specifically, it ensures that it exists
-        and containes the necessary input files.
+        and contains the necessary input files.
 
         There are two different scenarios:
-            1. A zip with the full input is provided, so all that's needed
-            is to extract the zip to the correct place.
+            1. A ZIP with the full input is provided, so all that's needed
+            is to extract the ZIP to the correct place.
 
             2. The request contains a json specifying the full request,
             so setting up the working dir requires writting the JSON
@@ -91,7 +91,7 @@ class TaskRequestHandler:
                 presence of the field "params" in the request dict defines
                 which of the above described scenarios is followed.
                 If "params" exists, scenario 2 is used. If not, then it is
-                assumed that an input zip already exists.
+                assumed that an input ZIP already exists.
             working_dir: Path in which to setup the working directory.
         """
         if "params" in request:

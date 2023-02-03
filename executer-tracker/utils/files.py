@@ -21,10 +21,10 @@ def write_input_json(working_dir, params) -> str:
 
 
 def extract_zip_archive(zip_path, dest):
-    """Extract zip archive.
+    """Extract ZIP archive.
 
     Args:
-        zip_path: Path to the zip file.
+        zip_path: Path to the ZIP file.
         dest: Directory where to write the uncompressed files.
     """
     with zipfile.ZipFile(zip_path, "r") as zip_fp:
