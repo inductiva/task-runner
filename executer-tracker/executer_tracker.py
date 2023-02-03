@@ -20,20 +20,20 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string("redis_stream", "all_requests",
                     "Name of the Redis Stream to subscribe to.")
-flags.DEFINE_string("redis_consumer_group", "all_consumers",
-                    "Name of the consumer group to use when reading from Redis Stream.")
-flags.DEFINE_string("redis_consumer_name", None,
-                    "Name of the consumer group to use when reading from Redis Stream.",
-                    required=True)
-
+flags.DEFINE_string(
+    "redis_consumer_group", "all_consumers",
+    "Name of the consumer group to use when reading from Redis Stream.")
+flags.DEFINE_string(
+    "redis_consumer_name",
+    None,
+    "Name of the consumer group to use when reading from Redis Stream.",
+    required=True)
 
 DELIVER_NEW_MESSAGES = ">"
 
 
-def monitor_redis_stream(redis_connection,
-                         stream_name: str,
-                         consumer_group: str,
-                         consumer_name: str,
+def monitor_redis_stream(redis_connection, stream_name: str,
+                         consumer_group: str, consumer_name: str,
                          request_handler: TaskRequestHandler):
     """Monitors Redis stream, calling a callback to handle requests.
 
@@ -62,7 +62,7 @@ def monitor_redis_stream(redis_connection,
                 # Using the following ID will get messages that haven't
                 # been delivered to any consumer.
                 streams={stream_name: DELIVER_NEW_MESSAGES},
-                count=1, # reads one item at a time.
+                count=1,  # reads one item at a time.
                 block=sleep_ms,
             )
             if resp:
@@ -74,7 +74,8 @@ def monitor_redis_stream(redis_connection,
                 request_handler(request)
 
                 # Acknowledge successful processing of the received message
-                redis_connection.xack(consumer_name, consumer_group, stream_entry_id)
+                redis_connection.xack(consumer_name, consumer_group,
+                                      stream_entry_id)
 
         except ConnectionError as e:
             logging.info("ERROR REDIS CONNECTION: %s", str(e))
