@@ -151,12 +151,6 @@ class TaskRequestHandler:
         """
         task_id = request["id"]
 
-        request_status = self.redis.get(make_task_key(task_id, "status"))
-        logging.info("Status of request %s: %s", task_id, request_status)
-
-        if request_status != "submitted":
-            return
-
         working_dir = self.build_working_dir(request)
         self.setup_working_dir(request, working_dir)
 
