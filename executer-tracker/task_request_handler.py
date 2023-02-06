@@ -67,9 +67,15 @@ class TaskRequestHandler:
         Returns:
             Python command to execute received request.
         """
-        method_name = request["method"].split(".")[-1]
-        method_path = os.path.join("/scripts", f"{method_name}.py")
-        return f"python {method_path}"
+
+        method_to_script = {
+            "linalg.eigs": "/scripts/run_eigensolver.py",
+            "math.matmul": "/scritps/matmul.py",
+            "math.sum": "/scripts/sum.py"
+        }
+        method = request["method"]
+
+        return f"python {method_to_script[method]}"
 
     def setup_working_dir(self, request, working_dir):
         """Setup the working directory for an executer.
