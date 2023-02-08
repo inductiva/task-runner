@@ -25,7 +25,7 @@ Then, build the executer-tracker Docker image (from the `executer-tracker` direc
 Then, create a container (named e.g. `math`) from that image:
 
 ```shell
-> docker run --network inductiva-web-api_api -v artifact-store:/mnt/  --env REDIS_HOSTNAME=redis-server --env REDIS_CONSUMER_NAME=consumer-name --name math inductiva-executer-math
+> docker run --network inductiva-web-api_api -v inductiva-web-api_artifact-store:/mnt/artifacts  --env REDIS_HOSTNAME=redis-server --env REDIS_CONSUMER_NAME=consumer-name --name math inductiva-executer-math
 ```
 
 Note that this container must have access to the network shared by the web API

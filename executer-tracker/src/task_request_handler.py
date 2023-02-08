@@ -70,7 +70,7 @@ class TaskRequestHandler:
 
         method_to_script = {
             "linalg.eigs": "/scripts/run_eigensolver.py",
-            "math.matmul": "/scritps/matmul.py",
+            "math.matmul": "/scripts/matmul.py",
             "math.sum": "/scripts/sum.py"
         }
         method = request["method"]
