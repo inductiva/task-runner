@@ -1,16 +1,19 @@
-# Start from the official Python base image.
-FROM python:3.11
+ARG BASE_IMAGE
 
-# Set the current working directory to /code.
-WORKDIR /code
-
-RUN apt-get update && apt-get install -y npm
-RUN npm install -g nodemon
-
-COPY ./requirements.txt /code/requirements.txt
+# Specify the executer base image as a build argument.
+# Available executers with respective Dockerfiles are present
+# in the executers directory.
+FROM ${BASE_IMAGE}
 
 # Install the package dependencies in the requirements file.
+COPY ./requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 COPY ./src /code
 
+# Set the current working directory to /code.
+WORKDIR /code
+
+ENV ARTIFACT_STORE=/mnt/artifacts
+
+CMD ["python", "executer_tracker.py", "--redis_consumer_name=${REDIS_CONSUMER_NAME}"]
