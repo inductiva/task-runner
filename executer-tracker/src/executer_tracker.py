@@ -18,15 +18,9 @@ from task_request_handler import TaskRequestHandler
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string("redis_stream", "all_requests",
-                    "Name of the Redis Stream to subscribe to.")
 flags.DEFINE_string(
     "redis_consumer_group", "all_consumers",
     "Name of the consumer group to use when reading from Redis Stream.")
-flags.DEFINE_string("redis_consumer_name",
-                    None,
-                    "Unique name to use when reading from the consumer group.",
-                    required=True)
 
 DELIVER_NEW_MESSAGES = ">"
 
@@ -83,6 +77,9 @@ def monitor_redis_stream(redis_connection, stream_name: str,
 def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
+    redis_consumer_name = os.getenv("REDIS_CONSUMER_NAME")
+    executer_type = os.getenv("EXECUTER_TYPE")
+    redis_stream = f"{executer_type}_requests"
 
     artifact_dest = os.getenv("ARTIFACT_STORE")  # drive shared with the Web API
 
@@ -102,9 +99,9 @@ def main(_):
 
     monitor_redis_stream(
         redis_connection=redis_conn,
-        stream_name=FLAGS.redis_stream,
+        stream_name=redis_stream,
         consumer_group=FLAGS.redis_consumer_group,
-        consumer_name=FLAGS.redis_consumer_name,
+        consumer_name=redis_consumer_name,
         request_handler=request_handler,
     )
 
