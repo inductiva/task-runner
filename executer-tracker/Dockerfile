@@ -16,4 +16,4 @@ WORKDIR /code
 
 ENV ARTIFACT_STORE=/mnt/artifacts
 
-CMD ["python", "executer_tracker.py", "--redis_consumer_name=${REDIS_CONSUMER_NAME}"]
+CMD ["python", "executer_tracker.py"]
