@@ -24,8 +24,6 @@ def redis_msg_catcher(redis, queue, subprocess_tracker):
         return subprocess_tracker.exit_gracefully()
 
 
-
-
 class TaskRequestHandler:
     """Class that implements the request consumption logic.
 
@@ -209,7 +207,7 @@ class TaskRequestHandler:
 
         # Check if message catcher thread stopped running
         done = False
-        while (not done):
+        while not done:
             done = msg_catcher_thread.done()
             logging.info("Message catcher thread stopped: %s", done)
             time.sleep(0.1)
