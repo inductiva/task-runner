@@ -8,11 +8,20 @@ Note that, currently, request consumption is blocking.
 import os
 import shutil
 from absl import logging
-
+import time
 import utils
 from utils import make_task_key
 from utils.files import extract_zip_archive, write_input_json
 from subprocess_tracker import SubprocessTracker
+from concurrent.futures import ThreadPoolExecutor
+
+
+def redis_msg_catcher(redis, queue, subprocess_tracker):
+    _, content = redis.brpop(queue)
+    logging.info("Received message \"%s\" from the Web API", content)
+
+    if content == "kill":
+        return subprocess_tracker.exit_gracefully()
 
 
 class TaskRequestHandler:
@@ -38,6 +47,8 @@ class TaskRequestHandler:
         self.redis = redis_connection
         self.working_dir_root = working_dir_root
         self.artifact_dest = artifact_dest
+
+        self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
     def build_working_dir(self, request) -> str:
         """Create the working directory for a given request.
@@ -72,6 +83,7 @@ class TaskRequestHandler:
             "linalg.eigs": "/scripts/run_eigensolver.py",
             "math.matmul": "/scripts/matmul.py",
             "math.sum": "/scripts/sum.py",
+            "test.sleep": "/scripts/sleep.py",
             "sph.run_simulation": "/scripts/simulation.py",
         }
         method = request["method"]
@@ -152,6 +164,13 @@ class TaskRequestHandler:
         """
         task_id = request["id"]
 
+        task_status = self.redis.get(make_task_key(task_id, "status"))
+
+        # Check if task status is submitted. The task status could be
+        # "killed", in which case it is not supposed to be executed
+        if task_status != "submitted":
+            return
+
         working_dir = self.build_working_dir(request)
         self.setup_working_dir(request, working_dir)
 
@@ -163,8 +182,22 @@ class TaskRequestHandler:
         # Mark task as started
         self.redis.set(make_task_key(task_id, "status"), "started")
 
+        redis_client_id = self.redis.client_id()
+
+        # Start thread that blocks while waiting for messages related to
+        # the currently executing task
+        msg_catcher_thread = self.thread_pool.submit(
+            redis_msg_catcher,
+            self.redis,
+            make_task_key(task_id, "events"),
+            tracker,
+        )
+
         exit_code = tracker.run()
         logging.info("Tracker returned exit code %s", str(exit_code))
+
+        # Unblock the connection that's blocked waiting for a kill message
+        self.redis.client_unblock(redis_client_id)
 
         self.pack_output(task_id, working_dir)
 
@@ -172,3 +205,10 @@ class TaskRequestHandler:
         # Mark task as finished successfully
         self.redis.set(make_task_key(task_id, "status"), "success")
         logging.info("Marked task as successful")
+
+        # Check if message catcher thread stopped running
+        done = False
+        while not done:
+            done = msg_catcher_thread.done()
+            logging.info("Message catcher thread stopped: %s", done)
+            time.sleep(0.1)
