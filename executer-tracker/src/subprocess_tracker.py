@@ -104,7 +104,7 @@ class SubprocessTracker:
 
     def exit_gracefully(self):
         """Ensures we kill the subprocess after signals or exceptions."""
-        logging.info("Sending SIGKILL to PID %d", self.subproc.pid)
+        logging.info("Sending SIGTERM to PID %d", self.subproc.pid)
 
         if self.subproc:
             os.killpg(os.getpgid(self.subproc.pid), signal.SIGTERM)
