@@ -1,5 +1,7 @@
 """Module that defines the SubprocessTracker class."""
+import os
 import shlex
+import signal
 # import signal
 import subprocess
 import psutil
@@ -48,6 +50,7 @@ class SubprocessTracker:
             self.subproc = subprocess.Popen(
                 shlex.split(self.command_line),
                 cwd=self.working_dir,
+                start_new_session=True,
                 # stdout=subprocess.DEVNULL,
                 # stderr=subprocess.DEVNULL,
             )
@@ -101,9 +104,9 @@ class SubprocessTracker:
 
     def exit_gracefully(self):
         """Ensures we kill the subprocess after signals or exceptions."""
-        logging.info("Sending SIGKILL to PID %d", self.subproc.pid)
-        # For now we just kill the process we directly spawned
-        # i.e we are not cleaning up its children (yet).
+        logging.info("Sending SIGTERM to PID %d", self.subproc.pid)
+
         if self.subproc:
-            self.subproc.kill()
+            os.killpg(os.getpgid(self.subproc.pid), signal.SIGTERM)
+
         return self.subproc.poll()
