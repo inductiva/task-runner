@@ -85,7 +85,7 @@ class TaskRequestHandler:
             "math.sum": "/scripts/sum.py",
             "test.sleep": "/scripts/sleep.py",
             "sph.splishsplash.run_simulation": "/scripts/simulation.py",
-            "sph.swash.run_simulation": "/scripts/simulation.py",
+            "shallow.swash.run_simulation": "/scripts/simulation.py",
         }
         method = request["method"]
 
