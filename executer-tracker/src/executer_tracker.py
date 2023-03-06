@@ -67,7 +67,7 @@ def monitor_redis_stream(redis_connection, stream_name: str,
                 request_handler(request)
 
                 # Acknowledge successful processing of the received message
-                redis_connection.xack(consumer_name, consumer_group,
+                redis_connection.xack(stream_name, consumer_group,
                                       stream_entry_id)
 
         except ConnectionError as e:
