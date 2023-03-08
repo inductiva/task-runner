@@ -118,8 +118,8 @@ def main(_):
         logging.info("Exiting...")
     except KeyboardInterrupt:
         logging.exception("Caught KeyboardInterrupt:")
-        # Create a new Redis connectino, as the other as the previous one may
-        # be left in a bad state.
+        # Create a new Redis connectino, as the previous one may be left
+        # in a bad state.
         conn = Redis(redis_hostname,
                      redis_port,
                      retry_on_timeout=True,
