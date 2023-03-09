@@ -67,11 +67,16 @@ def monitor_redis_stream(redis_connection, stream_name: str,
                 request_handler(request)
 
                 # Acknowledge successful processing of the received message
-                redis_connection.xack(consumer_name, consumer_group,
+                redis_connection.xack(stream_name, consumer_group,
                                       stream_entry_id)
 
         except ConnectionError as e:
             logging.info("ERROR REDIS CONNECTION: %s", str(e))
+
+
+def delete_redis_consumer(redis_conn, stream_name, consumer_group,
+                          consumer_name):
+    redis_conn.xgroup_delconsumer(stream_name, consumer_group, consumer_name)
 
 
 def main(_):
@@ -97,13 +102,32 @@ def main(_):
         working_dir_root=working_dir_root,
     )
 
-    monitor_redis_stream(
-        redis_connection=redis_conn,
-        stream_name=redis_stream,
-        consumer_group=FLAGS.redis_consumer_group,
-        consumer_name=redis_consumer_name,
-        request_handler=request_handler,
-    )
+    try:
+        monitor_redis_stream(
+            redis_connection=redis_conn,
+            stream_name=redis_stream,
+            consumer_group=FLAGS.redis_consumer_group,
+            consumer_name=redis_consumer_name,
+            request_handler=request_handler,
+        )
+    # pylint: disable=broad-except
+    except Exception:
+        logging.exception("Caught Exception:")
+        delete_redis_consumer(redis_conn, redis_stream,
+                              FLAGS.redis_consumer_group, redis_consumer_name)
+        logging.info("Exiting...")
+    except KeyboardInterrupt:
+        logging.exception("Caught KeyboardInterrupt:")
+        # Create a new Redis connectino, as the previous one may be left
+        # in a bad state.
+        conn = Redis(redis_hostname,
+                     redis_port,
+                     retry_on_timeout=True,
+                     decode_responses=True)
+
+        delete_redis_consumer(conn, redis_stream, FLAGS.redis_consumer_group,
+                              redis_consumer_name)
+        logging.info("Exiting...")
 
 
 if __name__ == "__main__":
