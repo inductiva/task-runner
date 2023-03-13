@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
-    queue = make_task_key(task_id, "events"),
+    queue = make_task_key(task_id, "events")
 
     _, content = redis.brpop(queue)
     logging.info("Received message \"%s\" from the Web API", content)
@@ -55,8 +55,8 @@ class TaskRequestHandler:
 
         self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
-    def update_task_status(self, id, status):
-        self.redis.set(make_task_key(id, "status"), status)
+    def update_task_status(self, task_id, status):
+        self.redis.set(make_task_key(task_id, "status"), status)
 
     def build_working_dir(self, request) -> str:
         """Create the working directory for a given request.
