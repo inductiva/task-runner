@@ -1,28 +1,78 @@
-"""Main script for managing executers.
+"""Script that listens to a Redis stream and launches executer scripts.
 
-This script reads from a Redis stream, handling received requests
-by launching the corresponding Python script.
+TL;DR:
 
-Usage:
+This is the entrypoint script that is launched in the executer Docker
+container. It listens to a Redis stream in a blocking fashion: upon
+receiving a request, it processes the executer the correct executer script.
+After processing the request, it tries to read from the Redis stream again,
+only processing one request at a time.
+
+If you're only interested in the logic of handling a received request,
+check the task_request_handler.py file, in particular the __call__ method of
+the TaskRequestHandler class in there defined.
+
+## More detailed description:
+
+This script expects 5 environment variables to be set:
+    EXECUTER_TYPE: type of executers that this executer_tracker will
+        run. This is important in order to read from the correct
+        stream, since we are using a different stream for each type
+        of executer supported.
+    REDIS_HOSTNAME: hostname of the Redis server to which to connect.
+    REDIS_PORT: port in which the Redis server is accessible.
+        Not required: uses 6379 by default.
+    REDIS_CONSUMER_NAME: name that this executer tracker will use to
+        read from the Redis stream. The name should be unique for each
+        executer of the same EXECUTER_TYPE.
+    ARTIFACT_STORE: path to mounted NFS drive, where artifacts can be accessed
+        by both executers and the Web API.
+
+In this file, a function named `monitor_redis_stream` is defined. The function
+blocks until a request is received via the Redis stream. Then, the request
+received in the Redis stream is passed as an argument to a callback function
+that handles the received request. After the request is processed, the
+`monitor_redis_stream` function acknowledges to the Redis stream that the
+request has been processed (this is important so that we can get information
+from the stream of how many requests are currently pending execution). Note
+that this function only handles one request at a time, only trying to receive
+a new request after the previous one is processed.
+
+The logic of handling the request (the callback function mentioned above) is
+defined in the `__call__` method of the TaskRequestHandler class, defined in
+the task_request_handler.py file. As such, the `monitor_redis_stream` receives
+as argument an object of the TaskRequestHandler class, and calls it when a
+request is read from the Redis stream. Check the task_request_handler.py
+file for more information on the logic of handling a received request.
+
+The `monitor_redis_stream` function is wrapped in a try catch block, so that if
+some exception (or ctrl+c) is caught and the script exits, the consumer name
+is removed from the Redis stream. This is useful so that we can be aware of how
+many executer trackers are currently active.
+
+Usage (note the required environment variables):
   python executer_tracker.py
 """
 import os
 
 from absl import app
-from absl import flags
 from absl import logging
 
 from redis import Redis
 
 from task_request_handler import TaskRequestHandler
 
-FLAGS = flags.FLAGS
-
-flags.DEFINE_string(
-    "redis_consumer_group", "all_consumers",
-    "Name of the consumer group to use when reading from Redis Stream.")
-
+REDIS_CONSUMER_GROUP = "all_consumers"
 DELIVER_NEW_MESSAGES = ">"
+
+
+def create_redis_connection(redis_hostname, redis_port):
+    redis_conn = Redis(redis_hostname,
+                       redis_port,
+                       retry_on_timeout=True,
+                       decode_responses=True)
+
+    return redis_conn
 
 
 def monitor_redis_stream(redis_connection, stream_name: str,
@@ -83,49 +133,35 @@ def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
     redis_consumer_name = os.getenv("REDIS_CONSUMER_NAME")
+
     executer_type = os.getenv("EXECUTER_TYPE")
     redis_stream = f"{executer_type}_requests"
 
-    artifact_dest = os.getenv("ARTIFACT_STORE")  # drive shared with the Web API
+    artifact_shared_drive = os.getenv("ARTIFACT_STORE")
 
-    working_dir_root = os.path.join(os.path.abspath(os.sep), "working_dir")
-    os.makedirs(working_dir_root, exist_ok=True)
+    redis_conn = create_redis_connection(redis_hostname, redis_port)
 
-    redis_conn = Redis(redis_hostname,
-                       redis_port,
-                       retry_on_timeout=True,
-                       decode_responses=True)
-
-    request_handler = TaskRequestHandler(
-        redis_connection=redis_conn,
-        artifact_dest=artifact_dest,
-        working_dir_root=working_dir_root,
-    )
+    request_handler = TaskRequestHandler(redis_conn, artifact_shared_drive)
 
     try:
         monitor_redis_stream(
             redis_connection=redis_conn,
             stream_name=redis_stream,
-            consumer_group=FLAGS.redis_consumer_group,
+            consumer_group=REDIS_CONSUMER_GROUP,
             consumer_name=redis_consumer_name,
             request_handler=request_handler,
         )
     # pylint: disable=broad-except
     except Exception:
         logging.exception("Caught Exception:")
-        delete_redis_consumer(redis_conn, redis_stream,
-                              FLAGS.redis_consumer_group, redis_consumer_name)
-        logging.info("Exiting...")
     except KeyboardInterrupt:
         logging.exception("Caught KeyboardInterrupt:")
-        # Create a new Redis connectino, as the previous one may be left
+    finally:
+        # Create a new Redis connection, as the previous one may be left
         # in a bad state.
-        conn = Redis(redis_hostname,
-                     redis_port,
-                     retry_on_timeout=True,
-                     decode_responses=True)
+        conn = create_redis_connection(redis_hostname, redis_port)
 
-        delete_redis_consumer(conn, redis_stream, FLAGS.redis_consumer_group,
+        delete_redis_consumer(conn, redis_stream, REDIS_CONSUMER_GROUP,
                               redis_consumer_name)
         logging.info("Exiting...")
 

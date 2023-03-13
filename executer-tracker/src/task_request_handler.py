@@ -27,7 +27,7 @@ def redis_msg_catcher(redis, queue, subprocess_tracker):
 class TaskRequestHandler:
     """Class that implements the request consumption logic.
 
-    The TaskRequestHandler represents a stateful handler of requests. Its
+    The TaskRequestHandler represents a stateful handler of requests. Itsxw
     intended usage is within a loop where requests are listened for.
     After a request arrives, it is passed to an instance of TaskRequestHandler
     for blocking execution of the request. The TaskRequestHandler defines
@@ -38,15 +38,18 @@ class TaskRequestHandler:
 
     Attributes:
         redis: Connection to Redis.
-        working_dir_root: Directory where executer working dirs are created.
         artifact_dest: Shared directory with the Web API.
     """
+    WORKING_DIR_ROOT = "working_dir"
 
-    def __init__(self, redis_connection, working_dir_root, artifact_dest):
+    def __init__(self, redis_connection, artifact_dest):
         """Initialize an instance of the TaskRequestHandler class."""
         self.redis = redis_connection
-        self.working_dir_root = working_dir_root
         self.artifact_dest = artifact_dest
+
+        self.working_dir_root = os.path.join(os.path.abspath(os.sep),
+                                             self.WORKING_DIR_ROOT)
+        os.makedirs(self.working_dir_root, exist_ok=True)
 
         self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
