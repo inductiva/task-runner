@@ -4,28 +4,28 @@ TL;DR:
 
 This is the entrypoint script that is launched in the executer Docker
 container. It listens to a Redis stream in a blocking fashion: upon
-receiving a request, it processes the executer the correct executer script.
+receiving a request, it processes it with the correct executer script.
 After processing the request, it tries to read from the Redis stream again,
 only processing one request at a time.
 
-If you're only interested in the logic of handling a received request,
-check the task_request_handler.py file, in particular the __call__ method of
-the TaskRequestHandler class in there defined.
+The logic of handling a request is contained in task_request_handler.py,
+in particular the `__call__` method of the TaskRequestHandler class in there
+defined.
 
-## More detailed description:
+## Detailed description:
 
 This script expects 5 environment variables to be set:
-    EXECUTER_TYPE: type of executers that this executer_tracker will
+    EXECUTER_TYPE: type of executer that this executer_tracker will
         run. This is important in order to read from the correct
         stream, since we are using a different stream for each type
         of executer supported.
     REDIS_HOSTNAME: hostname of the Redis server to which to connect.
     REDIS_PORT: port in which the Redis server is accessible.
-        Not required: uses 6379 by default.
+        Optional: uses 6379 by default.
     REDIS_CONSUMER_NAME: name that this executer tracker will use to
-        read from the Redis stream. The name should be unique for each
-        executer of the same EXECUTER_TYPE.
-    ARTIFACT_STORE: path to mounted NFS drive, where artifacts can be accessed
+        read from the Redis stream. The name should be unique among all
+        executers with the same EXECUTER_TYPE.
+    ARTIFACT_STORE: path to shared directory, where artifacts can be accessed
         by both executers and the Web API.
 
 In this file, a function named `monitor_redis_stream` is defined. The function

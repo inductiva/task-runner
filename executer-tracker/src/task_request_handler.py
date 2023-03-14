@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
+    """Function that waits for the kill message and kills the running job."""
     queue = make_task_key(task_id, "events")
 
     _, content = redis.brpop(queue)
@@ -29,7 +30,7 @@ def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
 class TaskRequestHandler:
     """Class that implements the request consumption logic.
 
-    The TaskRequestHandler represents a stateful handler of requests. Itsxw
+    The TaskRequestHandler represents a stateful handler of requests. Its
     intended usage is within a loop where requests are listened for.
     After a request arrives, it is passed to an instance of TaskRequestHandler
     for blocking execution of the request. The TaskRequestHandler defines
