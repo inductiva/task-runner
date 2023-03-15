@@ -8,9 +8,8 @@ receiving a request, it processes it with the correct executer script.
 After processing the request, it tries to read from the Redis stream again,
 only processing one request at a time.
 
-The logic of handling a request is contained in task_request_handler.py,
-in particular the `__call__` method of the TaskRequestHandler class in there
-defined.
+The logic of processing a received request is defined in the `__call__` method
+of the `TaskRequestHandler` class (task_request_handler.py file).
 
 ## Detailed description:
 
@@ -47,8 +46,8 @@ file for more information on the logic of handling a received request.
 
 The `monitor_redis_stream` function is wrapped in a try catch block, so that if
 some exception (or ctrl+c) is caught and the script exits, the consumer name
-is removed from the Redis stream. This is useful so that we can be aware of how
-many executer trackers are currently active.
+is removed from the Redis stream. This is useful for monitoring the number of
+currently active executer trackers.
 
 Usage (note the required environment variables):
   python executer_tracker.py
