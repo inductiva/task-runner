@@ -58,7 +58,7 @@ class TaskRequestHandler:
 
     def update_task_status(self, task_id, status):
         self.redis.set(make_task_key(task_id, "status"), status)
-        logging.info("Updated task status to %s", status)
+        logging.info("Updated task status to %s.", status)
 
     def get_task_status(self, task_id):
         task_status = self.redis.get(make_task_key(task_id, "status"))
@@ -133,18 +133,17 @@ class TaskRequestHandler:
         if "params" in request:
             input_json_path = write_input_json(working_dir, request["params"])
             logging.info("Wrote JSON input to %s", input_json_path)
-            return
+        else:
+            input_zip_path = os.path.join(self.artifact_dest, request["id"],
+                                          utils.INPUT_ZIP_FILENAME)
 
-        input_zip_path = os.path.join(self.artifact_dest, request["id"],
-                                      utils.INPUT_ZIP_FILENAME)
+            extract_zip_archive(
+                zip_path=input_zip_path,
+                dest=working_dir,
+            )
 
-        extract_zip_archive(
-            zip_path=input_zip_path,
-            dest=working_dir,
-        )
-
-        logging.info("Extracted input zip %s to %s", input_zip_path,
-                     working_dir)
+            logging.info("Extracted input zip %s to %s", input_zip_path,
+                         working_dir)
 
         return working_dir
 
@@ -168,7 +167,7 @@ class TaskRequestHandler:
         )
 
         exit_code = tracker.run()
-        logging.info("Tracker returned exit code %s", str(exit_code))
+        logging.info("Tracker returned exit code %s.", str(exit_code))
 
         # Unblock the connection that's blocked waiting for a kill message
         self.redis.client_unblock(redis_client_id)
