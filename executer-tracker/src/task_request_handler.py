@@ -17,14 +17,23 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
-    """Function that waits for the kill message and kills the running job."""
+    """Function that waits for the kill message and kills the running job.
+
+    Returns:
+        bool reflecting if a "kill" message was received.
+    """
     queue = make_task_key(task_id, "events")
 
-    _, content = redis.brpop(queue)
+    element = redis.brpop(queue)
+    if element is None:
+        return False
+
+    content = element[1]
     logging.info("Received message \"%s\" from the Web API", content)
 
     if content == "kill":
-        return subprocess_tracker.exit_gracefully()
+        subprocess_tracker.exit_gracefully()
+        return True
 
 
 class TaskRequestHandler:
@@ -148,6 +157,11 @@ class TaskRequestHandler:
         return working_dir
 
     def execute_request(self, request, task_id, working_dir):
+        """Execute the request, return the exit code of the executer script.
+
+        NOTE: this launchs a second thread to listen for possible "kill"
+        messages from the API.
+        """
         tracker = SubprocessTracker(
             working_dir=working_dir,
             command_line=self.build_command(request),
@@ -162,7 +176,7 @@ class TaskRequestHandler:
         msg_catcher_thread = self.thread_pool.submit(
             redis_kill_msg_catcher,
             self.redis,
-            make_task_key(task_id, "events"),
+            task_id,
             tracker,
         )
 
@@ -179,7 +193,9 @@ class TaskRequestHandler:
             logging.info("Message catcher thread stopped: %s", done)
             time.sleep(0.1)
 
-        return exit_code
+        task_killed = msg_catcher_thread.result()
+
+        return exit_code, task_killed
 
     def pack_output(self, task_id, working_dir):
         """Compress outputs and store them in the shared drive.
@@ -220,16 +236,17 @@ class TaskRequestHandler:
         task_id = request["id"]
         task_status = self.get_task_status(task_id)
 
-        task_cancelled = task_status != "submitted"
-        if task_cancelled:
+        task_killed = task_status != "submitted"
+        if task_killed:
             return
 
         working_dir = self.setup_working_dir(request)
 
-        exit_code = self.execute_request(request, task_id, working_dir)
+        exit_code, task_killed = \
+            self.execute_request(request, task_id, working_dir)
 
-        self.pack_output(task_id, working_dir)
+        if not task_killed:
+            self.pack_output(task_id, working_dir)
 
-        new_status = "failed" if exit_code else "success"
-
-        self.update_task_status(task_id, new_status)
+            new_status = "failed" if exit_code else "success"
+            self.update_task_status(task_id, new_status)
