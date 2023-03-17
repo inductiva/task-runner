@@ -17,14 +17,23 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
-    """Function that waits for the kill message and kills the running job."""
+    """Function that waits for the kill message and kills the running job.
+
+    Returns:
+        bool reflecting if a "kill" message was received.
+    """
     queue = make_task_key(task_id, "events")
 
-    _, content = redis.brpop(queue)
+    element = redis.brpop(queue)
+    if element is None:
+        return False
+
+    content = element[1]
     logging.info("Received message \"%s\" from the Web API", content)
 
     if content == "kill":
-        return subprocess_tracker.exit_gracefully()
+        subprocess_tracker.exit_gracefully()
+        return True
 
 
 class TaskRequestHandler:
@@ -58,6 +67,11 @@ class TaskRequestHandler:
 
     def update_task_status(self, task_id, status):
         self.redis.set(make_task_key(task_id, "status"), status)
+        logging.info("Updated task status to %s.", status)
+
+    def get_task_status(self, task_id):
+        task_status = self.redis.get(make_task_key(task_id, "status"))
+        return task_status
 
     def build_working_dir(self, request) -> str:
         """Create the working directory for a given request.
@@ -128,20 +142,60 @@ class TaskRequestHandler:
         if "params" in request:
             input_json_path = write_input_json(working_dir, request["params"])
             logging.info("Wrote JSON input to %s", input_json_path)
-            return
+        else:
+            input_zip_path = os.path.join(self.artifact_dest, request["id"],
+                                          utils.INPUT_ZIP_FILENAME)
 
-        input_zip_path = os.path.join(self.artifact_dest, request["id"],
-                                      utils.INPUT_ZIP_FILENAME)
+            extract_zip_archive(
+                zip_path=input_zip_path,
+                dest=working_dir,
+            )
 
-        extract_zip_archive(
-            zip_path=input_zip_path,
-            dest=working_dir,
-        )
-
-        logging.info("Extracted input zip %s to %s", input_zip_path,
-                     working_dir)
+            logging.info("Extracted input zip %s to %s", input_zip_path,
+                         working_dir)
 
         return working_dir
+
+    def execute_request(self, request, task_id, working_dir):
+        """Execute the request, return the exit code of the executer script.
+
+        NOTE: this launchs a second thread to listen for possible "kill"
+        messages from the API.
+        """
+        tracker = SubprocessTracker(
+            working_dir=working_dir,
+            command_line=self.build_command(request),
+        )
+
+        self.update_task_status(task_id, "started")
+
+        redis_client_id = self.redis.client_id()
+
+        # Start thread that blocks while waiting for messages related to
+        # the currently executing task
+        msg_catcher_thread = self.thread_pool.submit(
+            redis_kill_msg_catcher,
+            self.redis,
+            task_id,
+            tracker,
+        )
+
+        exit_code = tracker.run()
+        logging.info("Tracker returned exit code %s.", str(exit_code))
+
+        # Unblock the connection that's blocked waiting for a kill message
+        self.redis.client_unblock(redis_client_id)
+
+        # Check if message catcher thread stopped running
+        done = False
+        while not done:
+            done = msg_catcher_thread.done()
+            logging.info("Message catcher thread stopped: %s", done)
+            time.sleep(0.1)
+
+        task_killed = msg_catcher_thread.result()
+
+        return exit_code, task_killed
 
     def pack_output(self, task_id, working_dir):
         """Compress outputs and store them in the shared drive.
@@ -180,50 +234,21 @@ class TaskRequestHandler:
             request: Request describing the task to be executed.
         """
         task_id = request["id"]
+        task_status = self.get_task_status(task_id)
 
-        task_status = self.redis.get(make_task_key(task_id, "status"))
-
-        task_cancelled = task_status != "submitted"
-
-        if task_cancelled:
+        task_killed = task_status != "submitted"
+        if task_killed:
             return
 
         working_dir = self.setup_working_dir(request)
 
-        tracker = SubprocessTracker(
-            working_dir=working_dir,
-            command_line=self.build_command(request),
-        )
+        exit_code, task_killed = \
+            self.execute_request(request, task_id, working_dir)
 
-        # Mark task as started.
-        self.update_task_status(task_id, "started")
-
-        redis_client_id = self.redis.client_id()
-
-        # Start thread that blocks waiting for messages related to
-        # the currently executing task.
-        msg_catcher_thread = self.thread_pool.submit(
-            redis_kill_msg_catcher,
-            self.redis,
-            task_id,
-            tracker,
-        )
-
-        exit_code = tracker.run()
-        logging.info("Tracker returned exit code %s", str(exit_code))
-
-        # Unblock the connection that's blocked waiting for a kill message.
-        self.redis.client_unblock(redis_client_id)
+        if task_killed:
+            return
 
         self.pack_output(task_id, working_dir)
 
-        # NOTE: Assuming everything ran successfully for now.
-        self.update_task_status(task_id, "success")
-        logging.info("Marked task as successful.")
-
-        # Check if message catcher thread stopped running.
-        done = False
-        while not done:
-            done = msg_catcher_thread.done()
-            logging.info("Message catcher thread stopped: %s", done)
-            time.sleep(0.1)
+        new_status = "failed" if exit_code else "success"
+        self.update_task_status(task_id, new_status)
