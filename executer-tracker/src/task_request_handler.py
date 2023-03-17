@@ -245,8 +245,10 @@ class TaskRequestHandler:
         exit_code, task_killed = \
             self.execute_request(request, task_id, working_dir)
 
-        if not task_killed:
-            self.pack_output(task_id, working_dir)
+        if task_killed:
+            return
 
-            new_status = "failed" if exit_code else "success"
-            self.update_task_status(task_id, new_status)
+        self.pack_output(task_id, working_dir)
+
+        new_status = "failed" if exit_code else "success"
+        self.update_task_status(task_id, new_status)
