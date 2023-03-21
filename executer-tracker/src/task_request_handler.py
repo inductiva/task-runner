@@ -110,6 +110,7 @@ class TaskRequestHandler:
             "sph.splishsplash.run_simulation": "/scripts/simulation.py",
             "sph.dualsphysics.run_simulation": "/scripts/simulation.py",
             "sw.swash.run_simulation": "/scripts/simulation.py",
+            "sw.xbeach.run_simulation": "/scripts/simulation.py"
         }
         method = request["method"]
 
