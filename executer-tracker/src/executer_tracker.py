@@ -140,7 +140,8 @@ def main(_):
 
     redis_conn = create_redis_connection(redis_hostname, redis_port)
 
-    request_handler = TaskRequestHandler(redis_conn, artifact_shared_drive)
+    request_handler = TaskRequestHandler(redis_conn, artifact_shared_drive,
+                                         redis_consumer_name)
 
     try:
         monitor_redis_stream(
