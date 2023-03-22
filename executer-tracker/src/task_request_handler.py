@@ -54,11 +54,11 @@ class TaskRequestHandler:
     """
     WORKING_DIR_ROOT = "working_dir"
 
-    def __init__(self, redis_connection, artifact_dest, consumer_name):
+    def __init__(self, redis_connection, artifact_dest, executer_name):
         """Initialize an instance of the TaskRequestHandler class."""
         self.redis = redis_connection
         self.artifact_dest = artifact_dest
-        self.consumer_name = consumer_name
+        self.executer_name = executer_name
 
         self.working_dir_root = os.path.join(os.path.abspath(os.sep),
                                              self.WORKING_DIR_ROOT)
@@ -244,7 +244,7 @@ class TaskRequestHandler:
         task_id = request["id"]
         task_status = self.get_task_status(task_id)
 
-        self.update_task_attribute(task_id, "consumer_name", self.consumer_name)
+        self.update_task_attribute(task_id, "executer_name", self.executer_name)
 
         task_killed = task_status != "submitted"
         if task_killed:
