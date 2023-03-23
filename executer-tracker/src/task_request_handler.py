@@ -54,10 +54,11 @@ class TaskRequestHandler:
     """
     WORKING_DIR_ROOT = "working_dir"
 
-    def __init__(self, redis_connection, artifact_dest):
+    def __init__(self, redis_connection, artifact_dest, executer_name):
         """Initialize an instance of the TaskRequestHandler class."""
         self.redis = redis_connection
         self.artifact_dest = artifact_dest
+        self.executer_name = executer_name
 
         self.working_dir_root = os.path.join(os.path.abspath(os.sep),
                                              self.WORKING_DIR_ROOT)
@@ -68,6 +69,10 @@ class TaskRequestHandler:
     def update_task_status(self, task_id, status):
         self.redis.set(make_task_key(task_id, "status"), status)
         logging.info("Updated task status to %s.", status)
+
+    def update_task_attribute(self, task_id, attribute, value):
+        self.redis.set(make_task_key(task_id, attribute), value)
+        logging.info("Updated task %s to %s.", attribute, value)
 
     def get_task_status(self, task_id):
         task_status = self.redis.get(make_task_key(task_id, "status"))
@@ -170,6 +175,7 @@ class TaskRequestHandler:
         )
 
         self.update_task_status(task_id, "started")
+        self.update_task_attribute(task_id, "start_time", time.time())
 
         redis_client_id = self.redis.client_id()
 
@@ -184,6 +190,8 @@ class TaskRequestHandler:
 
         exit_code = tracker.run()
         logging.info("Tracker returned exit code %s.", str(exit_code))
+
+        self.update_task_attribute(task_id, "end_time", time.time())
 
         # Unblock the connection that's blocked waiting for a kill message
         self.redis.client_unblock(redis_client_id)
@@ -237,6 +245,8 @@ class TaskRequestHandler:
         """
         task_id = request["id"]
         task_status = self.get_task_status(task_id)
+
+        self.update_task_attribute(task_id, "executer_name", self.executer_name)
 
         task_killed = task_status != "submitted"
         if task_killed:
