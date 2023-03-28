@@ -116,7 +116,7 @@ class TaskRequestHandler:
             "sph.dualsphysics.run_simulation": "/scripts/simulation.py",
             "sw.swash.run_simulation": "/scripts/simulation.py",
             "sw.xbeach.run_simulation": "/scripts/simulation.py",
-            "openfoam.run_simulation": "/scripts/simulation.py"
+            "fvm.openfoam.run_simulation": "/scripts/simulation.py"
         }
         method = request["method"]
 
