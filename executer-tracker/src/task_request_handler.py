@@ -169,10 +169,11 @@ class TaskRequestHandler:
         NOTE: this launchs a second thread to listen for possible "kill"
         messages from the API.
         """
-        tracker = SubprocessTracker(
-            working_dir=working_dir,
-            command_line=self.build_command(request),
-        )
+        tracker = SubprocessTracker(working_dir=working_dir,
+                                    command_line=self.build_command(request),
+                                    logs_path=os.path.join(
+                                        self.artifact_dest, task_id,
+                                        utils.LOGS_FILENAME))
 
         self.update_task_status(task_id, "started")
         self.update_task_attribute(task_id, "start_time", time.time())
