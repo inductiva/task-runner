@@ -67,7 +67,13 @@ class TaskRequestHandler:
         self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
     def update_task_status(self, task_id, status):
-        self.redis.set(make_task_key(task_id, "status"), status)
+        msg_queue_key = make_task_key(task_id, "events")
+
+        with self.redis.pipeline(transaction=True) as pipe:
+            pipe = pipe.set(make_task_key(task_id, "status"), status)
+            pipe = pipe.lpush(msg_queue_key, status)
+            _ = pipe.execute()
+
         logging.info("Updated task status to %s.", status)
 
     def update_task_attribute(self, task_id, attribute, value):
