@@ -232,6 +232,7 @@ class TaskRequestHandler:
 
         output_zip_name = os.path.join(self.artifact_dest, task_id,
                                        utils.OUTPUT_DIR)
+
         output_zip_path = shutil.make_archive(output_zip_name, "zip",
                                               output_dir)
 
