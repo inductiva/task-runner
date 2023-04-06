@@ -67,7 +67,13 @@ class TaskRequestHandler:
         self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
     def update_task_status(self, task_id, status):
-        self.redis.set(make_task_key(task_id, "status"), status)
+        msg_queue_key = make_task_key(task_id, "events")
+
+        with self.redis.pipeline(transaction=True) as pipe:
+            pipe = pipe.set(make_task_key(task_id, "status"), status)
+            pipe = pipe.lpush(msg_queue_key, status)
+            _ = pipe.execute()
+
         logging.info("Updated task status to %s.", status)
 
     def update_task_attribute(self, task_id, attribute, value):
@@ -170,10 +176,11 @@ class TaskRequestHandler:
         NOTE: this launchs a second thread to listen for possible "kill"
         messages from the API.
         """
-        tracker = SubprocessTracker(
-            working_dir=working_dir,
-            command_line=self.build_command(request),
-        )
+        tracker = SubprocessTracker(working_dir=working_dir,
+                                    command_line=self.build_command(request),
+                                    logs_path=os.path.join(
+                                        self.artifact_dest, task_id,
+                                        utils.LOGS_FILENAME))
 
         self.update_task_status(task_id, "started")
         self.update_task_attribute(task_id, "start_time", time.time())
@@ -226,6 +233,7 @@ class TaskRequestHandler:
 
         output_zip_name = os.path.join(self.artifact_dest, task_id,
                                        utils.OUTPUT_DIR)
+
         output_zip_path = shutil.make_archive(output_zip_name, "zip",
                                               output_dir)
 
