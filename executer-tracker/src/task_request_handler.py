@@ -19,21 +19,27 @@ from concurrent.futures import ThreadPoolExecutor
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
     """Function that waits for the kill message and kills the running job.
 
+    If the message refers to a different status update, then
     Returns:
         bool reflecting if a "kill" message was received.
     """
     queue = make_task_key(task_id, "events")
+    logging.info("Waiting for kill message on queue.")
 
-    element = redis.brpop(queue)
-    if element is None:
-        return False
+    while True:
+        element = redis.brpop(queue)
+        logging.info("Received message \"%s\" from the Web API", element)
+        # If no kill message is received and the client is unblocked,
+        # brpop returns None.
+        if element is None:
+            return False
 
-    content = element[1]
-    logging.info("Received message \"%s\" from the Web API", content)
+        content = element[1]
+        logging.info("Received message \"%s\" from the Web API", content)
 
-    if content == "kill":
-        subprocess_tracker.exit_gracefully()
-        return True
+        if content == "kill":
+            subprocess_tracker.exit_gracefully()
+            return True
 
 
 class TaskRequestHandler:
@@ -67,7 +73,7 @@ class TaskRequestHandler:
         self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
     def update_task_status(self, task_id, status):
-        msg_queue_key = make_task_key(task_id, "events")
+        msg_queue_key = make_task_key(task_id, "status_updates")
 
         with self.redis.pipeline(transaction=True) as pipe:
             pipe = pipe.set(make_task_key(task_id, "status"), status)
@@ -211,6 +217,8 @@ class TaskRequestHandler:
             time.sleep(0.1)
 
         task_killed = msg_catcher_thread.result()
+        if task_killed:
+            self.update_task_status(task_id, "killed")
 
         return exit_code, task_killed
 
@@ -256,8 +264,9 @@ class TaskRequestHandler:
 
         self.update_task_attribute(task_id, "executer_name", self.executer_name)
 
-        task_killed = task_status != "submitted"
-        if task_killed:
+        task_pending_kill = task_status != "submitted"
+        if task_pending_kill:
+            self.update_task_status(task_id, "killed")
             return
 
         working_dir = self.setup_working_dir(request)
