@@ -132,6 +132,8 @@ def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
     redis_consumer_name = os.getenv("REDIS_CONSUMER_NAME")
+    if not redis_consumer_name:
+        raise ValueError("REDIS_CONSUMER_NAME environment variable not set.")
 
     executer_type = os.getenv("EXECUTER_TYPE")
     redis_stream = f"{executer_type}_requests"

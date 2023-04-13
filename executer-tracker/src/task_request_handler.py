@@ -14,6 +14,7 @@ from utils import make_task_key
 from utils.files import extract_zip_archive, write_input_json
 from subprocess_tracker import SubprocessTracker
 from concurrent.futures import ThreadPoolExecutor
+from task_status import TaskStatusCode
 
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
@@ -71,23 +72,23 @@ class TaskRequestHandler:
 
         self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
-    def update_task_status(self, task_id, status):
+    def update_task_status(self, task_id, status: TaskStatusCode):
         msg_queue_key = make_task_key(task_id, "status_updates")
 
         with self.redis.pipeline(transaction=True) as pipe:
-            pipe = pipe.set(make_task_key(task_id, "status"), status)
-            pipe = pipe.lpush(msg_queue_key, status)
+            pipe = pipe.set(make_task_key(task_id, "status"), status.value)
+            pipe = pipe.lpush(msg_queue_key, status.value)
             _ = pipe.execute()
 
-        logging.info("Updated task status to %s.", status)
+        logging.info("Updated task status to %s.", status.value)
 
     def update_task_attribute(self, task_id, attribute, value):
         self.redis.set(make_task_key(task_id, attribute), value)
         logging.info("Updated task %s to %s.", attribute, value)
 
-    def get_task_status(self, task_id):
+    def get_task_status(self, task_id) -> TaskStatusCode:
         task_status = self.redis.get(make_task_key(task_id, "status"))
-        return task_status
+        return TaskStatusCode(task_status)
 
     def build_working_dir(self, request) -> str:
         """Create the working directory for a given request.
@@ -187,7 +188,7 @@ class TaskRequestHandler:
                                         self.artifact_dest, task_id,
                                         utils.LOGS_FILENAME))
 
-        self.update_task_status(task_id, "started")
+        self.update_task_status(task_id, TaskStatusCode.STARTED)
         self.update_task_attribute(task_id, "start_time", time.time())
 
         redis_client_id = self.redis.client_id()
@@ -218,7 +219,7 @@ class TaskRequestHandler:
 
         task_killed = msg_catcher_thread.result()
         if task_killed:
-            self.update_task_status(task_id, "killed")
+            self.update_task_status(task_id, TaskStatusCode.KILLED)
 
         return exit_code, task_killed
 
@@ -264,9 +265,9 @@ class TaskRequestHandler:
 
         self.update_task_attribute(task_id, "executer_name", self.executer_name)
 
-        task_pending_kill = task_status != "submitted"
+        task_pending_kill = task_status != TaskStatusCode.SUBMITTED
         if task_pending_kill:
-            self.update_task_status(task_id, "killed")
+            self.update_task_status(task_id, TaskStatusCode.KILLED)
             return
 
         working_dir = self.setup_working_dir(request)
@@ -279,5 +280,5 @@ class TaskRequestHandler:
 
         self.pack_output(task_id, working_dir)
 
-        new_status = "failed" if exit_code else "success"
+        new_status = TaskStatusCode.FAILED if exit_code else TaskStatusCode.SUCCESS
         self.update_task_status(task_id, new_status)
