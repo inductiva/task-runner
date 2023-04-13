@@ -29,7 +29,14 @@ the script, *e.g.*, how to pass additional flags to `docker build` command.
 Then, create a container (named e.g. `dualsph`) from that image:
 
 ```shell
-> docker run --gpus all --cpus="12" --network inductiva-web-api_api -v inductiva-web-api_artifact-store:/mnt/artifacts  --env REDIS_HOSTNAME=redis-server --env REDIS_CONSUMER_NAME=consumer-name --env ARTIFACT_STORE=/mnt/artifacts --name dualsph dualpsh-executer
+> docker run --gpus all --cpus="12" \
+    --network inductiva-web-api_api \
+    -v inductiva-web-api_artifact-store:/mnt/artifacts \
+    --env ARTIFACT_STORE=/mnt/artifacts \
+    --env REDIS_HOSTNAME=redis-server \
+    --env REDIS_CONSUMER_NAME=consumer-name \
+    --name dualsph \
+    dualpsh-executer
 ```
 
 Note that this container must have access to the network shared by the web API
