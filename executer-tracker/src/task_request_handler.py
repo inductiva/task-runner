@@ -19,7 +19,6 @@ from concurrent.futures import ThreadPoolExecutor
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
     """Function that waits for the kill message and kills the running job.
 
-    If the message refers to a different status update, then
     Returns:
         bool reflecting if a "kill" message was received.
     """
