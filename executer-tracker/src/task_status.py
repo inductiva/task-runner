@@ -1,4 +1,6 @@
+"""Enum defining the possible task status codes."""
 from enum import Enum
+
 
 class TaskStatusCode(Enum):
     PENDING_INPUT = "pending-input"

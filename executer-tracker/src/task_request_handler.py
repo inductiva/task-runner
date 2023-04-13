@@ -280,5 +280,6 @@ class TaskRequestHandler:
 
         self.pack_output(task_id, working_dir)
 
-        new_status = TaskStatusCode.FAILED if exit_code else TaskStatusCode.SUCCESS
+        new_status = TaskStatusCode.FAILED if exit_code else \
+            TaskStatusCode.SUCCESS
         self.update_task_status(task_id, new_status)
