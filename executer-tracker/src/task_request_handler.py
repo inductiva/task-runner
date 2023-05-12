@@ -287,7 +287,7 @@ class TaskRequestHandler:
             self.event_store.log_sync(
                 self.redis,
                 events.TaskKilled(id=task_id),
-            ),
+            )
             return
 
         self.pack_output(task_id, working_dir)
