@@ -8,6 +8,7 @@ class TaskEvent(Event):
 
 class TaskCreation(TaskEvent):
     method: str
+    username: str
 
 
 class TaskInputUpload(TaskEvent):
