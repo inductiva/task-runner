@@ -6,10 +6,13 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 # Install the package dependencies in the requirements file.
-COPY ./requirements.txt /code/requirements.txt
+COPY ./executer-tracker/requirements.txt /code/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-COPY ./src /code
+COPY ./executer-tracker/src /code
+
+COPY ./common/events /common/events
+RUN pip install --no-cache-dir --upgrade /common/events
 
 # Set the current working directory to /code.
 WORKDIR /code

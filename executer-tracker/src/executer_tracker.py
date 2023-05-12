@@ -129,6 +129,7 @@ def delete_redis_consumer(redis_conn, stream_name, consumer_group,
 
 
 def main(_):
+
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
     redis_consumer_name = os.getenv("REDIS_CONSUMER_NAME")

@@ -15,6 +15,8 @@ from utils.files import extract_zip_archive, write_input_json
 from subprocess_tracker import SubprocessTracker
 from concurrent.futures import ThreadPoolExecutor
 from task_status import TaskStatusCode
+from inductiva_api import events
+from inductiva_api.events import EventStore
 
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
@@ -65,6 +67,7 @@ class TaskRequestHandler:
         self.redis = redis_connection
         self.artifact_dest = artifact_dest
         self.executer_name = executer_name
+        self.event_store = EventStore("events")
 
         self.working_dir_root = os.path.join(os.path.abspath(os.sep),
                                              self.WORKING_DIR_ROOT)
@@ -202,6 +205,11 @@ class TaskRequestHandler:
             tracker,
         )
 
+        self.event_store.log_sync(
+            self.redis,
+            events.TaskStart(id=task_id, executer=self.executer_name),
+        )
+
         exit_code = tracker.run()
         logging.info("Tracker returned exit code %s.", str(exit_code))
 
@@ -276,6 +284,10 @@ class TaskRequestHandler:
             self.execute_request(request, task_id, working_dir)
 
         if task_killed:
+            self.event_store.log_sync(
+                self.redis,
+                events.TaskKilled(id=task_id),
+            ),
             return
 
         self.pack_output(task_id, working_dir)
@@ -283,3 +295,7 @@ class TaskRequestHandler:
         new_status = TaskStatusCode.FAILED if exit_code else \
             TaskStatusCode.SUCCESS
         self.update_task_status(task_id, new_status)
+        self.event_store.log_sync(
+            self.redis,
+            events.TaskCompletion(id=task_id, status=new_status.value),
+        )
