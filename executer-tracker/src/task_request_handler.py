@@ -192,15 +192,6 @@ class TaskRequestHandler:
 
         redis_client_id = self.redis.client_id()
 
-        # Start thread that blocks while waiting for messages related to
-        # the currently executing task
-        msg_catcher_thread = self.thread_pool.submit(
-            redis_kill_msg_catcher,
-            self.redis,
-            task_id,
-            tracker,
-        )
-
         self.event_store.log_sync(
             self.redis,
             events.TaskStarted(
@@ -210,10 +201,17 @@ class TaskRequestHandler:
             ),
         )
 
+        # Start thread that blocks while waiting for messages related to
+        # the currently executing task
+        msg_catcher_thread = self.thread_pool.submit(
+            redis_kill_msg_catcher,
+            self.redis,
+            task_id,
+            tracker,
+        )
+
         exit_code = tracker.run()
         logging.info("Tracker returned exit code %s.", str(exit_code))
-
-        self.update_task_attribute(task_id, "end_time", time.time())
 
         # Unblock the connection that's blocked waiting for a kill message
         self.redis.client_unblock(redis_client_id)
@@ -276,6 +274,13 @@ class TaskRequestHandler:
         task_pending_kill = task_status != TaskStatusCode.SUBMITTED
         if task_pending_kill:
             self.update_task_status(task_id, TaskStatusCode.KILLED)
+            self.event_store.log_sync(
+                self.redis,
+                events.TaskKilled(
+                    id=task_id,
+                    status=TaskStatusCode.KILLED.value,
+                ),
+            )
             return
 
         working_dir = self.setup_working_dir(request)

@@ -66,10 +66,13 @@ DELIVER_NEW_MESSAGES = ">"
 
 
 def create_redis_connection(redis_hostname, redis_port):
-    redis_conn = Redis(redis_hostname,
-                       redis_port,
-                       retry_on_timeout=True,
-                       decode_responses=True)
+    redis_conn = Redis(
+        redis_hostname,
+        redis_port,
+        retry_on_timeout=True,
+        decode_responses=True,
+        single_connection_client=True,
+    )
 
     return redis_conn
 
