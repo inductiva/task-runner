@@ -11,7 +11,7 @@ from absl import logging
 import time
 import utils
 from utils import make_task_key
-from utils.files import extract_zip_archive, write_input_json
+from utils.files import extract_zip_archive
 from subprocess_tracker import SubprocessTracker
 from concurrent.futures import ThreadPoolExecutor
 from task_status import TaskStatusCode
@@ -162,20 +162,16 @@ class TaskRequestHandler:
         """
         working_dir = self.build_working_dir(request)
 
-        if "params" in request:
-            input_json_path = write_input_json(working_dir, request["params"])
-            logging.info("Wrote JSON input to %s", input_json_path)
-        else:
-            input_zip_path = os.path.join(self.artifact_dest, request["id"],
-                                          utils.INPUT_ZIP_FILENAME)
+        input_zip_path = os.path.join(self.artifact_dest, request["id"],
+                                      utils.INPUT_ZIP_FILENAME)
 
-            extract_zip_archive(
-                zip_path=input_zip_path,
-                dest=working_dir,
-            )
+        extract_zip_archive(
+            zip_path=input_zip_path,
+            dest=working_dir,
+        )
 
-            logging.info("Extracted input zip %s to %s", input_zip_path,
-                         working_dir)
+        logging.info("Extracted input zip %s to %s", input_zip_path,
+                     working_dir)
 
         return working_dir
 
@@ -207,7 +203,11 @@ class TaskRequestHandler:
 
         self.event_store.log_sync(
             self.redis,
-            events.TaskStart(id=task_id, executer=self.executer_name),
+            events.TaskStarted(
+                id=task_id,
+                executer=self.executer_name,
+                status=TaskStatusCode.STARTED.value,
+            ),
         )
 
         exit_code = tracker.run()
@@ -286,7 +286,10 @@ class TaskRequestHandler:
         if task_killed:
             self.event_store.log_sync(
                 self.redis,
-                events.TaskKilled(id=task_id),
+                events.TaskKilled(
+                    id=task_id,
+                    status=TaskStatusCode.KILLED.value,
+                ),
             )
             return
 
@@ -297,5 +300,5 @@ class TaskRequestHandler:
         self.update_task_status(task_id, new_status)
         self.event_store.log_sync(
             self.redis,
-            events.TaskCompletion(id=task_id, status=new_status.value),
+            events.TaskCompleted(id=task_id, status=new_status.value),
         )
