@@ -4,24 +4,29 @@ from .event import Event
 
 class TaskEvent(Event):
     id: str
+    status: str
 
 
-class TaskCreation(TaskEvent):
+class TaskCreated(TaskEvent):
     method: str
     username: str
 
 
-class TaskInputUpload(TaskEvent):
+class TaskInputUploaded(TaskEvent):
     pass
 
 
-class TaskStart(TaskEvent):
+class TaskStarted(TaskEvent):
     executer: str
+
+
+class TaskKillRequested(TaskEvent):
+    pass
 
 
 class TaskKilled(TaskEvent):
     pass
 
 
-class TaskCompletion(TaskEvent):
-    status: str
+class TaskCompleted(TaskEvent):
+    pass
