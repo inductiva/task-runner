@@ -188,9 +188,6 @@ class TaskRequestHandler:
                                         utils.LOGS_FILENAME))
 
         self.update_task_status(task_id, TaskStatusCode.STARTED)
-        self.update_task_attribute(task_id, "start_time", time.time())
-
-        redis_client_id = self.redis.client_id()
 
         self.event_store.log_sync(
             self.redis,
@@ -200,6 +197,8 @@ class TaskRequestHandler:
                 status=TaskStatusCode.STARTED.value,
             ),
         )
+
+        redis_client_id = self.redis.client_id()
 
         # Start thread that blocks while waiting for messages related to
         # the currently executing task
@@ -270,18 +269,22 @@ class TaskRequestHandler:
         task_status = self.get_task_status(task_id)
 
         self.update_task_attribute(task_id, "executer_name", self.executer_name)
+        if task_status != TaskStatusCode.SUBMITTED:
+            logging.error("Task %s is in %s state, aborting.", task_id,
+                          task_status.value)
+            exit(-1)
 
-        task_pending_kill = task_status != TaskStatusCode.SUBMITTED
-        if task_pending_kill:
-            self.update_task_status(task_id, TaskStatusCode.KILLED)
-            self.event_store.log_sync(
-                self.redis,
-                events.TaskKilled(
-                    id=task_id,
-                    status=TaskStatusCode.KILLED.value,
-                ),
-            )
-            return
+        # task_pending_kill = task_status != TaskStatusCode.SUBMITTED
+        # if task_pending_kill:
+        #     self.update_task_status(task_id, TaskStatusCode.KILLED)
+        #     self.event_store.log_sync(
+        #         self.redis,
+        #         events.TaskKilled(
+        #             id=task_id,
+        #             status=TaskStatusCode.KILLED.value,
+        #         ),
+        #     )
+        #     return
 
         working_dir = self.setup_working_dir(request)
 
