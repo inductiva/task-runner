@@ -266,25 +266,7 @@ class TaskRequestHandler:
             request: Request describing the task to be executed.
         """
         task_id = request["id"]
-        task_status = self.get_task_status(task_id)
-
         self.update_task_attribute(task_id, "executer_name", self.executer_name)
-        if task_status != TaskStatusCode.SUBMITTED:
-            logging.error("Task %s is in %s state, aborting.", task_id,
-                          task_status.value)
-            exit(-1)
-
-        # task_pending_kill = task_status != TaskStatusCode.SUBMITTED
-        # if task_pending_kill:
-        #     self.update_task_status(task_id, TaskStatusCode.KILLED)
-        #     self.event_store.log_sync(
-        #         self.redis,
-        #         events.TaskKilled(
-        #             id=task_id,
-        #             status=TaskStatusCode.KILLED.value,
-        #         ),
-        #     )
-        #     return
 
         working_dir = self.setup_working_dir(request)
 
