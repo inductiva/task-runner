@@ -9,40 +9,34 @@ import os
 import shutil
 import threading
 from absl import logging
-import time
 import utils
 from utils import make_task_key
 from utils.files import extract_zip_archive
 from subprocess_tracker import SubprocessTracker
-from concurrent.futures import ThreadPoolExecutor
 from task_status import TaskStatusCode
 from inductiva_api import events
 from inductiva_api.events import EventStore
 
 
-def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
-    """Function that waits for the kill message and kills the running job.
-
-    Returns:
-        bool reflecting if a "kill" message was received.
-    """
+def redis_kill_msg_catcher(redis, task_id, subprocess_tracker, killed_flag):
+    """Function that waits for the kill message and kills the running job."""
     queue = make_task_key(task_id, "events")
     logging.info("Waiting for kill message on queue.")
 
     while True:
         logging.info("Waiting for kill message on queue.")
-        time.sleep(0.5)
         element = redis.brpop(queue)
         logging.info("Received message \"%s\" from the Web API", element)
         # If no kill message is received and the client is unblocked,
         # brpop returns None.
         if element is None:
-            return False
+            return
 
         content = element[1]
         if content == "kill":
             subprocess_tracker.exit_gracefully()
-            return True
+            killed_flag.set()
+            return
 
 
 class TaskRequestHandler:
@@ -189,9 +183,10 @@ class TaskRequestHandler:
 
         self.redis_client_id = self.redis.client_id()
 
+        task_killed_flag = threading.Event()
         thread = threading.Thread(
             target=redis_kill_msg_catcher,
-            args=(self.redis, task_id, tracker),
+            args=(self.redis, task_id, tracker, task_killed_flag),
             daemon=True,
         )
 
@@ -214,11 +209,7 @@ class TaskRequestHandler:
         thread.join()
         logging.info("Message catcher thread stopped.")
 
-        task_killed = False
-
-        # if task_killed:
-        #     self.update_task_status(task_id, TaskStatusCode.KILLED)
-        return exit_code, task_killed
+        return exit_code, task_killed_flag.is_set()
 
     def pack_output(self, task_id, working_dir):
         """Compress outputs and store them in the shared drive.
@@ -267,6 +258,10 @@ class TaskRequestHandler:
         exit_code, task_killed = \
             self.execute_request(request, task_id, working_dir)
 
+        self.pack_output(task_id, working_dir)
+
+        self.current_task_id = None
+
         if task_killed:
             self.event_store.log_sync(
                 self.redis,
@@ -275,9 +270,8 @@ class TaskRequestHandler:
                     status=TaskStatusCode.KILLED.value,
                 ),
             )
+            self.update_task_status(task_id, TaskStatusCode.KILLED)
             return
-
-        self.pack_output(task_id, working_dir)
 
         new_status = TaskStatusCode.FAILED if exit_code else \
             TaskStatusCode.SUCCESS
@@ -286,8 +280,6 @@ class TaskRequestHandler:
             self.redis,
             events.TaskCompleted(id=task_id, status=new_status.value),
         )
-
-        self.current_task_id = None
 
     def is_processing(self) -> bool:
         return self.current_task_id is not None

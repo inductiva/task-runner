@@ -136,7 +136,7 @@ EVENTS_STREAM_NAME = "events"
 
 def delete_redis_consumer(redis_hostname, redis_port, stream, consumer_group,
                           consumer_name):
-    logging.info("At exit function: deleting consumer %s from group %s...",
+    logging.info("At exit function: deleting \"%s\" from group \"%s\"...",
                  consumer_name, consumer_group)
     conn = create_redis_connection(redis_hostname, redis_port)
     conn.xgroup_delconsumer(stream, consumer_group, consumer_name)
