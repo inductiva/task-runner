@@ -148,24 +148,27 @@ def get_signal_handler(redis_hostname, redis_port, request_handler):
     def handler(signum, _):
         logging.info("Caught signal %s.", signal.Signals(signum).name)
 
+        if signum == signal.SIGUSR1:
+            Event = events.SpotInstancePreempted
+            new_status = TaskStatusCode.SPOT_INSTANCE_PREEMPTED
+        else:
+            Event = events.ExecuterTrackerTerminated
+            new_status = TaskStatusCode.EXECUTER_TERMINATED
+
         if request_handler.is_processing():
-            logging.info(
-                "A simulation was running. Logging executer failure...")
+            logging.info("A simulation was running.")
+            logging.info("Logging executer tracker termination...")
+
             redis_conn = create_redis_connection(redis_hostname, redis_port)
             event_store = EventStore(EVENTS_STREAM_NAME)
 
-            new_status = TaskStatusCode.FAILED.value
-
             event_store.log_sync(
                 redis_conn,
-                events.TaskResourcesPreempted(
-                    id=request_handler.current_task_id,
-                    status=new_status,
-                ),
+                Event(id=request_handler.current_task_id),
             )
             redis_conn.set(f"task:{request_handler.current_task_id}:status",
-                           new_status)
-            logging.info("Successfully logged executer failure.")
+                           new_status.value)
+            logging.info("Successfully logged executer tracker termination.")
 
         sys.exit()
 
@@ -193,8 +196,11 @@ def main(_):
 
     signal_handler = get_signal_handler(redis_hostname, redis_port,
                                         request_handler)
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGUSR1, signal_handler)
+
     atexit.register(
         delete_redis_consumer,
         redis_hostname,

@@ -196,7 +196,6 @@ class TaskRequestHandler:
             events.TaskStarted(
                 id=task_id,
                 executer=self.executer_name,
-                status=TaskStatusCode.STARTED.value,
             ),
         )
 
