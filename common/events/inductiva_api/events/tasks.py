@@ -30,3 +30,7 @@ class TaskKilled(TaskEvent):
 
 class TaskCompleted(TaskEvent):
     pass
+
+
+class TaskResourcesPreempted(TaskEvent):
+    pass
