@@ -53,6 +53,8 @@ Usage (note the required environment variables):
   python executer_tracker.py
 """
 import os
+import signal
+import sys
 
 from absl import app
 from absl import logging
@@ -60,6 +62,9 @@ from absl import logging
 from redis import Redis
 
 from task_request_handler import TaskRequestHandler
+from inductiva_api.events import EventStore
+from inductiva_api import events
+from task_status import TaskStatusCode
 
 REDIS_CONSUMER_GROUP = "all_consumers"
 DELIVER_NEW_MESSAGES = ">"
@@ -130,6 +135,38 @@ def delete_redis_consumer(redis_conn, stream_name, consumer_group,
     redis_conn.xgroup_delconsumer(stream_name, consumer_group, consumer_name)
 
 
+EVENTS_STREAM_NAME = "events"
+
+
+def get_signal_handler(redis_hostname, redis_port, request_handler):
+
+    def handler(signum, _):
+        logging.info("Caught signal %s.", signal.Signals(signum).name)
+
+        if request_handler.is_processing():
+            logging.info(
+                "A simulation was running. Logging executer failure...")
+            redis_conn = create_redis_connection(redis_hostname, redis_port)
+            event_store = EventStore(EVENTS_STREAM_NAME)
+
+            new_status = TaskStatusCode.FAILED.value
+
+            event_store.log_sync(
+                redis_conn,
+                events.TaskResourcesPreempted(
+                    id=request_handler.current_task_id,
+                    status=new_status,
+                ),
+            )
+            redis_conn.set(f"task:{request_handler.current_task_id}:status",
+                           new_status)
+            logging.info("Successfully logged executer failure.")
+
+        sys.exit()
+
+    return handler
+
+
 def main(_):
 
     redis_hostname = os.getenv("REDIS_HOSTNAME")
@@ -149,27 +186,23 @@ def main(_):
                                          artifact_shared_drive,
                                          executer_name=redis_consumer_name)
 
-    try:
-        monitor_redis_stream(
-            redis_connection=redis_conn,
-            stream_name=redis_stream,
-            consumer_group=REDIS_CONSUMER_GROUP,
-            consumer_name=redis_consumer_name,
-            request_handler=request_handler,
-        )
-    # pylint: disable=broad-except
-    except Exception:
-        logging.exception("Caught Exception:")
-    except KeyboardInterrupt:
-        logging.exception("Caught KeyboardInterrupt:")
-    finally:
-        # Create a new Redis connection, as the previous one may be left
-        # in a bad state.
-        conn = create_redis_connection(redis_hostname, redis_port)
+    signal_handler = get_signal_handler(redis_hostname, redis_port,
+                                        request_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
-        delete_redis_consumer(conn, redis_stream, REDIS_CONSUMER_GROUP,
-                              redis_consumer_name)
-        logging.info("Exiting...")
+    monitor_redis_stream(
+        redis_connection=redis_conn,
+        stream_name=redis_stream,
+        consumer_group=REDIS_CONSUMER_GROUP,
+        consumer_name=redis_consumer_name,
+        request_handler=request_handler,
+    )
+    #     conn = create_redis_connection(redis_hostname, redis_port)
+
+    #     delete_redis_consumer(conn, redis_stream, REDIS_CONSUMER_GROUP,
+    #                           redis_consumer_name)
+    #     logging.info("Exiting...")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ Note that, currently, request consumption is blocking.
 """
 import os
 import shutil
+import threading
 from absl import logging
 import time
 import utils
@@ -29,6 +30,8 @@ def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
     logging.info("Waiting for kill message on queue.")
 
     while True:
+        logging.info("Waiting for kill message on queue.")
+        time.sleep(0.5)
         element = redis.brpop(queue)
         logging.info("Received message \"%s\" from the Web API", element)
         # If no kill message is received and the client is unblocked,
@@ -37,8 +40,6 @@ def redis_kill_msg_catcher(redis, task_id, subprocess_tracker):
             return False
 
         content = element[1]
-        logging.info("Received message \"%s\" from the Web API", content)
-
         if content == "kill":
             subprocess_tracker.exit_gracefully()
             return True
@@ -68,12 +69,11 @@ class TaskRequestHandler:
         self.artifact_dest = artifact_dest
         self.executer_name = executer_name
         self.event_store = EventStore("events")
+        self.current_task_id = None
 
         self.working_dir_root = os.path.join(os.path.abspath(os.sep),
                                              self.WORKING_DIR_ROOT)
         os.makedirs(self.working_dir_root, exist_ok=True)
-
-        self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
     def update_task_status(self, task_id, status: TaskStatusCode):
         msg_queue_key = make_task_key(task_id, "status_updates")
@@ -187,8 +187,15 @@ class TaskRequestHandler:
                                         self.artifact_dest, task_id,
                                         utils.LOGS_FILENAME))
 
-        self.update_task_status(task_id, TaskStatusCode.STARTED)
+        self.redis_client_id = self.redis.client_id()
 
+        thread = threading.Thread(
+            target=redis_kill_msg_catcher,
+            args=(self.redis, task_id, tracker),
+            daemon=True,
+        )
+
+        self.update_task_status(task_id, TaskStatusCode.STARTED)
         self.event_store.log_sync(
             self.redis,
             events.TaskStarted(
@@ -198,34 +205,19 @@ class TaskRequestHandler:
             ),
         )
 
-        redis_client_id = self.redis.client_id()
-
-        # Start thread that blocks while waiting for messages related to
-        # the currently executing task
-        msg_catcher_thread = self.thread_pool.submit(
-            redis_kill_msg_catcher,
-            self.redis,
-            task_id,
-            tracker,
-        )
-
+        thread.start()
         exit_code = tracker.run()
         logging.info("Tracker returned exit code %s.", str(exit_code))
 
-        # Unblock the connection that's blocked waiting for a kill message
-        self.redis.client_unblock(redis_client_id)
+        self.redis.client_unblock(self.redis_client_id)
 
-        # Check if message catcher thread stopped running
-        done = False
-        while not done:
-            done = msg_catcher_thread.done()
-            logging.info("Message catcher thread stopped: %s", done)
-            time.sleep(0.1)
+        thread.join()
+        logging.info("Message catcher thread stopped.")
 
-        task_killed = msg_catcher_thread.result()
-        if task_killed:
-            self.update_task_status(task_id, TaskStatusCode.KILLED)
+        task_killed = False
 
+        # if task_killed:
+        #     self.update_task_status(task_id, TaskStatusCode.KILLED)
         return exit_code, task_killed
 
     def pack_output(self, task_id, working_dir):
@@ -266,6 +258,8 @@ class TaskRequestHandler:
             request: Request describing the task to be executed.
         """
         task_id = request["id"]
+        self.current_task_id = task_id
+
         self.update_task_attribute(task_id, "executer_name", self.executer_name)
 
         working_dir = self.setup_working_dir(request)
@@ -292,3 +286,8 @@ class TaskRequestHandler:
             self.redis,
             events.TaskCompleted(id=task_id, status=new_status.value),
         )
+
+        self.current_task_id = None
+
+    def is_processing(self) -> bool:
+        return self.current_task_id is not None
