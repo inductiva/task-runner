@@ -52,6 +52,7 @@ currently active executer trackers.
 Usage (note the required environment variables):
   python executer_tracker.py
 """
+import atexit
 import os
 import signal
 import sys
@@ -130,12 +131,16 @@ def monitor_redis_stream(redis_connection, stream_name: str,
             logging.info("ERROR REDIS CONNECTION: %s", str(e))
 
 
-def delete_redis_consumer(redis_conn, stream_name, consumer_group,
-                          consumer_name):
-    redis_conn.xgroup_delconsumer(stream_name, consumer_group, consumer_name)
-
-
 EVENTS_STREAM_NAME = "events"
+
+
+def delete_redis_consumer(redis_hostname, redis_port, stream, consumer_group,
+                          consumer_name):
+    logging.info("At exit function: deleting consumer %s from group %s...",
+                 consumer_name, consumer_group)
+    conn = create_redis_connection(redis_hostname, redis_port)
+    conn.xgroup_delconsumer(stream, consumer_group, consumer_name)
+    logging.info("At exit function executed successfully.")
 
 
 def get_signal_handler(redis_hostname, redis_port, request_handler):
@@ -190,6 +195,14 @@ def main(_):
                                         request_handler)
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    atexit.register(
+        delete_redis_consumer,
+        redis_hostname,
+        redis_port,
+        redis_stream,
+        REDIS_CONSUMER_GROUP,
+        redis_consumer_name,
+    )
 
     monitor_redis_stream(
         redis_connection=redis_conn,
@@ -198,11 +211,6 @@ def main(_):
         consumer_name=redis_consumer_name,
         request_handler=request_handler,
     )
-    #     conn = create_redis_connection(redis_hostname, redis_port)
-
-    #     delete_redis_consumer(conn, redis_stream, REDIS_CONSUMER_GROUP,
-    #                           redis_consumer_name)
-    #     logging.info("Exiting...")
 
 
 if __name__ == "__main__":
