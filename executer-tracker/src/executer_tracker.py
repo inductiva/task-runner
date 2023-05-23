@@ -65,7 +65,7 @@ from redis import Redis
 from task_request_handler import TaskRequestHandler
 from inductiva_api.events import EventStore
 from inductiva_api import events
-from task_status import TaskStatusCode
+from inductiva_api.task_status import TaskStatusCode
 
 REDIS_CONSUMER_GROUP = "all_consumers"
 DELIVER_NEW_MESSAGES = ">"
@@ -136,11 +136,11 @@ EVENTS_STREAM_NAME = "events"
 
 def delete_redis_consumer(redis_hostname, redis_port, stream, consumer_group,
                           consumer_name):
-    logging.info("At exit function: deleting \"%s\" from group \"%s\"...",
+    logging.info("`atexit` function: deleting \"%s\" from group \"%s\"...",
                  consumer_name, consumer_group)
     conn = create_redis_connection(redis_hostname, redis_port)
     conn.xgroup_delconsumer(stream, consumer_group, consumer_name)
-    logging.info("At exit function executed successfully.")
+    logging.info("`atexit` function executed successfully.")
 
 
 def get_signal_handler(redis_hostname, redis_port, request_handler):
@@ -155,8 +155,8 @@ def get_signal_handler(redis_hostname, redis_port, request_handler):
             Event = events.ExecuterTrackerTerminated
             new_status = TaskStatusCode.EXECUTER_TERMINATED
 
-        if request_handler.is_processing():
-            logging.info("A simulation was running.")
+        if request_handler.is_simulation_running():
+            logging.info("A simulation was being executed.")
             logging.info("Logging executer tracker termination...")
 
             redis_conn = create_redis_connection(redis_hostname, redis_port)

@@ -13,7 +13,7 @@ import utils
 from utils import make_task_key
 from utils.files import extract_zip_archive
 from subprocess_tracker import SubprocessTracker
-from task_status import TaskStatusCode
+from inductiva_api.task_status import TaskStatusCode
 from inductiva_api import events
 from inductiva_api.events import EventStore
 
@@ -280,5 +280,5 @@ class TaskRequestHandler:
             events.TaskCompleted(id=task_id, status=new_status.value),
         )
 
-    def is_processing(self) -> bool:
+    def is_simulation_running(self) -> bool:
         return self.current_task_id is not None

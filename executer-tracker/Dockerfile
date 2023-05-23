@@ -11,8 +11,11 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 COPY ./executer-tracker/src /code
 
+
 COPY ./common/events /common/events
 RUN pip install --no-cache-dir --upgrade /common/events
+COPY ./common/task_status /common/task_status
+RUN pip install --no-cache-dir --upgrade /common/task_status
 
 # Set the current working directory to /code.
 WORKDIR /code
