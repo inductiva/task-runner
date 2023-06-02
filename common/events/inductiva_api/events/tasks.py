@@ -1,46 +1,35 @@
 """Events related to tasks."""
 from .event import Event
 from inductiva_api.task_status import TaskStatusCode
+from uuid import UUID
 
 
 class TaskEvent(Event):
     id: str
-    status: str
+    status: TaskStatusCode
 
 
 class TaskCreated(TaskEvent):
     method: str
-    username: str
+    user_id: int
 
 
 class TaskInputUploaded(TaskEvent):
-    status: str = TaskStatusCode.SUBMITTED.value
+    status: TaskStatusCode = TaskStatusCode.SUBMITTED
 
 
 class TaskStarted(TaskEvent):
-    status: str = TaskStatusCode.STARTED.value
-    executer: str
+    status: TaskStatusCode = TaskStatusCode.STARTED
+    executer_id: UUID
 
 
 class TaskKillRequested(TaskEvent):
-    status: str = TaskStatusCode.PENDING_KILL.value
+    status: TaskStatusCode = TaskStatusCode.PENDING_KILL
 
 
 class TaskKilled(TaskEvent):
-    status: str = TaskStatusCode.KILLED.value
+    status: TaskStatusCode = TaskStatusCode.KILLED
 
 
 class TaskCompleted(TaskEvent):
     pass
-
-
-class SpotInstancePreempted(TaskEvent):
-    status: str = TaskStatusCode.SPOT_INSTANCE_PREEMPTED.value
-
-
-class ExecuterTrackerTerminated(TaskEvent):
-    status: str = TaskStatusCode.EXECUTER_TERMINATED.value
-
-
-class ExecuterTrackerFailed(TaskEvent):
-    status: str = TaskStatusCode.EXECUTER_FAILED.value
