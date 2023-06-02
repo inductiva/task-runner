@@ -57,11 +57,11 @@ class TaskRequestHandler:
     """
     WORKING_DIR_ROOT = "working_dir"
 
-    def __init__(self, redis_connection, artifact_dest, executer_name):
+    def __init__(self, redis_connection, artifact_dest, executer_uuid):
         """Initialize an instance of the TaskRequestHandler class."""
         self.redis = redis_connection
         self.artifact_dest = artifact_dest
-        self.executer_name = executer_name
+        self.executer_uuid = executer_uuid
         self.event_store = EventStore("events")
         self.current_task_id = None
 
@@ -195,7 +195,7 @@ class TaskRequestHandler:
             self.redis,
             events.TaskStarted(
                 id=task_id,
-                executer=self.executer_name,
+                executer_id=self.executer_uuid,
             ),
         )
 
@@ -250,8 +250,6 @@ class TaskRequestHandler:
         task_id = request["id"]
         self.current_task_id = task_id
 
-        self.update_task_attribute(task_id, "executer_name", self.executer_name)
-
         working_dir = self.setup_working_dir(request)
 
         exit_code, task_killed = \
@@ -264,10 +262,7 @@ class TaskRequestHandler:
         if task_killed:
             self.event_store.log_sync(
                 self.redis,
-                events.TaskKilled(
-                    id=task_id,
-                    status=TaskStatusCode.KILLED.value,
-                ),
+                events.TaskKilled(id=task_id),
             )
             self.update_task_status(task_id, TaskStatusCode.KILLED)
             return
@@ -277,7 +272,7 @@ class TaskRequestHandler:
         self.update_task_status(task_id, new_status)
         self.event_store.log_sync(
             self.redis,
-            events.TaskCompleted(id=task_id, status=new_status.value),
+            events.TaskCompleted(id=task_id, status=new_status),
         )
 
     def is_simulation_running(self) -> bool:

@@ -65,7 +65,8 @@ from redis import Redis
 from task_request_handler import TaskRequestHandler
 from inductiva_api.events import EventStore
 from inductiva_api import events
-from inductiva_api.task_status import TaskStatusCode
+from inductiva_api.task_status import ExecuterTerminationReason
+from register_executer import register_executer
 
 REDIS_CONSUMER_GROUP = "all_consumers"
 DELIVER_NEW_MESSAGES = ">"
@@ -104,8 +105,10 @@ def monitor_redis_stream(redis_connection, stream_name: str,
     """
     sleep_ms = 0  # 0ms means block forever
 
+    logging.info("Starting monitoring of Redis stream \"%s\".", stream_name)
     while True:
         try:
+            logging.info("Waiting for requests...")
             resp = redis_connection.xreadgroup(
                 groupname=consumer_group,
                 consumername=consumer_name,
@@ -143,59 +146,47 @@ def delete_redis_consumer(redis_hostname, redis_port, stream, consumer_group,
     logging.info("`atexit` function executed successfully.")
 
 
-def get_signal_handler(redis_hostname, redis_port, request_handler):
+def get_signal_handler(executer_uuid, redis_hostname, redis_port,
+                       request_handler):
 
     def handler(signum, _):
         logging.info("Caught signal %s.", signal.Signals(signum).name)
 
         if signum == signal.SIGUSR1:
-            Event = events.SpotInstancePreempted
-            new_status = TaskStatusCode.SPOT_INSTANCE_PREEMPTED
+            reason = ExecuterTerminationReason.VM_PREEMPTED
         else:
-            Event = events.ExecuterTrackerTerminated
-            new_status = TaskStatusCode.EXECUTER_TERMINATED
+            reason = ExecuterTerminationReason.INTERRUPTED
 
+        stopped_tasks = []
         if request_handler.is_simulation_running():
             logging.info("A simulation was being executed.")
-            logging.info("Logging executer tracker termination...")
+            stopped_tasks.append(request_handler.current_task_id)
 
-            redis_conn = create_redis_connection(redis_hostname, redis_port)
-            event_store = EventStore(EVENTS_STREAM_NAME)
+        redis_conn = create_redis_connection(redis_hostname, redis_port)
+        event_store = EventStore(EVENTS_STREAM_NAME)
 
-            event_store.log_sync(
-                redis_conn,
-                Event(id=request_handler.current_task_id),
-            )
-            redis_conn.set(f"task:{request_handler.current_task_id}:status",
-                           new_status.value)
-            logging.info("Successfully logged executer tracker termination.")
+        event_store.log_sync(
+            redis_conn,
+            events.ExecuterTerminated(
+                uuid=executer_uuid,
+                reason=reason,
+                stopped_tasks=stopped_tasks,
+            ))
+        redis_conn.set(f"task:{request_handler.current_task_id}:status",
+                       "failed")
+
+        logging.info("Successfully logged executer tracker termination.")
 
         sys.exit()
 
     return handler
 
 
-def main(_):
+def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
+                           redis_stream, redis_consumer_name, request_handler):
 
-    redis_hostname = os.getenv("REDIS_HOSTNAME")
-    redis_port = os.getenv("REDIS_PORT", "6379")
-    redis_consumer_name = os.getenv("REDIS_CONSUMER_NAME")
-    if not redis_consumer_name:
-        raise ValueError("REDIS_CONSUMER_NAME environment variable not set.")
-
-    executer_type = os.getenv("EXECUTER_TYPE")
-    redis_stream = f"{executer_type}_requests"
-
-    artifact_shared_drive = os.getenv("ARTIFACT_STORE")
-
-    redis_conn = create_redis_connection(redis_hostname, redis_port)
-
-    request_handler = TaskRequestHandler(redis_conn,
-                                         artifact_shared_drive,
-                                         executer_name=redis_consumer_name)
-
-    signal_handler = get_signal_handler(redis_hostname, redis_port,
-                                        request_handler)
+    signal_handler = get_signal_handler(executer_uuid, redis_hostname,
+                                        redis_port, request_handler)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -209,6 +200,39 @@ def main(_):
         REDIS_CONSUMER_GROUP,
         redis_consumer_name,
     )
+
+
+def main(_):
+    api_url = os.getenv("API_URL")
+    if not api_url:
+        raise ValueError("API_URL environment variable not set.")
+
+    redis_hostname = os.getenv("REDIS_HOSTNAME")
+    redis_port = os.getenv("REDIS_PORT", "6379")
+    if not redis_hostname:
+        raise ValueError("REDIS_HOSTNAME environment variable not set.")
+
+    redis_consumer_name = os.getenv("REDIS_CONSUMER_NAME")
+    if not redis_consumer_name:
+        raise ValueError("REDIS_CONSUMER_NAME environment variable not set.")
+
+    executer_type = os.getenv("EXECUTER_TYPE")
+    if not executer_type:
+        raise ValueError("EXECUTER_TYPE environment variable not set.")
+
+    redis_stream = f"{executer_type}_requests"
+    artifact_shared_drive = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
+
+    redis_conn = create_redis_connection(redis_hostname, redis_port)
+
+    executer_uuid = register_executer(api_url)
+
+    request_handler = TaskRequestHandler(redis_conn,
+                                         artifact_shared_drive,
+                                         executer_uuid=executer_uuid)
+
+    setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
+                           redis_stream, redis_consumer_name, request_handler)
 
     monitor_redis_stream(
         redis_connection=redis_conn,
