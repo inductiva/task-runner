@@ -7,8 +7,8 @@ import requests
 METADATA_SERVER_URL = "http://metadata.google.internal"
 METADATA_URL = \
     f"{METADATA_SERVER_URL}/computeMetadata/v1/instance/?recursive=true"
-METADATE_FLAVOR_HEADER = "Metadata-Flavor"
-METADATE_FLAVOR_HEADER_VALUE = "Google"
+METADATA_FLAVOR_HEADER = "Metadata-Flavor"
+METADATA_FLAVOR_HEADER_VALUE = "Google"
 
 
 def is_running_on_gcloud_vm() -> bool:
@@ -21,14 +21,14 @@ def is_running_on_gcloud_vm() -> bool:
     try:
         r = requests.get(
             url=METADATA_SERVER_URL,
-            headers={METADATE_FLAVOR_HEADER: METADATE_FLAVOR_HEADER_VALUE},
+            headers={METADATA_FLAVOR_HEADER: METADATA_FLAVOR_HEADER_VALUE},
             timeout=5,
         )
     except requests.exceptions.ConnectionError:
         return False
 
     return r.status_code == 200 and \
-        r.headers.get(METADATE_FLAVOR_HEADER) == "Google"
+        r.headers.get(METADATA_FLAVOR_HEADER) == "Google"
 
 
 def get_vm_metadata() -> Optional[Dict]:
@@ -36,7 +36,7 @@ def get_vm_metadata() -> Optional[Dict]:
     try:
         r = requests.get(
             url=METADATA_URL,
-            headers={METADATE_FLAVOR_HEADER: METADATE_FLAVOR_HEADER_VALUE},
+            headers={METADATA_FLAVOR_HEADER: METADATA_FLAVOR_HEADER_VALUE},
             timeout=5,
         )
     except requests.exceptions.ConnectionError:
