@@ -1,9 +1,10 @@
-from dataclasses import dataclass
+"""Utilities to get information about the host machine the executer is on."""
 import subprocess
+from dataclasses import dataclass
 from typing import Optional
-from absl import logging
+
 import psutil
-import uuid
+from absl import logging
 
 
 def get_cpu_info_verbose() -> Optional[str]:

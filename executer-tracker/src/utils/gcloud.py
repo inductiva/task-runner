@@ -1,14 +1,23 @@
+"""Util functions to get info about the GCloud VM the executer is on."""
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
+
 import requests
 
 METADATA_SERVER_URL = "http://metadata.google.internal"
-METADATA_URL = f"{METADATA_SERVER_URL}/computeMetadata/v1/instance/?recursive=true"
+METADATA_URL = \
+    f"{METADATA_SERVER_URL}/computeMetadata/v1/instance/?recursive=true"
 METADATE_FLAVOR_HEADER = "Metadata-Flavor"
 METADATE_FLAVOR_HEADER_VALUE = "Google"
 
 
-def is_running_on_gcloud_vm():
+def is_running_on_gcloud_vm() -> bool:
+    """Check if the executer is running on a GCloud VM.
+
+    Uses the internal metadata server to check if the VM is running on GCloud.
+    Details:
+     - https://cloud.google.com/compute/docs/instances/detect-compute-engine
+    """
     try:
         r = requests.get(
             url=METADATA_SERVER_URL,
