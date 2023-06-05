@@ -146,6 +146,28 @@ def delete_redis_consumer(redis_hostname, redis_port, stream, consumer_group,
     logging.info("`atexit` function executed successfully.")
 
 
+def log_executer_termination(request_handler, redis_hostname, redis_port,
+                             executer_uuid, reason):
+    stopped_tasks = []
+    if request_handler.is_simulation_running():
+        logging.info("A simulation was being executed.")
+        stopped_tasks.append(request_handler.current_task_id)
+
+    redis_conn = create_redis_connection(redis_hostname, redis_port)
+    event_store = EventStore(EVENTS_STREAM_NAME)
+
+    event_store.log_sync(
+        redis_conn,
+        events.ExecuterTerminated(
+            uuid=executer_uuid,
+            reason=reason,
+            stopped_tasks=stopped_tasks,
+        ))
+    redis_conn.set(f"task:{request_handler.current_task_id}:status", "failed")
+
+    logging.info("Successfully logged executer tracker termination.")
+
+
 def get_signal_handler(executer_uuid, redis_hostname, redis_port,
                        request_handler):
 
@@ -157,26 +179,8 @@ def get_signal_handler(executer_uuid, redis_hostname, redis_port,
         else:
             reason = ExecuterTerminationReason.INTERRUPTED
 
-        stopped_tasks = []
-        if request_handler.is_simulation_running():
-            logging.info("A simulation was being executed.")
-            stopped_tasks.append(request_handler.current_task_id)
-
-        redis_conn = create_redis_connection(redis_hostname, redis_port)
-        event_store = EventStore(EVENTS_STREAM_NAME)
-
-        event_store.log_sync(
-            redis_conn,
-            events.ExecuterTerminated(
-                uuid=executer_uuid,
-                reason=reason,
-                stopped_tasks=stopped_tasks,
-            ))
-        redis_conn.set(f"task:{request_handler.current_task_id}:status",
-                       "failed")
-
-        logging.info("Successfully logged executer tracker termination.")
-
+        log_executer_termination(request_handler, redis_hostname, redis_port,
+                                 executer_uuid, reason)
         sys.exit()
 
     return handler
@@ -234,13 +238,20 @@ def main(_):
     setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
                            redis_stream, redis_consumer_name, request_handler)
 
-    monitor_redis_stream(
-        redis_connection=redis_conn,
-        stream_name=redis_stream,
-        consumer_group=REDIS_CONSUMER_GROUP,
-        consumer_name=redis_consumer_name,
-        request_handler=request_handler,
-    )
+    try:
+        monitor_redis_stream(
+            redis_connection=redis_conn,
+            stream_name=redis_stream,
+            consumer_group=REDIS_CONSUMER_GROUP,
+            consumer_name=redis_consumer_name,
+            request_handler=request_handler,
+        )
+    except Exception as e:  # pylint: disable=broad-except
+        logging.exception("Caught exception: %s", str(e))
+        logging.info("Terminating executer tracker...")
+        reason = ExecuterTerminationReason.ERROR
+        log_executer_termination(request_handler, redis_hostname, redis_port,
+                                 executer_uuid, reason)
 
 
 if __name__ == "__main__":
