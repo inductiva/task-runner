@@ -5,8 +5,7 @@ from typing import Any, Dict, List, Literal, Union
 from inductiva_api.task_status import ExecuterTerminationReason
 from pydantic import UUID4, BaseModel, Field
 from typing_extensions import Annotated
-
-from .event import Event
+from inductiva_api.events.event import Event
 
 
 class GCloud(BaseModel):
