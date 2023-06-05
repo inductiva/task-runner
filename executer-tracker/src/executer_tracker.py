@@ -207,10 +207,7 @@ def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
 
 
 def main(_):
-    api_url = os.getenv("API_URL")
-    if not api_url:
-        raise ValueError("API_URL environment variable not set.")
-
+    api_url = os.getenv("API_URL", "http://api.inductiva.ai")
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
     if not redis_hostname:
