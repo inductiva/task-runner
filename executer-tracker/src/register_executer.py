@@ -1,5 +1,4 @@
 """Module for registering an executer with the API."""
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict
 from uuid import UUID
@@ -56,14 +55,6 @@ def _get_executer_info() -> Dict:
         **common_info,
         "host_info": provider_specific_info,
     }
-
-
-@dataclass
-class ExecuterInfo:
-    id: int
-    redis_stream: str
-    redis_consumer_group: str
-    redis_consumer_name: str
 
 
 def register_executer(api_url: str) -> UUID:
