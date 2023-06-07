@@ -126,6 +126,8 @@ class TaskRequestHandler:
             "sw.swash.run_simulation": "/scripts/simulation.py",
             "sw.xbeach.run_simulation": "/scripts/simulation.py",
             "fvm.openfoam.run_simulation": "/scripts/simulation.py",
+            "windtunnel.openfoam.run_simulation": 
+                "/scripts/windtunnel_simulation.py",
             "md.gromacs.run_simulation": "/scripts/simulation.py",
         }
         method = request["method"]
