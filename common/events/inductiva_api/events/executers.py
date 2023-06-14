@@ -1,6 +1,6 @@
 """Events related to tasks."""
 import datetime
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Union, Optional
 
 from inductiva_api.events.event import Event
 from inductiva_api.task_status import ExecuterTerminationReason
@@ -10,7 +10,7 @@ from typing_extensions import Annotated
 
 class GCloudHostInfo(BaseModel):
     """Info about Google Cloud machine hosting the executer."""
-    type: Literal["gcloud"]
+    host_type: Literal["gcloud"]
     vm_type: str
     vm_name: str
     vm_id: str
@@ -20,19 +20,22 @@ class GCloudHostInfo(BaseModel):
 
 class InductivaHostInfo(BaseModel):
     """Info about the Inductiva server hosting the executer."""
-    type: Literal["inductiva-hardware"]
+    host_type: Literal["inductiva-hardware"]
 
 
 class ExecuterCreate(BaseModel):
+    """Info for creating an executer."""
     create_time: datetime.datetime
+    executer_type: str
     cpu_count_logical: int
     cpu_count_physical: int
     memory: int
     cpu_info: str
+    resource_pool: Optional[UUID4]
 
     # Use the "type" field to discriminate between different executer types.
     host_info: Annotated[Union[GCloudHostInfo, InductivaHostInfo],
-                         Field(discriminator="type")]
+                         Field(discriminator="host_type")]
 
 
 # Shared properties of executer events.
