@@ -52,6 +52,23 @@ class EventSource:
             )
 
     def monitor(self, start_id="0-0") -> Iterator[Tuple[Event, str]]:
+        """Method to monitors a Redis stream.
+
+        This method reads from a Redis stream, yielding the events one by one
+        as they are received. It also returns the ID of the received event.
+
+        Usage:
+            for event, event_id in event_source.monitor():
+                # Do something with the event
+                fun(event, event_id)
+
+        Args:
+            start_id: ID of the first event to read. If not provided, the
+                first event of the stream will be read.
+
+        Yields:
+            Tuple with the event and the ID of the event in the Redis stream.
+        """
         last_id = start_id
         while True:
             try:
