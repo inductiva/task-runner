@@ -1,8 +1,8 @@
 """Logging events to Redis."""
-from .parse import to_dict
+from . import parse
 from redis.asyncio import Redis as AsyncRedis
 from redis import Redis
-from .event import Event
+from .schemas import Event
 
 
 class EventStore:
@@ -12,7 +12,7 @@ class EventStore:
         self.stream_key = stream_key
 
     async def log(self, r: AsyncRedis, event: Event):
-        return await r.xadd(self.stream_key, to_dict(event))
+        return await r.xadd(self.stream_key, parse.to_dict(event))
 
     def log_sync(self, r: Redis, event: Event):
-        return r.xadd(self.stream_key, to_dict(event))
+        return r.xadd(self.stream_key, parse.to_dict(event))

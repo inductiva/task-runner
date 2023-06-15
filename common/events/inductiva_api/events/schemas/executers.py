@@ -24,6 +24,7 @@ class InductivaHostInfo(BaseModel):
 
 
 class ExecuterCreate(BaseModel):
+    """Info for creating an executer."""
     create_time: datetime.datetime
     cpu_count_logical: int
     cpu_count_physical: int

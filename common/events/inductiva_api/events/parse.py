@@ -2,7 +2,7 @@
 
 """
 import importlib
-from .event import Event
+from .schemas import Event
 
 EVENT_TYPE_KEY = "type"
 EVENT_BODY_KEY = "json"
