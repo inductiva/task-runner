@@ -31,7 +31,7 @@ class ExecuterCreate(BaseModel):
     cpu_count_physical: int
     memory: int
     cpu_info: str
-    resource_pool: Optional[UUID4]
+    resource_pool_id: Optional[UUID4]
 
     # Use the "type" field to discriminate between different executer types.
     host_info: Annotated[Union[GCloudHostInfo, InductivaHostInfo],
