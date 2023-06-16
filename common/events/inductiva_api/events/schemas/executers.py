@@ -1,8 +1,8 @@
-"""Events related to tasks."""
+"""Events related to executers."""
 import datetime
 from typing import Any, Dict, List, Literal, Union, Optional
 
-from inductiva_api.events.event import Event
+from inductiva_api.events.schemas import Event
 from inductiva_api.task_status import ExecuterTerminationReason
 from pydantic import UUID4, BaseModel, Field
 from typing_extensions import Annotated
