@@ -67,7 +67,7 @@ class ExecuterAccessInfo:
 
 
 def register_executer(api_url: str, executer_type: str,
-                      resource_pool: Optional[str]) -> ExecuterAccessInfo:
+                      resource_pool_id: Optional[str]) -> ExecuterAccessInfo:
     """Registers an executer in the API.
 
     This function inspects the environment of the executer and makes a request
@@ -80,7 +80,7 @@ def register_executer(api_url: str, executer_type: str,
 
     executer_info = _get_executer_info()
     executer_info["executer_type"] = executer_type
-    executer_info["resource_pool"] = resource_pool
+    executer_info["resource_pool_id"] = resource_pool_id
 
     logging.info("Registering executer with the API...")
     r = requests.post(

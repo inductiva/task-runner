@@ -56,7 +56,6 @@ import atexit
 import os
 import signal
 import sys
-import uuid
 
 from absl import app
 from absl import logging
@@ -223,25 +222,16 @@ def main(_):
 
     redis_conn = create_redis_connection(redis_hostname, redis_port)
 
-    resource_pool = os.getenv("RESOURCE_POOL")
-    if not resource_pool:
-        logging.info("No resource pool specified.")
-        create_new_resource_pool = os.getenv("CREATE_NEW_RESOURCE_POOL",
-                                             "False")
-        create_new_resource_pool = create_new_resource_pool.lower() \
-            in ("true", "t", "yes", "y", "1")
-
-        if create_new_resource_pool:
-            logging.info("Using new resource pool...")
-            resource_pool = str(uuid.uuid4())
-            logging.info(" > Resource pool ID: %s", resource_pool)
-        else:
-            logging.info("Using default resource pool.")
-            resource_pool = None
-
-    executer_access_info = register_executer(api_url,
-                                             executer_type,
-                                             resource_pool=resource_pool)
+    resource_pool_id = os.getenv("RESOURCE_POOL")
+    if not resource_pool_id:
+        logging.info("No resource pool specified. Using default.")
+    else:
+        logging.info("Using resource pool \"%s\".", resource_pool_id)
+    executer_access_info = register_executer(
+        api_url,
+        executer_type,
+        resource_pool_id=resource_pool_id,
+    )
     executer_uuid = executer_access_info.id
 
     redis_stream = executer_access_info.redis_stream
