@@ -54,7 +54,7 @@ class EventSource:
             )
 
     def monitor(self, start_id="0-0") -> Iterator[Tuple[Event, str]]:
-        """Method to monitors a Redis stream.
+        """Method to monitor a Redis stream.
 
         This method reads from a Redis stream, yielding the events one by one
         as they are received. It also returns the ID of the received event.
