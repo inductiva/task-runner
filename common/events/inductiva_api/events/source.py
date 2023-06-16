@@ -37,18 +37,20 @@ class EventSource:
             raise ValueError("A `consumer_name` must be provided if \
                     `consumer_group` is provided.")
 
-    def _read_stream(self, last_id: str):
+    def _read_stream(self, last_id: str, sleep_ms=0):
         if self._use_consumer_group:
             return self._conn.xreadgroup(
                 self._consumer_group,
                 self._consumer_name,
                 {self._stream: last_id},
                 count=1,
+                block=sleep_ms,
             )
         else:
             return self._conn.xread(
                 {self._stream: last_id},
                 count=1,
+                block=sleep_ms,
             )
 
     def monitor(self, start_id="0-0") -> Iterator[Tuple[Event, str]]:
