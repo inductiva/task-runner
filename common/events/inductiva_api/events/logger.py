@@ -5,7 +5,7 @@ from redis import Redis
 from .schemas import Event
 
 
-class EventStore:
+class RedisStreamEventLogger:
     """Class that handles logging events to Redis."""
 
     def __init__(self, stream_key: str):
