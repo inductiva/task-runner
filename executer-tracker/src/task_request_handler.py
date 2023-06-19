@@ -15,7 +15,7 @@ from utils.files import extract_zip_archive
 from subprocess_tracker import SubprocessTracker
 from inductiva_api.task_status import TaskStatusCode
 from inductiva_api import events
-from inductiva_api.events import EventStore
+from inductiva_api.events import RedisStreamEventLogger
 
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker, killed_flag):
@@ -62,7 +62,7 @@ class TaskRequestHandler:
         self.redis = redis_connection
         self.artifact_dest = artifact_dest
         self.executer_uuid = executer_uuid
-        self.event_store = EventStore("events")
+        self.event_logger = RedisStreamEventLogger("events")
         self.current_task_id = None
 
         self.working_dir_root = os.path.join(os.path.abspath(os.sep),
@@ -191,7 +191,7 @@ class TaskRequestHandler:
         )
 
         self.update_task_status(task_id, TaskStatusCode.STARTED)
-        self.event_store.log_sync(
+        self.event_logger.log_sync(
             self.redis,
             events.TaskStarted(
                 id=task_id,
@@ -260,7 +260,7 @@ class TaskRequestHandler:
         self.current_task_id = None
 
         if task_killed:
-            self.event_store.log_sync(
+            self.event_logger.log_sync(
                 self.redis,
                 events.TaskKilled(id=task_id),
             )
@@ -270,7 +270,7 @@ class TaskRequestHandler:
         new_status = TaskStatusCode.FAILED if exit_code else \
             TaskStatusCode.SUCCESS
         self.update_task_status(task_id, new_status)
-        self.event_store.log_sync(
+        self.event_logger.log_sync(
             self.redis,
             events.TaskCompleted(id=task_id, status=new_status),
         )
