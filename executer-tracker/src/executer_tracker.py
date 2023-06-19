@@ -68,7 +68,6 @@ from inductiva_api import events
 from inductiva_api.task_status import ExecuterTerminationReason
 from register_executer import register_executer
 
-REDIS_CONSUMER_GROUP = "all_consumers"
 DELIVER_NEW_MESSAGES = ">"
 
 
@@ -187,7 +186,8 @@ def get_signal_handler(executer_uuid, redis_hostname, redis_port,
 
 
 def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
-                           redis_stream, redis_consumer_name, request_handler):
+                           redis_stream, redis_consumer_name,
+                           redis_consumer_group, request_handler):
 
     signal_handler = get_signal_handler(executer_uuid, redis_hostname,
                                         redis_port, request_handler)
@@ -201,45 +201,56 @@ def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
         redis_hostname,
         redis_port,
         redis_stream,
-        REDIS_CONSUMER_GROUP,
+        redis_consumer_group,
         redis_consumer_name,
     )
 
 
 def main(_):
     api_url = os.getenv("API_URL", "http://api.inductiva.ai")
+
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
     if not redis_hostname:
         raise ValueError("REDIS_HOSTNAME environment variable not set.")
 
-    redis_consumer_name = os.getenv("REDIS_CONSUMER_NAME")
-    if not redis_consumer_name:
-        raise ValueError("REDIS_CONSUMER_NAME environment variable not set.")
-
     executer_type = os.getenv("EXECUTER_TYPE")
     if not executer_type:
         raise ValueError("EXECUTER_TYPE environment variable not set.")
 
-    redis_stream = f"{executer_type}_requests"
     artifact_shared_drive = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
 
     redis_conn = create_redis_connection(redis_hostname, redis_port)
 
-    executer_uuid = register_executer(api_url)
+    resource_pool_id = os.getenv("RESOURCE_POOL")
+    if not resource_pool_id:
+        logging.info("No resource pool specified. Using default.")
+    else:
+        logging.info("Using resource pool \"%s\".", resource_pool_id)
+    executer_access_info = register_executer(
+        api_url,
+        executer_type,
+        resource_pool_id=resource_pool_id,
+    )
+    executer_uuid = executer_access_info.id
+
+    redis_stream = executer_access_info.redis_stream
+    redis_consumer_name = executer_access_info.redis_consumer_name
+    redis_consumer_group = executer_access_info.redis_consumer_group
 
     request_handler = TaskRequestHandler(redis_conn,
                                          artifact_shared_drive,
                                          executer_uuid=executer_uuid)
 
     setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
-                           redis_stream, redis_consumer_name, request_handler)
+                           redis_stream, redis_consumer_name,
+                           redis_consumer_group, request_handler)
 
     try:
         monitor_redis_stream(
             redis_connection=redis_conn,
             stream_name=redis_stream,
-            consumer_group=REDIS_CONSUMER_GROUP,
+            consumer_group=redis_consumer_group,
             consumer_name=redis_consumer_name,
             request_handler=request_handler,
         )
