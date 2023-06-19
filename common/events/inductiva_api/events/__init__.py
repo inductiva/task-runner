@@ -1,5 +1,5 @@
 # pylint: disable=missing-module-docstring
 from .schemas import *
-from .store import EventStore
+from .logger import RedisStreamEventLogger
 from .parse import to_dict, from_dict
-from .source import EventSource
+from .source import RedisStreamEventSource

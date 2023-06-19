@@ -7,7 +7,7 @@ from inductiva_api.events.schemas import Event
 from redis import Redis
 
 
-class EventSource:
+class RedisStreamEventSource:
     """Class for listening to events from Redis streams."""
 
     def __init__(self,
