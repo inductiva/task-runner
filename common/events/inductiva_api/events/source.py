@@ -37,7 +37,7 @@ class RedisStreamEventSource:
                     `consumer_group` is provided.")
 
     def _monitor_with_groups(self,
-                             start_id="0-0",
+                             start_id="0",
                              sleep_ms=0) -> Iterator[Tuple[Event, str]]:
         """Monitor Redis stream using consumer groups.
 
@@ -48,7 +48,8 @@ class RedisStreamEventSource:
         More info here:
          - https://redis.io/docs/data-types/streams-tutorial/#consumer-groups
         """
-        checking_backlog = start_id != ">"
+        UNDELIVERED_EVENTS_SPECIAL_ID = ">"  # pylint: disable=invalid-name
+        checking_backlog = start_id != UNDELIVERED_EVENTS_SPECIAL_ID
         last_id = start_id
 
         while True:
@@ -56,7 +57,8 @@ class RedisStreamEventSource:
                 # If the backlog (history of unacknowledged events) has been
                 # fully processed, use the special ">" ID to read undelivered
                 # events.
-                read_id = last_id if checking_backlog else ">"
+                read_id = last_id if checking_backlog \
+                    else UNDELIVERED_EVENTS_SPECIAL_ID
 
                 resp = self._conn.xreadgroup(
                     self._consumer_group,
@@ -67,9 +69,11 @@ class RedisStreamEventSource:
                 )
 
                 if resp:
-                    _, messages = resp[0]
+                    _stream_name, messages = resp[0]  # pylint: disable=unused-variable
+
                     # This means that there are no more unacknowledged events,
-                    # so we can start reading new events.
+                    # so we can start reading new events using the special ">"
+                    # ID.
                     if len(messages) == 0:
                         checking_backlog = False
                         continue
@@ -85,9 +89,7 @@ class RedisStreamEventSource:
             except ConnectionError:
                 logging.exception("Error in Redis connection")
 
-    def _monitor(self,
-                 start_id="0-0",
-                 sleep_ms=0) -> Iterator[Tuple[Event, str]]:
+    def _monitor(self, start_id="0", sleep_ms=0) -> Iterator[Tuple[Event, str]]:
         """Monitor a Redis stream without using consumer groups."""
         last_id = start_id
         while True:
@@ -99,7 +101,11 @@ class RedisStreamEventSource:
                 )
 
                 if resp:
-                    _, messages = resp[0]
+                    # Get contents from the first (and only) stream read.
+                    _stream_name, messages = resp[0]  # pylint: disable=unused-variable
+
+                    # Get only message from messages list (there's only one
+                    # because we're reading with count=1).
                     last_id, data = messages[0]
 
                     event = parse.from_dict(data)
@@ -109,9 +115,7 @@ class RedisStreamEventSource:
             except ConnectionError:
                 logging.exception("Error in Redis connection")
 
-    def monitor(self,
-                start_id="0-0",
-                sleep_ms=0) -> Iterator[Tuple[Event, str]]:
+    def monitor(self, start_id="0", sleep_ms=0) -> Iterator[Tuple[Event, str]]:
         """Method to monitor a Redis stream.
 
         This method reads from a Redis stream, yielding the events one by one
@@ -129,7 +133,11 @@ class RedisStreamEventSource:
                 fun(event, event_id)
 
         Args:
-            start_id: ID to use when reading the first event.
+            start_id: ID to use when reading the first event. Default is "0".
+                Note that Redis stream IDs are monotonically increasing, so the
+                first event that will be read is the first event with an ID
+                greater than the provided start_id. By using 0 as the default,
+                the stream will be read from the beginning.
 
         Yields:
             Tuple with the event and the ID of the event in the Redis stream.
