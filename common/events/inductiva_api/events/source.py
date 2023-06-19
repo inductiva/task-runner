@@ -27,7 +27,6 @@ class EventSource:
         self._consumer_name = consumer_name
         self._use_consumer_group = not (consumer_group is None or
                                         consumer_name is None)
-        logging.info("Using consumer group: %s", self._use_consumer_group)
 
         if consumer_group is None and consumer_name is not None:
             raise ValueError("A `consumer_group` must be provided if \
