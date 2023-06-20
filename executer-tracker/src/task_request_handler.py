@@ -7,6 +7,7 @@ Note that, currently, request consumption is blocking.
 """
 import os
 import shutil
+import tempfile
 import threading
 from absl import logging
 import utils
@@ -57,10 +58,10 @@ class TaskRequestHandler:
     """
     WORKING_DIR_ROOT = "working_dir"
 
-    def __init__(self, redis_connection, artifact_dest, executer_uuid):
+    def __init__(self, redis_connection, artifact_filesystem, executer_uuid):
         """Initialize an instance of the TaskRequestHandler class."""
         self.redis = redis_connection
-        self.artifact_dest = artifact_dest
+        self.artifact_filesystem = artifact_filesystem
         self.executer_uuid = executer_uuid
         self.event_logger = RedisStreamEventLogger("events")
         self.current_task_id = None
@@ -156,16 +157,24 @@ class TaskRequestHandler:
         """
         working_dir = self.build_working_dir(request)
 
-        input_zip_path = os.path.join(self.artifact_dest, request["id"],
-                                      utils.INPUT_ZIP_FILENAME)
+        input_zip_path_remote = os.path.join(request["id"],
+                                             utils.INPUT_ZIP_FILENAME)
 
-        extract_zip_archive(
-            zip_path=input_zip_path,
-            dest=working_dir,
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            input_zip_path_local = os.path.join(tmp_dir,
+                                                utils.INPUT_ZIP_FILENAME)
+            with self.artifact_filesystem.open_input_file(
+                    input_zip_path_remote,) as f:
+                f.download(input_zip_path_local)
+            logging.info("Downloaded input zip to %s", input_zip_path_local)
 
-        logging.info("Extracted input zip %s to %s", input_zip_path,
-                     working_dir)
+            extract_zip_archive(
+                zip_path=input_zip_path_local,
+                dest=working_dir,
+            )
+
+            logging.info("Extracted input zip %s to %s", input_zip_path_local,
+                         working_dir)
 
         return working_dir
 
@@ -175,11 +184,10 @@ class TaskRequestHandler:
         NOTE: this launchs a second thread to listen for possible "kill"
         messages from the API.
         """
-        tracker = SubprocessTracker(working_dir=working_dir,
-                                    command_line=self.build_command(request),
-                                    logs_path=os.path.join(
-                                        self.artifact_dest, task_id,
-                                        utils.LOGS_FILENAME))
+        tracker = SubprocessTracker(
+            working_dir=working_dir,
+            command_line=self.build_command(request),
+        )
 
         self.redis_client_id = self.redis.client_id()
 
@@ -226,15 +234,28 @@ class TaskRequestHandler:
         # Compress outputs, storing them in the shared drive
         output_dir = os.path.join(working_dir, utils.OUTPUT_DIR)
 
-        output_zip_name = os.path.join(self.artifact_dest, task_id,
-                                       utils.OUTPUT_DIR)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            output_zip_path_local_no_ext = os.path.join(tmp_dir,
+                                                        utils.OUTPUT_DIR)
+            output_zip_path_local = shutil.make_archive(
+                output_zip_path_local_no_ext, "zip", output_dir)
 
-        output_zip_path = shutil.make_archive(output_zip_name, "zip",
-                                              output_dir)
+            logging.info("Compressed output to %s", output_zip_path_local)
 
-        logging.info("Compressed output to %s", output_zip_path)
+            output_zip_path_remote = os.path.join(task_id,
+                                                  utils.OUTPUT_ZIP_FILENAME)
+            with self.artifact_filesystem.open_output_stream(
+                    output_zip_path_remote) as f_dest:
+                with open(output_zip_path_local, "rb") as f_src:
 
-        return output_zip_path
+                    f_dest.upload(f_src)
+
+            logging.info(
+                "Uploaded output zip to %s",
+                os.path.join(
+                    self.artifact_filesystem.base_path,
+                    output_zip_path_remote,
+                ))
 
     def __call__(self, request):
         """Execute the task described by the request.

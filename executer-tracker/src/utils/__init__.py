@@ -9,9 +9,8 @@ in the Web API codebase.
 
 INPUT_JSON_FILENAME = "input.json"
 INPUT_ZIP_FILENAME = "input.zip"
+OUTPUT_ZIP_FILENAME = "output.zip"
 OUTPUT_DIR = "output"
-LOGS_PATH_ENV = "EXECUTER_LOGS_PATH"
-LOGS_FILENAME = "logs.txt"
 
 
 def make_task_key(task_id: str, attribute: str) -> str:
