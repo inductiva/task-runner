@@ -117,16 +117,28 @@ class TaskRequestHandler:
         """
 
         method_to_script = {
-            "linalg.eigs": "/scripts/run_eigensolver.py",
-            "math.matmul": "/scripts/matmul.py",
-            "math.sum": "/scripts/sum.py",
-            "test.sleep": "/scripts/sleep.py",
-            "sph.splishsplash.run_simulation": "/scripts/simulation.py",
-            "sph.dualsphysics.run_simulation": "/scripts/simulation.py",
-            "sw.swash.run_simulation": "/scripts/simulation.py",
-            "sw.xbeach.run_simulation": "/scripts/simulation.py",
-            "fvm.openfoam.run_simulation": "/scripts/simulation.py",
-            "md.gromacs.run_simulation": "/scripts/simulation.py",
+            "linalg.eigs":
+                "/scripts/run_eigensolver.py",
+            "math.matmul":
+                "/scripts/matmul.py",
+            "math.sum":
+                "/scripts/sum.py",
+            "test.sleep":
+                "/scripts/sleep.py",
+            "sph.splishsplash.run_simulation":
+                "/scripts/simulation.py",
+            "sph.dualsphysics.run_simulation":
+                "/scripts/simulation.py",
+            "sw.swash.run_simulation":
+                "/scripts/simulation.py",
+            "sw.xbeach.run_simulation":
+                "/scripts/simulation.py",
+            "fvm.openfoam.run_simulation":
+                "/scripts/simulation.py",
+            "windtunnel.openfoam.run_simulation":
+                "/scripts/windtunnel_simulation.py",
+            "md.gromacs.run_simulation":
+                "/scripts/simulation.py",
         }
         method = request["method"]
 
