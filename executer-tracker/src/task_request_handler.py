@@ -76,12 +76,7 @@ class TaskRequestHandler:
         os.makedirs(self.working_dir_root, exist_ok=True)
 
     def update_task_status(self, task_id, status: TaskStatusCode):
-        msg_queue_key = make_task_key(task_id, "status_updates")
-
-        with self.redis.pipeline(transaction=True) as pipe:
-            pipe = pipe.set(make_task_key(task_id, "status"), status.value)
-            pipe = pipe.lpush(msg_queue_key, status.value)
-            _ = pipe.execute()
+        self.redis.set(make_task_key(task_id, "status"), status.value)
 
         logging.info("Updated task status to %s.", status.value)
 
