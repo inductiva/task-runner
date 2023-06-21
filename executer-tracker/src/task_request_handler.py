@@ -9,14 +9,16 @@ import os
 import shutil
 import tempfile
 import threading
-from absl import logging
+
 import utils
-from utils import make_task_key
-from utils.files import extract_zip_archive
-from subprocess_tracker import SubprocessTracker
-from inductiva_api.task_status import TaskStatusCode
+from absl import logging
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLogger
+from inductiva_api.task_status import TaskStatusCode
+from pyarrow import fs
+from subprocess_tracker import SubprocessTracker
+from utils import make_task_key
+from utils.files import extract_zip_archive
 
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker, killed_flag):
@@ -54,11 +56,14 @@ class TaskRequestHandler:
 
     Attributes:
         redis: Connection to Redis.
-        artifact_dest: Shared directory with the Web API.
+        artifact_filesystem: Shared location with the Web API.
+        executer_uuid: UUID of the executer that will handle the request,
+            used for Event logging purposes.
     """
     WORKING_DIR_ROOT = "working_dir"
 
-    def __init__(self, redis_connection, artifact_filesystem, executer_uuid):
+    def __init__(self, redis_connection, artifact_filesystem: fs.FileSystem,
+                 executer_uuid):
         """Initialize an instance of the TaskRequestHandler class."""
         self.redis = redis_connection
         self.artifact_filesystem = artifact_filesystem
@@ -136,24 +141,11 @@ class TaskRequestHandler:
     def setup_working_dir(self, request):
         """Setup the working directory for an executer.
 
-        This method performs initial setup of the working directory
-        for an executer. More specifically, it ensures that it exists
-        and contains the necessary input files.
-
-        There are two different scenarios:
-            1. A ZIP with the full input is provided, so all that's needed
-            is to extract the ZIP to the correct place.
-
-            2. The request contains a json specifying the full request,
-            so setting up the working dir requires writting the JSON
-            to the correct place.
+        This method downloads the input zip from the shared location and
+        extracts it to the working directory.
 
         Args:
-            request: Request that will run in the working directory. The
-                presence of the field "params" in the request dict defines
-                which of the above described scenarios is followed.
-                If "params" exists, scenario 2 is used. If not, then it is
-                assumed that an input ZIP already exists.
+            request: Request that will run in the working directory.
         """
         working_dir = self.build_working_dir(request)
 
@@ -163,8 +155,10 @@ class TaskRequestHandler:
         with tempfile.TemporaryDirectory() as tmp_dir:
             input_zip_path_local = os.path.join(tmp_dir,
                                                 utils.INPUT_ZIP_FILENAME)
+            # `f.download` expects `f` to allow random access, so we need to
+            # use `open_input_file` instead of `open_input_stream`
             with self.artifact_filesystem.open_input_file(
-                    input_zip_path_remote,) as f:
+                    input_zip_path_remote) as f:
                 f.download(input_zip_path_local)
             logging.info("Downloaded input zip to %s", input_zip_path_local)
 
@@ -235,8 +229,12 @@ class TaskRequestHandler:
         output_dir = os.path.join(working_dir, utils.OUTPUT_DIR)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            output_zip_path_local_no_ext = os.path.join(tmp_dir,
-                                                        utils.OUTPUT_DIR)
+            output_zip_path_local = os.path.join(tmp_dir,
+                                                 utils.OUTPUT_ZIP_FILENAME)
+            # make_archive expects the path without extension
+            output_zip_path_local_no_ext = os.path.splitext(
+                output_zip_path_local)[0]
+
             output_zip_path_local = shutil.make_archive(
                 output_zip_path_local_no_ext, "zip", output_dir)
 
@@ -244,11 +242,11 @@ class TaskRequestHandler:
 
             output_zip_path_remote = os.path.join(task_id,
                                                   utils.OUTPUT_ZIP_FILENAME)
-            with self.artifact_filesystem.open_output_stream(
+            with open(output_zip_path_local, "rb") as f_src, \
+                self.artifact_filesystem.open_output_stream(
                     output_zip_path_remote) as f_dest:
-                with open(output_zip_path_local, "rb") as f_src:
 
-                    f_dest.upload(f_src)
+                f_dest.upload(f_src)
 
             logging.info(
                 "Uploaded output zip to %s",
