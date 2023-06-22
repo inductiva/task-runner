@@ -67,6 +67,7 @@ from inductiva_api.events import RedisStreamEventLogger
 from inductiva_api import events
 from inductiva_api.task_status import ExecuterTerminationReason
 from register_executer import register_executer
+from pyarrow import fs
 
 DELIVER_NEW_MESSAGES = ">"
 
@@ -218,7 +219,11 @@ def main(_):
     if not executer_type:
         raise ValueError("EXECUTER_TYPE environment variable not set.")
 
-    artifact_shared_drive = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
+    artifact_store_uri = os.getenv("ARTIFACT_STORE", "file:///mnt/artifacts")
+    artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
+        artifact_store_uri)
+    artifact_filesystem = fs.SubTreeFileSystem(base_path,
+                                               artifact_filesystem_root)
 
     redis_conn = create_redis_connection(redis_hostname, redis_port)
 
@@ -238,9 +243,11 @@ def main(_):
     redis_consumer_name = executer_access_info.redis_consumer_name
     redis_consumer_group = executer_access_info.redis_consumer_group
 
-    request_handler = TaskRequestHandler(redis_conn,
-                                         artifact_shared_drive,
-                                         executer_uuid=executer_uuid)
+    request_handler = TaskRequestHandler(
+        redis_conn,
+        artifact_filesystem,
+        executer_uuid=executer_uuid,
+    )
 
     setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
                            redis_stream, redis_consumer_name,

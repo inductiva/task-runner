@@ -8,7 +8,6 @@ import psutil
 import time
 
 from absl import logging
-from utils import LOGS_PATH_ENV
 
 
 class SubprocessTracker:
@@ -19,7 +18,7 @@ class SubprocessTracker:
     subproc = None
     ps_process = None
 
-    def __init__(self, command_line, working_dir, logs_path):
+    def __init__(self, command_line, working_dir):
         # For now we just get the command line. There could be
         # other interesting arguments/parameters such as environment vars.
         # For example, Popen receive param env - eg. env={"PATH": "/usr/bin"}
@@ -27,7 +26,6 @@ class SubprocessTracker:
         logging.info("Creating task tracker for \"%s\".", command_line)
         self.command_line = command_line
         self.working_dir = working_dir
-        self.logs_path = logs_path
         # Set up signal catcher by redirecting SIGINT and SIGTERM to
         # the class function signal_catcher(signal_catcher(self, *args)
         # SIGINT is keyboard INTerrupt. SIGTERM is to terminate (-9)
@@ -53,9 +51,6 @@ class SubprocessTracker:
                 shlex.split(self.command_line),
                 cwd=self.working_dir,
                 start_new_session=True,
-                env={
-                    **os.environ, LOGS_PATH_ENV: self.logs_path
-                },
                 # stdout=subprocess.DEVNULL,
                 # stderr=subprocess.DEVNULL,
             )
