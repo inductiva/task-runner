@@ -64,9 +64,9 @@ def get_full_vm_metadata() -> Optional[Dict]:
 
 
 def get_vm_metadata(key: str) -> Optional[str]:
-    """Get all metadata for the VM from the internal metadata server.
+    """Get metadata value for the VM from the internal metadata server.
 
-    Returns all metadata as a dict.
+    Returns the value for the given key as a string.
     """
     r = _get_vm_metadata(key)
     if r is None:
