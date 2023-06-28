@@ -1,6 +1,6 @@
 """Util functions to get info about the GCloud VM the executer is on."""
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 from utils import bool_string_to_bool
 import requests
 
