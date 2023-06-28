@@ -193,7 +193,6 @@ def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGUSR1, signal_handler)
 
     atexit.register(
         delete_redis_consumer,
