@@ -25,3 +25,12 @@ def make_task_key(task_id: str, attribute: str) -> str:
         Example: "task:8273891:status"
     """
     return f"task:{task_id}:{attribute}"
+
+
+def bool_string_to_bool(s: str) -> bool:
+    """Converts a string representing a boolean to a boolean.
+
+    Possible values that convert to True are "t" and "true", in
+    a case-insensitive way.
+    """
+    return s.lower() in ("t", "true")
