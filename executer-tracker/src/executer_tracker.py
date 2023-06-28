@@ -208,18 +208,15 @@ def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
 
 
 def main(_):
-    api_url = os.getenv("API_URL", "http://api.inductiva.ai")
-
-    redis_hostname = os.getenv("REDIS_HOSTNAME")
+    api_url = os.getenv("API_URL", "http://web")
+    redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
     redis_port = os.getenv("REDIS_PORT", "6379")
-    if not redis_hostname:
-        raise ValueError("REDIS_HOSTNAME environment variable not set.")
+    artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
 
     executer_type = os.getenv("EXECUTER_TYPE")
     if not executer_type:
         raise ValueError("EXECUTER_TYPE environment variable not set.")
 
-    artifact_store_uri = os.getenv("ARTIFACT_STORE", "file:///mnt/artifacts")
     artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
         artifact_store_uri)
     artifact_filesystem = fs.SubTreeFileSystem(base_path,
