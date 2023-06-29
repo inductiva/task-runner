@@ -51,4 +51,5 @@ class ExecuterCreated(ExecuterEvent):
 # Executer terminated event.
 class ExecuterTerminated(ExecuterEvent):
     reason: ExecuterTerminationReason
+    detail: Optional[str]
     stopped_tasks: List[str]
