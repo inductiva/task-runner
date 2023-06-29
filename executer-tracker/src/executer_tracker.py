@@ -146,8 +146,12 @@ def delete_redis_consumer(redis_hostname, redis_port, stream, consumer_group,
     logging.info("`atexit` function executed successfully.")
 
 
-def log_executer_termination(request_handler, redis_hostname, redis_port,
-                             executer_uuid, reason):
+def log_executer_termination(request_handler,
+                             redis_hostname,
+                             redis_port,
+                             executer_uuid,
+                             reason,
+                             detail=None):
     stopped_tasks = []
     if request_handler.is_simulation_running():
         logging.info("A simulation was being executed.")
@@ -162,6 +166,7 @@ def log_executer_termination(request_handler, redis_hostname, redis_port,
             uuid=executer_uuid,
             reason=reason,
             stopped_tasks=stopped_tasks,
+            detail=detail,
         ))
     redis_conn.set(f"task:{request_handler.current_task_id}:status", "failed")
 
@@ -262,8 +267,9 @@ def main(_):
         logging.exception("Caught exception: %s", str(e))
         logging.info("Terminating executer tracker...")
         reason = ExecuterTerminationReason.ERROR
+        detail = repr(e)
         log_executer_termination(request_handler, redis_hostname, redis_port,
-                                 executer_uuid, reason)
+                                 executer_uuid, reason, detail)
 
 
 if __name__ == "__main__":
