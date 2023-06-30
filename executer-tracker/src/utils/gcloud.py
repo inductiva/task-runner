@@ -49,7 +49,7 @@ def _get_vm_metadata(url_suffix: str):
     return r
 
 
-def get_full_vm_metadata() -> Optional[Dict]:
+def get_vm_metadata_full() -> Optional[Dict]:
     """Get all metadata for the VM from the internal metadata server.
 
     Returns all metadata as a dict.
@@ -63,7 +63,7 @@ def get_full_vm_metadata() -> Optional[Dict]:
     return r.json()
 
 
-def get_vm_metadata(key: str) -> Optional[str]:
+def get_vm_metadata_value(key: str) -> Optional[str]:
     """Get metadata value for the VM from the internal metadata server.
 
     Returns the value for the given key as a string.
@@ -86,7 +86,7 @@ class GCloudVMInfo:
 
 def get_vm_info() -> Optional[GCloudVMInfo]:
     """Get the VM information from the internal metadata server."""
-    metadata = get_full_vm_metadata()
+    metadata = get_vm_metadata_full()
     if not metadata:
         return None
 
@@ -110,7 +110,7 @@ def is_vm_preempted() -> bool:
     Details:
     https://cloud.google.com/compute/docs/instances/create-use-preemptible#determine_if_a_vm_was_preempted # pylint: disable=line-too-long
     """
-    preempted = get_vm_metadata(key="preempted")
+    preempted = get_vm_metadata_value(key="preempted")
     if preempted is None:
         return False
 

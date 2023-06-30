@@ -58,11 +58,12 @@ import signal
 import sys
 
 from absl import app, logging
+from pyarrow import fs
+from redis import Redis
+
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLogger
 from inductiva_api.task_status import ExecuterTerminationReason
-from pyarrow import fs
-from redis import Redis
 from register_executer import register_executer
 from task_request_handler import TaskRequestHandler
 from utils import gcloud
