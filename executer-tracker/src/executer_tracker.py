@@ -57,17 +57,16 @@ import os
 import signal
 import sys
 
-from absl import app
-from absl import logging
-
+from absl import app, logging
+from pyarrow import fs
 from redis import Redis
 
-from task_request_handler import TaskRequestHandler
-from inductiva_api.events import RedisStreamEventLogger
 from inductiva_api import events
+from inductiva_api.events import RedisStreamEventLogger
 from inductiva_api.task_status import ExecuterTerminationReason
 from register_executer import register_executer
-from pyarrow import fs
+from task_request_handler import TaskRequestHandler
+from utils import gcloud
 
 DELIVER_NEW_MESSAGES = ">"
 
@@ -179,7 +178,7 @@ def get_signal_handler(executer_uuid, redis_hostname, redis_port,
     def handler(signum, _):
         logging.info("Caught signal %s.", signal.Signals(signum).name)
 
-        if signum == signal.SIGUSR1:
+        if gcloud.is_vm_preempted():
             reason = ExecuterTerminationReason.VM_PREEMPTED
         else:
             reason = ExecuterTerminationReason.INTERRUPTED
@@ -200,7 +199,6 @@ def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGUSR1, signal_handler)
 
     atexit.register(
         delete_redis_consumer,
