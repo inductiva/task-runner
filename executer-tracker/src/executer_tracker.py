@@ -224,8 +224,8 @@ def main(_):
 
     artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
         artifact_store_uri)
-    artifact_filesystem = fs.SubTreeFileSystem(base_path,
-                                               artifact_filesystem_root)
+    artifact_filesystem_root = fs.SubTreeFileSystem(base_path,
+                                                    artifact_filesystem_root)
 
     redis_conn = create_redis_connection(redis_hostname, redis_port)
 
@@ -247,7 +247,7 @@ def main(_):
 
     request_handler = TaskRequestHandler(
         redis_conn,
-        artifact_filesystem,
+        artifact_filesystem_root,
         executer_uuid=executer_uuid,
     )
 

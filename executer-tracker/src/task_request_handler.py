@@ -88,7 +88,7 @@ class TaskRequestHandler:
         task_status = self.redis.get(make_task_key(task_id, "status"))
         return TaskStatusCode(task_status)
 
-    def build_working_dir(self, request) -> str:
+    def build_working_dir(self, task_id) -> str:
         """Create the working directory for a given request.
 
         Create working dir for the script that will accomplish the request.
@@ -101,7 +101,7 @@ class TaskRequestHandler:
         Returns:
             Path of the created working directory.
         """
-        working_dir = os.path.join(self.working_dir_root, request["id"])
+        working_dir = os.path.join(self.working_dir_root, task_id)
         os.makedirs(working_dir)
         return working_dir
 
@@ -145,7 +145,7 @@ class TaskRequestHandler:
 
         return f"python {method_to_script[method]}"
 
-    def setup_working_dir(self, request):
+    def setup_working_dir(self, task_id, task_dir_remote):
         """Setup the working directory for an executer.
 
         This method downloads the input zip from the shared location and
@@ -153,10 +153,13 @@ class TaskRequestHandler:
 
         Args:
             request: Request that will run in the working directory.
+            task_id: ID of the task that will run in the working directory.
+            task_dir_remote: Remote directory where the input zip is located.
+                Directory is relative to "artifact_filesystem".
         """
-        working_dir = self.build_working_dir(request)
+        working_dir = self.build_working_dir(task_id)
 
-        input_zip_path_remote = os.path.join(request["id"],
+        input_zip_path_remote = os.path.join(task_dir_remote,
                                              utils.INPUT_ZIP_FILENAME)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -219,13 +222,12 @@ class TaskRequestHandler:
 
         return exit_code, task_killed_flag.is_set()
 
-    def pack_output(self, task_id, working_dir):
+    def pack_output(self, task_dir_remote, working_dir):
         """Compress outputs and store them in the shared drive.
 
         Args:
-            task_id: ID of task to which the outputs are related. Required
-                as the ID is necessary to resolve the path where the outputs
-                should be stored in the shared drive.
+            task_dir_remote: Path to the directory with the task's files. Path
+                is relative to "artifact_filesystem".
             working_dir: Working directory of the executer that performed
                 the task.
 
@@ -247,7 +249,7 @@ class TaskRequestHandler:
 
             logging.info("Compressed output to %s", output_zip_path_local)
 
-            output_zip_path_remote = os.path.join(task_id,
+            output_zip_path_remote = os.path.join(task_dir_remote,
                                                   utils.OUTPUT_ZIP_FILENAME)
             with open(output_zip_path_local, "rb") as f_src, \
                 self.artifact_filesystem.open_output_stream(
@@ -274,14 +276,15 @@ class TaskRequestHandler:
             request: Request describing the task to be executed.
         """
         task_id = request["id"]
+        task_dir_remote = request["task_dir"]
         self.current_task_id = task_id
 
-        working_dir = self.setup_working_dir(request)
+        working_dir = self.setup_working_dir(task_id, task_dir_remote)
 
         exit_code, task_killed = \
             self.execute_request(request, task_id, working_dir)
 
-        self.pack_output(task_id, working_dir)
+        self.pack_output(task_dir_remote, working_dir)
 
         self.current_task_id = None
 
