@@ -66,7 +66,7 @@ from inductiva_api.events import RedisStreamEventLogger
 from inductiva_api.task_status import ExecuterTerminationReason
 from register_executer import register_executer
 from task_request_handler import TaskRequestHandler
-from utils import gcloud
+from utils import gcloud, config
 
 DELIVER_NEW_MESSAGES = ">"
 
@@ -225,13 +225,14 @@ def main(_):
     artifact_filesystem_root = fs.SubTreeFileSystem(base_path,
                                                     artifact_filesystem_root)
 
-    redis_conn = create_redis_connection(redis_hostname, redis_port)
-
-    resource_pool_id = os.getenv("RESOURCE_POOL")
+    resource_pool_id = config.get_resource_pool_id()
     if not resource_pool_id:
         logging.info("No resource pool specified. Using default.")
     else:
-        logging.info("Using resource pool \"%s\".", resource_pool_id)
+        logging.info("Using resource pool: %s", resource_pool_id)
+
+    redis_conn = create_redis_connection(redis_hostname, redis_port)
+
     executer_access_info = register_executer(
         api_url,
         executer_type,
