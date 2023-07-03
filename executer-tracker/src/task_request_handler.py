@@ -75,19 +75,6 @@ class TaskRequestHandler:
                                              self.WORKING_DIR_ROOT)
         os.makedirs(self.working_dir_root, exist_ok=True)
 
-    def update_task_status(self, task_id, status: TaskStatusCode):
-        self.redis.set(make_task_key(task_id, "status"), status.value)
-
-        logging.info("Updated task status to %s.", status.value)
-
-    def update_task_attribute(self, task_id, attribute, value):
-        self.redis.set(make_task_key(task_id, attribute), value)
-        logging.info("Updated task %s to %s.", attribute, value)
-
-    def get_task_status(self, task_id) -> TaskStatusCode:
-        task_status = self.redis.get(make_task_key(task_id, "status"))
-        return TaskStatusCode(task_status)
-
     def build_working_dir(self, task_id) -> str:
         """Create the working directory for a given request.
 
@@ -202,7 +189,6 @@ class TaskRequestHandler:
             daemon=True,
         )
 
-        self.update_task_status(task_id, TaskStatusCode.STARTED)
         self.event_logger.log_sync(
             self.redis,
             events.TaskStarted(
@@ -293,12 +279,10 @@ class TaskRequestHandler:
                 self.redis,
                 events.TaskKilled(id=task_id),
             )
-            self.update_task_status(task_id, TaskStatusCode.KILLED)
             return
 
         new_status = TaskStatusCode.FAILED if exit_code else \
             TaskStatusCode.SUCCESS
-        self.update_task_status(task_id, new_status)
         self.event_logger.log_sync(
             self.redis,
             events.TaskCompleted(id=task_id, status=new_status),
