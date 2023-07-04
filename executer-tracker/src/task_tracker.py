@@ -1,10 +1,11 @@
+# pylint: disable=missing-module-docstring
 from docker.types import Mount
 
 from absl import logging
 
 
 class TaskTracker:
-
+    # pylint: disable=missing-class-docstring
     def __init__(self, docker, image, command, working_dir_host):
         self.docker = docker
         self.image = image

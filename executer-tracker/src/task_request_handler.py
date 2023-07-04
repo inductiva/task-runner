@@ -17,7 +17,6 @@ from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLogger
 from inductiva_api.task_status import TaskStatusCode
 from pyarrow import fs
-from subprocess_tracker import SubprocessTracker
 from utils import make_task_key
 from utils.files import extract_zip_archive
 from task_tracker import TaskTracker
