@@ -60,6 +60,7 @@ import sys
 from absl import app, logging
 from pyarrow import fs
 from redis import Redis
+import docker
 
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLogger
@@ -216,9 +217,20 @@ def main(_):
     redis_port = os.getenv("REDIS_PORT", "6379")
     artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
 
+    docker_image = os.getenv("DOCKER_IMAGE")
+    if not docker_image:
+        raise ValueError("DOCKER_IMAGE environment variable not set.")
     executer_type = os.getenv("EXECUTER_TYPE")
     if not executer_type:
         raise ValueError("EXECUTER_TYPE environment variable not set.")
+
+    shared_dir_host = os.getenv("SHARED_DIR_HOST")
+    if not shared_dir_host:
+        raise ValueError("SHARED_DIR_HOST environment variable not set.")
+
+    shared_dir_local = os.getenv("SHARED_DIR_LOCAL")
+    if not shared_dir_local:
+        raise ValueError("SHARED_DIR_LOCAL environment variable not set.")
 
     artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
         artifact_store_uri)
@@ -245,9 +257,13 @@ def main(_):
     redis_consumer_group = executer_access_info.redis_consumer_group
 
     request_handler = TaskRequestHandler(
+        docker.from_env(),
         redis_conn,
         artifact_filesystem_root,
         executer_uuid=executer_uuid,
+        docker_image=docker_image,
+        shared_dir_host=shared_dir_host,
+        shared_dir_local=shared_dir_local,
     )
 
     setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
