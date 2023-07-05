@@ -23,7 +23,7 @@ from utils.files import extract_zip_archive
 
 def redis_kill_msg_catcher(redis, task_id, subprocess_tracker, killed_flag):
     """Function that waits for the kill message and kills the running job."""
-    queue = make_task_key(task_id, "events")
+    queue = make_task_key(task_id, "commands")
     logging.info("Waiting for kill message on queue.")
 
     while True:
