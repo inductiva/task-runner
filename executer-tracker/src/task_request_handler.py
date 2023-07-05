@@ -13,7 +13,7 @@ import threading
 import utils
 from absl import logging
 from inductiva_api import events
-from inductiva_api.events import RedisStreamEventLogger
+from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import TaskStatusCode
 from pyarrow import fs
 from subprocess_tracker import SubprocessTracker
@@ -68,7 +68,7 @@ class TaskRequestHandler:
         self.redis = redis_connection
         self.artifact_filesystem = artifact_filesystem
         self.executer_uuid = executer_uuid
-        self.event_logger = RedisStreamEventLogger("events")
+        self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
         self.current_task_id = None
 
         self.working_dir_root = os.path.join(os.path.abspath(os.sep),
@@ -189,13 +189,11 @@ class TaskRequestHandler:
             daemon=True,
         )
 
-        self.event_logger.log_sync(
-            self.redis,
+        self.event_logger.log(
             events.TaskStarted(
                 id=task_id,
                 executer_id=self.executer_uuid,
-            ),
-        )
+            ))
 
         thread.start()
         exit_code = tracker.run()
@@ -275,18 +273,13 @@ class TaskRequestHandler:
         self.current_task_id = None
 
         if task_killed:
-            self.event_logger.log_sync(
-                self.redis,
-                events.TaskKilled(id=task_id),
-            )
+            self.event_logger.log(events.TaskKilled(id=task_id))
             return
 
         new_status = TaskStatusCode.FAILED if exit_code else \
             TaskStatusCode.SUCCESS
-        self.event_logger.log_sync(
-            self.redis,
-            events.TaskCompleted(id=task_id, status=new_status),
-        )
+        self.event_logger.log(
+            events.TaskCompleted(id=task_id, status=new_status))
 
     def is_simulation_running(self) -> bool:
         return self.current_task_id is not None
