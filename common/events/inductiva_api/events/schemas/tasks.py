@@ -12,6 +12,7 @@ class TaskEvent(Event):
 class TaskCreated(TaskEvent):
     method: str
     user_id: int
+    status: TaskStatusCode = TaskStatusCode.PENDING_INPUT
 
 
 class TaskInputUploaded(TaskEvent):
