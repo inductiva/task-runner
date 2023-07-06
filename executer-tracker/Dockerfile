@@ -1,6 +1,3 @@
-# Specify the executer base image as a build argument.
-# Available executers with respective Dockerfiles are present
-# in the executers directory.
 FROM python:3.11
 
 # Install the package dependencies in the requirements file.
