@@ -80,7 +80,7 @@ class TaskRequestHandler:
         #                                      self.WORKING_DIR_ROOT)
         # os.makedirs(self.working_dir_root, exist_ok=True)
 
-    def build_working_dir(self, task_id) -> str:
+    def build_working_dir(self, task_id) -> Tuple[str, str]:
         """Create the working directory for a given request.
 
         Create working dir for the script that will accomplish the request.
@@ -183,13 +183,8 @@ class TaskRequestHandler:
         NOTE: this launchs a second thread to listen for possible "kill"
         messages from the API.
         """
-        # tracker = SubprocessTracker(
-        #     working_dir=working_dir,
-        #     command_line=self.build_command(request),
-        # )
-
         tracker = TaskTracker(
-            docker=self.docker,
+            docker_client=self.docker,
             image=self.docker_image,
             working_dir_host=working_dir_host,
             command=self.build_command(request),
@@ -202,8 +197,6 @@ class TaskRequestHandler:
             args=(self.redis, task_id, tracker, task_killed_flag),
             daemon=True,
         )
-        thread.start()
-
         self.event_logger.log_sync(
             self.redis,
             events.TaskStarted(
@@ -212,6 +205,9 @@ class TaskRequestHandler:
             ),
         )
 
+        tracker.run()
+        thread.start()
+
         exit_code = tracker.wait()
         logging.info("Tracker returned exit code %s.", str(exit_code))
 
@@ -219,8 +215,6 @@ class TaskRequestHandler:
 
         thread.join()
         logging.info("Message catcher thread stopped.")
-
-        tracker.cleanup()
 
         return exit_code, task_killed_flag.is_set()
 
