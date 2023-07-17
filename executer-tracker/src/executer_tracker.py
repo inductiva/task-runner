@@ -62,7 +62,7 @@ from pyarrow import fs
 from redis import Redis
 
 from inductiva_api import events
-from inductiva_api.events import RedisStreamEventLogger
+from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import ExecuterTerminationReason
 from register_executer import register_executer
 from task_request_handler import TaskRequestHandler
@@ -157,10 +157,9 @@ def log_executer_termination(request_handler,
         stopped_tasks.append(request_handler.current_task_id)
 
     redis_conn = create_redis_connection(redis_hostname, redis_port)
-    event_logger = RedisStreamEventLogger(EVENTS_STREAM_NAME)
+    event_logger = RedisStreamEventLoggerSync(redis_conn, EVENTS_STREAM_NAME)
 
-    event_logger.log_sync(
-        redis_conn,
+    event_logger.log(
         events.ExecuterTerminated(
             uuid=executer_uuid,
             reason=reason,
