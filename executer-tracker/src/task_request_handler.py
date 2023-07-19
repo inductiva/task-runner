@@ -14,7 +14,7 @@ from typing import Tuple
 import utils
 from absl import logging
 from inductiva_api import events
-from inductiva_api.events import RedisStreamEventLogger
+from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import TaskStatusCode
 from pyarrow import fs
 from utils import make_task_key
@@ -24,7 +24,7 @@ from task_tracker import TaskTracker
 
 def redis_kill_msg_catcher(redis, task_id, task_tracker, killed_flag):
     """Function that waits for the kill message and kills the running job."""
-    queue = make_task_key(task_id, "events")
+    queue = make_task_key(task_id, "commands")
     logging.info("Waiting for kill message on queue.")
 
     while True:
@@ -71,7 +71,7 @@ class TaskRequestHandler:
         self.redis = redis_connection
         self.artifact_filesystem = artifact_filesystem
         self.executer_uuid = executer_uuid
-        self.event_logger = RedisStreamEventLogger("events")
+        self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
         self.current_task_id = None
         self.docker_image = docker_image
         self.shared_dir_host = shared_dir_host
@@ -197,13 +197,12 @@ class TaskRequestHandler:
             args=(self.redis, task_id, tracker, task_killed_flag),
             daemon=True,
         )
-        self.event_logger.log_sync(
-            self.redis,
+
+        self.event_logger.log(
             events.TaskStarted(
                 id=task_id,
                 executer_id=self.executer_uuid,
-            ),
-        )
+            ))
 
         tracker.run()
         thread.start()
@@ -286,18 +285,13 @@ class TaskRequestHandler:
         self.current_task_id = None
 
         if task_killed:
-            self.event_logger.log_sync(
-                self.redis,
-                events.TaskKilled(id=task_id),
-            )
+            self.event_logger.log(events.TaskKilled(id=task_id))
             return
 
         new_status = TaskStatusCode.FAILED if exit_code else \
             TaskStatusCode.SUCCESS
-        self.event_logger.log_sync(
-            self.redis,
-            events.TaskCompleted(id=task_id, status=new_status),
-        )
+        self.event_logger.log(
+            events.TaskCompleted(id=task_id, status=new_status))
 
     def is_simulation_running(self) -> bool:
         return self.current_task_id is not None
