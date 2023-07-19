@@ -9,6 +9,7 @@ import os
 import shutil
 import tempfile
 import threading
+from typing import Tuple
 
 import utils
 from absl import logging
@@ -16,12 +17,12 @@ from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import TaskStatusCode
 from pyarrow import fs
-from subprocess_tracker import SubprocessTracker
 from utils import make_task_key
 from utils.files import extract_zip_archive
+from task_tracker import TaskTracker
 
 
-def redis_kill_msg_catcher(redis, task_id, subprocess_tracker, killed_flag):
+def redis_kill_msg_catcher(redis, task_id, task_tracker, killed_flag):
     """Function that waits for the kill message and kills the running job."""
     queue = make_task_key(task_id, "commands")
     logging.info("Waiting for kill message on queue.")
@@ -37,7 +38,7 @@ def redis_kill_msg_catcher(redis, task_id, subprocess_tracker, killed_flag):
 
         content = element[1]
         if content == "kill":
-            subprocess_tracker.exit_gracefully()
+            task_tracker.kill()
             killed_flag.set()
             return
 
@@ -62,20 +63,24 @@ class TaskRequestHandler:
     """
     WORKING_DIR_ROOT = "working_dir"
 
-    def __init__(self, redis_connection, artifact_filesystem: fs.FileSystem,
-                 executer_uuid):
+    def __init__(self, docker, redis_connection,
+                 artifact_filesystem: fs.FileSystem, executer_uuid,
+                 docker_image, shared_dir_host, shared_dir_local):
         """Initialize an instance of the TaskRequestHandler class."""
+        self.docker = docker
         self.redis = redis_connection
         self.artifact_filesystem = artifact_filesystem
         self.executer_uuid = executer_uuid
         self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
         self.current_task_id = None
+        self.docker_image = docker_image
+        self.shared_dir_host = shared_dir_host
+        self.shared_dir_local = shared_dir_local
+        # self.working_dir_root = os.path.join(os.path.abspath(os.sep),
+        #                                      self.WORKING_DIR_ROOT)
+        # os.makedirs(self.working_dir_root, exist_ok=True)
 
-        self.working_dir_root = os.path.join(os.path.abspath(os.sep),
-                                             self.WORKING_DIR_ROOT)
-        os.makedirs(self.working_dir_root, exist_ok=True)
-
-    def build_working_dir(self, task_id) -> str:
+    def build_working_dir(self, task_id) -> Tuple[str, str]:
         """Create the working directory for a given request.
 
         Create working dir for the script that will accomplish the request.
@@ -88,9 +93,12 @@ class TaskRequestHandler:
         Returns:
             Path of the created working directory.
         """
-        working_dir = os.path.join(self.working_dir_root, task_id)
-        os.makedirs(working_dir)
-        return working_dir
+        working_dir_local = os.path.join(self.shared_dir_local, task_id)
+        os.makedirs(working_dir_local)
+
+        working_dir_host = os.path.join(self.shared_dir_host, task_id)
+
+        return working_dir_local, working_dir_host
 
     def build_command(self, request) -> str:
         """Build Python command to run a requested task.
@@ -132,7 +140,7 @@ class TaskRequestHandler:
 
         return f"python {method_to_script[method]}"
 
-    def setup_working_dir(self, task_id, task_dir_remote):
+    def setup_working_dir(self, task_id, task_dir_remote) -> Tuple[str, str]:
         """Setup the working directory for an executer.
 
         This method downloads the input zip from the shared location and
@@ -144,7 +152,7 @@ class TaskRequestHandler:
             task_dir_remote: Remote directory where the input zip is located.
                 Directory is relative to "artifact_filesystem".
         """
-        working_dir = self.build_working_dir(task_id)
+        working_dir_local, working_dir_host = self.build_working_dir(task_id)
 
         input_zip_path_remote = os.path.join(task_dir_remote,
                                              utils.INPUT_ZIP_FILENAME)
@@ -161,25 +169,26 @@ class TaskRequestHandler:
 
             extract_zip_archive(
                 zip_path=input_zip_path_local,
-                dest=working_dir,
+                dest=working_dir_local,
             )
 
             logging.info("Extracted input zip %s to %s", input_zip_path_local,
-                         working_dir)
+                         working_dir_local)
 
-        return working_dir
+        return working_dir_local, working_dir_host
 
-    def execute_request(self, request, task_id, working_dir):
+    def execute_request(self, request, task_id, working_dir_host):
         """Execute the request, return the exit code of the executer script.
 
         NOTE: this launchs a second thread to listen for possible "kill"
         messages from the API.
         """
-        tracker = SubprocessTracker(
-            working_dir=working_dir,
-            command_line=self.build_command(request),
+        tracker = TaskTracker(
+            docker_client=self.docker,
+            image=self.docker_image,
+            working_dir_host=working_dir_host,
+            command=self.build_command(request),
         )
-
         self.redis_client_id = self.redis.client_id()
 
         task_killed_flag = threading.Event()
@@ -195,8 +204,10 @@ class TaskRequestHandler:
                 executer_id=self.executer_uuid,
             ))
 
+        tracker.run()
         thread.start()
-        exit_code = tracker.run()
+
+        exit_code = tracker.wait()
         logging.info("Tracker returned exit code %s.", str(exit_code))
 
         self.redis.client_unblock(self.redis_client_id)
@@ -263,12 +274,13 @@ class TaskRequestHandler:
         task_dir_remote = request["task_dir"]
         self.current_task_id = task_id
 
-        working_dir = self.setup_working_dir(task_id, task_dir_remote)
+        working_dir_local, working_dir_host = self.setup_working_dir(
+            task_id, task_dir_remote)
 
         exit_code, task_killed = \
-            self.execute_request(request, task_id, working_dir)
+            self.execute_request(request, task_id, working_dir_host)
 
-        self.pack_output(task_dir_remote, working_dir)
+        self.pack_output(task_dir_remote, working_dir_local)
 
         self.current_task_id = None
 
