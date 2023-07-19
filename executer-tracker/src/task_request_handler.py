@@ -218,9 +218,6 @@ class TaskRequestHandler:
                 executer_id=self.executer_uuid,
             ))
 
-        tracker.run()
-        thread.start()
-
         thread.start()
         tracker.run()
 
