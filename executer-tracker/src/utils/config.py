@@ -33,6 +33,16 @@ def get_resource_pool_id() -> Optional[UUID]:
 
 
 def load_supported_executer_types(docker_client) -> Dict[str, str]:
+    """Load supported executer types from config file.
+
+    Config file is specified by the EXECUTER_DOCKER_IMAGES_CONFIG environment
+    variable. It should be a JSON file with the following format:
+        {
+            "executer_type_1": "docker_image_1",
+            "gromacs": "gromac-img",
+            "openfoam": "openfoam-img"
+        }
+    """
 
     config_path = os.getenv("EXECUTER_DOCKER_IMAGES_CONFIG")
     if not config_path:
