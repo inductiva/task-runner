@@ -66,7 +66,7 @@ class ExecuterAccessInfo:
     redis_consumer_name: str
 
 
-def register_executer(api_url: str, supported_executers: Sequence[str],
+def register_executer(api_url: str, supported_executer_types: Sequence[str],
                       resource_pool_id: Optional[UUID]) -> ExecuterAccessInfo:
     """Registers an executer in the API.
 
@@ -79,7 +79,7 @@ def register_executer(api_url: str, supported_executers: Sequence[str],
     url = f"{api_url}{REGISTER_EXECUTER_ENDPOINT}"
 
     executer_info = _get_executer_info()
-    executer_info["supported_executers"] = supported_executers
+    executer_info["supported_executer_types"] = supported_executer_types
     if resource_pool_id:
         executer_info["resource_pool_id"] = str(resource_pool_id)
 

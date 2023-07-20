@@ -32,7 +32,7 @@ def get_resource_pool_id() -> Optional[UUID]:
     return UUID(resource_pool_str)
 
 
-def load_supported_executers(docker_client) -> Dict[str, str]:
+def load_supported_executer_types(docker_client) -> Dict[str, str]:
 
     with open("/etc/config/images.json", "r", encoding="UTF-8") as f:
         docker_images = json.load(f)
