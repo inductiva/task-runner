@@ -34,7 +34,12 @@ def get_resource_pool_id() -> Optional[UUID]:
 
 def load_supported_executer_types(docker_client) -> Dict[str, str]:
 
-    with open("/etc/config/images.json", "r", encoding="UTF-8") as f:
+    config_path = os.getenv("EXECUTER_DOCKER_IMAGES_CONFIG")
+    if not config_path:
+        raise ValueError("EXECUTER_DOCKER_IMAGES_CONFIG environment variable "
+                         "not set.")
+
+    with open(config_path, "r", encoding="UTF-8") as f:
         docker_images = json.load(f)
 
     if len(docker_images) == 0:
