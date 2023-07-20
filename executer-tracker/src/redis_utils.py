@@ -78,9 +78,6 @@ def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
             logging.info("ERROR REDIS CONNECTION: %s", str(e))
 
 
-EVENTS_STREAM_NAME = "events"
-
-
 def delete_redis_consumer_multiple_streams(redis_hostname, redis_port,
                                            stream_names, consumer_group,
                                            consumer_name):
