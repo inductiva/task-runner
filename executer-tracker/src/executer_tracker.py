@@ -153,9 +153,9 @@ def log_executer_termination(request_handler,
                              reason,
                              detail=None):
     stopped_tasks = []
-    if request_handler.is_simulation_running():
+    if request_handler.is_task_running():
         logging.info("A simulation was being executed.")
-        stopped_tasks.append(request_handler.current_task_id)
+        stopped_tasks.append(request_handler.task_id)
 
     redis_conn = create_redis_connection(redis_hostname, redis_port)
     event_logger = RedisStreamEventLoggerSync(redis_conn, EVENTS_STREAM_NAME)
@@ -167,7 +167,6 @@ def log_executer_termination(request_handler,
             stopped_tasks=stopped_tasks,
             detail=detail,
         ))
-    redis_conn.set(f"task:{request_handler.current_task_id}:status", "failed")
 
     logging.info("Successfully logged executer tracker termination.")
 
@@ -256,11 +255,11 @@ def main(_):
     redis_consumer_group = executer_access_info.redis_consumer_group
 
     request_handler = TaskRequestHandler(
-        docker.from_env(),
-        redis_conn,
-        artifact_filesystem_root,
-        executer_uuid=executer_uuid,
+        redis_connection=redis_conn,
+        docker_client=docker.from_env(),
         docker_image=docker_image,
+        artifact_filesystem=artifact_filesystem_root,
+        executer_uuid=executer_uuid,
         shared_dir_host=shared_dir_host,
         shared_dir_local=shared_dir_local,
     )
