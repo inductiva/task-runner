@@ -17,4 +17,4 @@ WORKDIR /code
 
 ENV ARTIFACT_STORE=/mnt/artifacts
 
-CMD ["python", "executer_tracker.py"]
+CMD ["python", "main.py"]

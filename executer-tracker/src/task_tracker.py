@@ -59,6 +59,7 @@ class TaskTracker:
         if not self.container:
             raise RuntimeError("Container not running.")
 
+        self.container.logs()
         status = self.container.wait()
 
         return status["StatusCode"]

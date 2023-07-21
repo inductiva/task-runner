@@ -82,7 +82,8 @@ class TaskRequestHandler:
     Attributes:
         redis: Connection to Redis.
         docker_client: Docker client.
-        docker_image: Docker image to use for executing the requests.
+        docker_images: Mapping from executer_type to Docker image to use
+            for executing the task.
         artifact_filesystem: Shared location with the Web API.
         executer_uuid: UUID of the executer that handles the requests.
             Used for event logging purposes.
@@ -99,7 +100,7 @@ class TaskRequestHandler:
         self,
         redis_connection: redis.Redis,
         docker_client: docker.DockerClient,
-        docker_image: str,
+        docker_images: Dict[str, str],
         artifact_filesystem: fs.FileSystem,
         executer_uuid: UUID,
         shared_dir_host: str,
@@ -110,7 +111,7 @@ class TaskRequestHandler:
         self.artifact_filesystem = artifact_filesystem
         self.executer_uuid = executer_uuid
         self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
-        self.docker_image = docker_image
+        self.docker_images = docker_images
         self.shared_dir_host = shared_dir_host
         self.shared_dir_local = shared_dir_local
         self.task_id = None
@@ -196,9 +197,11 @@ class TaskRequestHandler:
         assert self.task_id is not None, (
             "'_execute_request' called without a task ID.")
 
+        image = self.docker_images[request["executer_type"]]
+
         tracker = TaskTracker(
             docker_client=self.docker,
-            image=self.docker_image,
+            image=image,
             command=self._build_command(request),
             working_dir_host=working_dir_host,
         )

@@ -1,11 +1,12 @@
 """Util functions related to executer-tracker config."""
+import json
 import os
-from typing import Optional
+from typing import Dict, Optional
 from uuid import UUID
+from absl import logging
+from docker.errors import ImageNotFound
 
 from utils import gcloud
-
-from absl import logging
 
 
 def get_resource_pool_id() -> Optional[UUID]:
@@ -29,3 +30,45 @@ def get_resource_pool_id() -> Optional[UUID]:
         return None
 
     return UUID(resource_pool_str)
+
+
+def load_supported_executer_types(docker_client) -> Dict[str, str]:
+    """Load supported executer types from config file.
+
+    Config file is specified by the EXECUTER_DOCKER_IMAGES_CONFIG environment
+    variable. It should be a JSON file with the following format:
+        {
+            "executer_type_1": "docker_image_1",
+            "gromacs": "gromac-img",
+            "openfoam": "openfoam-img"
+        }
+    """
+
+    config_path = os.getenv("EXECUTER_DOCKER_IMAGES_CONFIG")
+    if not config_path:
+        raise ValueError("EXECUTER_DOCKER_IMAGES_CONFIG environment variable "
+                         "not set.")
+
+    with open(config_path, "r", encoding="UTF-8") as f:
+        docker_images = json.load(f)
+
+    if len(docker_images) == 0:
+        raise ValueError("No supported executer types specified.")
+
+    logging.info("Supported executer types:")
+    for executer_type, docker_image in docker_images.items():
+        if not isinstance(executer_type, str):
+            raise ValueError(f"Executer type must be a string: {executer_type}")
+        if not isinstance(docker_image, str):
+            raise ValueError(f"Docker image must be a string: {docker_image}")
+
+        logging.info(" > Executer type: %s", executer_type)
+        logging.info("   Docker image: %s", docker_image)
+
+        try:
+            docker_client.images.get(docker_image)
+        except ImageNotFound as e:
+            logging.error("Docker image not found: %s", docker_image)
+            raise e
+
+    return docker_images
