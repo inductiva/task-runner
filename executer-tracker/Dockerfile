@@ -17,6 +17,4 @@ WORKDIR /code
 
 ENV ARTIFACT_STORE=/mnt/artifacts
 
-COPY ./executer-tracker/images.json /etc/config/
-
 CMD ["python", "main.py"]
