@@ -9,7 +9,7 @@ from inductiva_api.events.schemas import Event
 class RedisStreamEventLogger:
     """Class that handles logging events to Redis."""
 
-    def __init__(self, redis: AsyncRedis, stream_key: str):
+    def __init__(self, redis: AsyncRedis, stream_key: str = "events"):
         self.redis = redis
         self.stream_key = stream_key
 
@@ -20,7 +20,7 @@ class RedisStreamEventLogger:
 class RedisStreamEventLoggerSync:
     """Class that handles logging events to Redis."""
 
-    def __init__(self, redis: Redis, stream_key: str):
+    def __init__(self, redis: Redis, stream_key: str = "events"):
         self.redis = redis
         self.stream_key = stream_key
 
