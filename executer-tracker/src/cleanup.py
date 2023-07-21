@@ -19,7 +19,7 @@ def log_executer_termination(request_handler,
                              detail=None):
     stopped_tasks = []
     if request_handler.is_task_running():
-        logging.info("A simulation was being executed.")
+        logging.info("A task was being executed.")
         stopped_tasks.append(request_handler.task_id)
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
