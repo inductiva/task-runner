@@ -48,3 +48,9 @@ To access and test Google Cloud resources within this container, the JSON file c
 The volume must be mounted to the `/mnt/artifacts` directory, as this is the directory from which the executer expects to access input/output files.
 The additional options `gpus` and `cpus` serve to allow access to specific resources to the Docker container. In this case, `gpus` is used because the DualSPHysics executers requires access to GPUs.
 Note that if you name the directory with the repository differently than `inductiva-web-api`, then you need to replace the prefix in the network and volume names with the directory name, since Docker Compose uses the directory name to prefix the containers/networks/volumes launched with a `docker-compose.yml` file.
+
+To run the tasks in the API developed locally, define the api url and key as follows:
+```
+inductiva.api_url = "http://0.0.0.0:8000"
+inductiva.api_key = "1234"
+```
