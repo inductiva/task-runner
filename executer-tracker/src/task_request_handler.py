@@ -6,6 +6,7 @@ launching said executer, and providing the outputs to the Web API.
 Note that, currently, request consumption is blocking.
 """
 import os
+import shutil
 import tempfile
 import threading
 from typing import Dict, Tuple
@@ -153,6 +154,8 @@ class TaskRequestHandler:
         self.event_logger.log(
             events.TaskCompleted(id=self.task_id, status=new_status))
 
+        self._cleanup(working_dir_local)
+
         self.task_id = None
 
     def _setup_working_dir(self, task_dir_remote) -> Tuple[str, str]:
@@ -267,6 +270,18 @@ class TaskRequestHandler:
                     self.artifact_filesystem.base_path,
                     output_zip_path_remote,
                 ))
+
+    def _cleanup(self, working_dir_local):
+        """Cleanup after task execution.
+
+        Deletes the working directory of the task.
+
+        Args:
+            working_dir_local: Working directory of the executer that performed
+                the task.
+        """
+        logging.info("Cleaning up working directory: %s", working_dir_local)
+        shutil.rmtree(working_dir_local)
 
     def _build_command(self, request) -> str:
         """Build Python command to run a requested task.
