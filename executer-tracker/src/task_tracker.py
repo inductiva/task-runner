@@ -62,8 +62,12 @@ class TaskTracker:
             raise RuntimeError("Container not running.")
 
         for s in self.container.stats(decode=True):
+            # Reference:
+            # - https://docs.docker.com/engine/reference/commandline/stats/#description
+            # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats
             logging.info("Read: %s", s["read"])
-            used_memory = s["memory_stats"]["usage"]
+            used_memory = s["memory_stats"]["usage"] - s["memory_stats"][
+                "stats"]["inactive_file"]
             available_memory = s["memory_stats"]["limit"]
             memory_usage_percent = used_memory / available_memory * 100
             logging.info("Memory usage: %s", memory_usage_percent)
@@ -73,7 +77,7 @@ class TaskTracker:
             try:
                 precpu_system_cpu_usage = s["precpu_stats"]["system_cpu_usage"]
             except KeyError:
-                logging.warning("precpu_stats not available.")
+                # This happens on the first read.
                 precpu_system_cpu_usage = 0
 
             system_cpu_delta = (s["cpu_stats"]["system_cpu_usage"] -
