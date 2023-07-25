@@ -40,13 +40,13 @@ After building the executer Docker image, named `executer` in this example, a co
 ```
 
 This container must have access to the network shared by the web API
-and Redis server, which is named `inductiva-web-api_api` if you use the `docker-compose.yml` provided in the root of the repository to launch local API and Redis instances.
-The container also needs access to a shared volume with the web API, named `inductiva-web-api_artifact-store` if the `docker-compose.yml` is used. The `-v` option in the `docker run` command is used to specify the shared volume.
-This container needs access to a local directory called `exec-tracker` where the outputs of the tasks will be stored. You might need to create this directory before launching the container.
-There must be a JSON file called `docker-images-config.json` with the executer names and image names of the executers this container will run. Example if shown [here](https://github.com/inductiva/inductiva-web-api/blob/2711bdc96c701579fa4442016cd637725a7ae55a/executer-tracker/src/utils/config.py#L38).
-To access and test Google Cloud resources within this container, the JSON file called `gcloud_key.json` with the GC credentials should exist in `/gcloud` directory.
+and Redis server, which is named `inductiva-web-api_api` if you use the `docker-compose.yml` provided in the root of the repository to launch local API and Redis instances.__
+The container also needs access to a shared volume with the web API, named `inductiva-web-api_artifact-store` if the `docker-compose.yml` is used. The `-v` option in the `docker run` command is used to specify the shared volume.__
+This container needs access to a local directory called `exec-tracker` where the outputs of the tasks will be stored. You might need to create this directory before launching the container.__
+There must be a JSON file called `docker-images-config.json` with the executer names and image names of the executers this container will run. Example if shown [here](https://github.com/inductiva/inductiva-web-api/blob/2711bdc96c701579fa4442016cd637725a7ae55a/executer-tracker/src/utils/config.py#L38).__
+To access and test Google Cloud resources within this container, the JSON file called `gcloud_key.json` with the GC credentials should exist in `/gcloud` directory.__
 The volume must be mounted to the `/mnt/artifacts` directory, as this is the directory from which the executer expects to access input/output files.
-The additional options `gpus` and `cpus` serve to allow access to specific resources to the Docker container. In this case, `gpus` is used because the DualSPHysics executers requires access to GPUs.
+The additional options `gpus` and `cpus` serve to allow access to specific resources to the Docker container. In this case, `gpus` is used because the DualSPHysics executers requires access to GPUs.__
 Note that if you name the directory with the repository differently than `inductiva-web-api`, then you need to replace the prefix in the network and volume names with the directory name, since Docker Compose uses the directory name to prefix the containers/networks/volumes launched with a `docker-compose.yml` file.
 
 To run the tasks in the API developed locally, define the api url and key as follows:
