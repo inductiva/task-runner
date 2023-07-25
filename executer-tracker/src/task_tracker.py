@@ -63,8 +63,8 @@ class TaskTracker:
 
         for s in self.container.stats(decode=True):
             # Reference:
-            # - https://docs.docker.com/engine/reference/commandline/stats/#description # disable=line-too-long
-            # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats # disable=line-too-long
+            # - https://docs.docker.com/engine/reference/commandline/stats/#description # pylint: disable=line-too-long
+            # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats # pylint: disable=line-too-long
             logging.info("Read: %s", s["read"])
             used_memory = s["memory_stats"]["usage"] - s["memory_stats"][
                 "stats"]["inactive_file"]
