@@ -4,6 +4,8 @@ import docker
 from docker.types import Mount
 from docker.models.containers import Container
 
+from absl import logging
+
 
 class TaskTracker:
     """Run and track a task in a Docker container.
@@ -59,7 +61,32 @@ class TaskTracker:
         if not self.container:
             raise RuntimeError("Container not running.")
 
-        self.container.logs()
+        for s in self.container.stats(decode=True):
+            # Reference:
+            # - https://docs.docker.com/engine/reference/commandline/stats/#description # pylint: disable=line-too-long
+            # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats # pylint: disable=line-too-long
+            logging.info("Read: %s", s["read"])
+            used_memory = s["memory_stats"]["usage"] - s["memory_stats"][
+                "stats"]["inactive_file"]
+            available_memory = s["memory_stats"]["limit"]
+            memory_usage_percent = used_memory / available_memory * 100
+            logging.info("Memory usage: %s", memory_usage_percent)
+            cpu_delta = s["cpu_stats"]["cpu_usage"]["total_usage"] - s[
+                "precpu_stats"]["cpu_usage"]["total_usage"]
+
+            try:
+                precpu_system_cpu_usage = s["precpu_stats"]["system_cpu_usage"]
+            except KeyError:
+                # This happens on the first read.
+                precpu_system_cpu_usage = 0
+
+            system_cpu_delta = (s["cpu_stats"]["system_cpu_usage"] -
+                                precpu_system_cpu_usage)
+            number_cpus = s["cpu_stats"]["online_cpus"]
+            cpu_usage_percent = (cpu_delta /
+                                 system_cpu_delta) * number_cpus * 100
+            logging.info("CPU usage: %s", cpu_usage_percent)
+
         status = self.container.wait()
 
         return status["StatusCode"]
