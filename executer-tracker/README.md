@@ -10,10 +10,10 @@ request.
 
 Building a Docker image with this service requires building only one Docker image, it is 
 the `executer` image, specified in the provided [Dockerfile](Dockerfile). This docker
-image can be built with a following command:
+image can be built with a following command from the `inductiva-web-api` directory:
 
 ```shell
-docker build --name executer .
+docker build executer-tracker/Dockerfile --name executer .
 ```
 
 In the command above, the flag `name` is used to specify the name of the resulting
