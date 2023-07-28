@@ -317,6 +317,8 @@ class TaskRequestHandler:
                 "/scripts/windtunnel_simulation.py",
             "md.gromacs.run_simulation":
                 "/scripts/simulation.py",
+            "stellarators.simsopt.run_simulation":
+                "/scripts/simulation.py",
         }
         method = request["method"]
 
