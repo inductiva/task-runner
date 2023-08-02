@@ -313,6 +313,8 @@ class TaskRequestHandler:
                 "/scripts/simulation.py",
             "fvm.openfoam.run_simulation":
                 "/scripts/simulation.py",
+            "fem.fenicsx.run_simulation":
+                "/scripts/simulation_linear_elasticity.py",
             "windtunnel.openfoam.run_simulation":
                 "/scripts/windtunnel_simulation.py",
             "md.gromacs.run_simulation":
