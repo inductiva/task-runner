@@ -24,6 +24,8 @@ from utils import make_task_key
 from utils import files
 from task_tracker import TaskTracker
 
+TASK_COMMANDS_QUEUE = "commands"
+
 
 def redis_kill_msg_catcher(
     redis_conn: redis.Redis,
@@ -43,7 +45,7 @@ def redis_kill_msg_catcher(
         task_tracker: TaskTracker instance that wraps the running task.
         killed_flag: Flag to signal that the task was killed.
     """
-    queue = make_task_key(task_id, "events")
+    queue = make_task_key(task_id, TASK_COMMANDS_QUEUE)
 
     while True:
         logging.info("Waiting for kill message on queue: %s", queue)
