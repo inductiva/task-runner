@@ -144,6 +144,8 @@ class TaskRequestHandler:
                                                        working_dir_host)
         self._pack_output(task_dir_remote, working_dir_local)
 
+        self._cleanup(working_dir_local)
+
         if task_killed:
             self.event_logger.log(events.TaskKilled(id=self.task_id),)
             return
@@ -155,8 +157,6 @@ class TaskRequestHandler:
 
         self.event_logger.log(
             events.TaskCompleted(id=self.task_id, status=new_status))
-
-        self._cleanup(working_dir_local)
 
         self.task_id = None
 
