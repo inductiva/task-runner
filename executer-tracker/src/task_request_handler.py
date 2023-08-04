@@ -156,7 +156,7 @@ class TaskRequestHandler:
         self.event_logger.log(
             events.TaskCompleted(id=self.task_id, status=new_status))
 
-        self._cleanup(working_dir_local)
+        #self._cleanup(working_dir_local)
 
         self.task_id = None
 
