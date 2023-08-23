@@ -140,11 +140,12 @@ class TaskRequestHandler:
 
         working_dir_local, working_dir_host = self._setup_working_dir(
             task_dir_remote)
+        logging.info("working dir ", working_dir_local)
         exit_code, task_killed = self._execute_request(request,
                                                        working_dir_host)
         self._pack_output(task_dir_remote, working_dir_local)
 
-        self._cleanup(working_dir_local)
+        # self._cleanup(working_dir_local)
 
         if task_killed:
             self.event_logger.log(events.TaskKilled(id=self.task_id),)
@@ -203,7 +204,7 @@ class TaskRequestHandler:
             "'_execute_request' called without a task ID.")
 
         image = self.docker_images[request["executer_type"]]
-
+        logging.info("image ", image)
         tracker = TaskTracker(
             docker_client=self.docker,
             image=image,
@@ -316,7 +317,7 @@ class TaskRequestHandler:
             "fvm.openfoam.run_simulation":
                 "/scripts/simulation.py",
             "fem.fenicsx.run_simulation":
-                "/scripts/simulation_linear_elasticity.py",
+                "/scripts/simulation.py",
             "windtunnel.openfoam.run_simulation":
                 "/scripts/windtunnel_simulation.py",
             "md.gromacs.run_simulation":
