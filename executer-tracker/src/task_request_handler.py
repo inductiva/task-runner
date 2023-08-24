@@ -140,7 +140,6 @@ class TaskRequestHandler:
 
         working_dir_local, working_dir_host = self._setup_working_dir(
             task_dir_remote)
-
         exit_code, task_killed = self._execute_request(request,
                                                        working_dir_host)
         self._pack_output(task_dir_remote, working_dir_local)
