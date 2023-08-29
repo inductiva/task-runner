@@ -322,6 +322,8 @@ class TaskRequestHandler:
                 "/scripts/windtunnel_simulation.py",
             "md.gromacs.run_simulation":
                 "/scripts/simulation.py",
+            "proteinsolvation.gromacs.run_simulation":
+                "/scripts/proteinsolvation_simulation.py",
             "stellarators.simsopt.run_simulation":
                 "/scripts/simulation.py",
         }
