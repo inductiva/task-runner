@@ -323,7 +323,7 @@ class TaskRequestHandler:
             "md.gromacs.run_simulation":
                 "/scripts/simulation.py",
             "proteinsolvation.gromacs.run_simulation":
-                "/scripts/proteinsolvation_simulation.py",
+                "/scripts/protein_solvation_simulation.py",
             "stellarators.simsopt.run_simulation":
                 "/scripts/simulation.py",
         }
