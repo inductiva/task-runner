@@ -308,6 +308,8 @@ class TaskRequestHandler:
                 "/scripts/sleep.py",
             "sph.splishsplash.run_simulation":
                 "/scripts/simulation.py",
+            "fluid_tank.splishsplash.run_simulation":
+                "/scripts/fluid_tank_simulation.py",
             "sph.dualsphysics.run_simulation":
                 "/scripts/simulation.py",
             "sw.swash.run_simulation":
