@@ -74,7 +74,9 @@ class TaskTracker:
                 logging.info("Memory usage: %s", memory_usage_percent)
                 cpu_delta = s["cpu_stats"]["cpu_usage"]["total_usage"] - s[
                     "precpu_stats"]["cpu_usage"]["total_usage"]
-            except KeyError:
+            except KeyError as e:
+                logging.error("KeyError: %s", str(e))
+                logging.info("Stats dict: %s", str(s))
                 continue
 
             try:
