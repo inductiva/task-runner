@@ -1,8 +1,10 @@
 """Class for running and tracking a task in a Docker container."""
 from typing import Optional
 import docker
-from docker.types import Mount
+import docker.types
 from docker.models.containers import Container
+
+from utils import config
 
 from absl import logging
 
@@ -12,7 +14,7 @@ class TaskTracker:
 
     Attributes:
         docker: Docker client.
-        image: Docker image to run.
+        executer_config: Docker image to run.
         command: Command to run in the container.
         working_dir_host: Path to the working directory in the host of the
             container. This directory is bind-mounted to the container.
@@ -20,14 +22,15 @@ class TaskTracker:
             the run method is called.
     """
 
-    def __init__(self, docker_client: docker.DockerClient, image: str,
-                 command: str, working_dir_host: str):
+    def __init__(self, docker_client: docker.DockerClient,
+                 executer_config: config.ExecuterConfig, command: str,
+                 working_dir_host: str):
         """Initialize the task tracker.
 
         Args described in class docstring.
         """
         self.docker = docker_client
-        self.image = image
+        self.executer_config = executer_config
         self.command = command
         self.working_dir_host = working_dir_host
         self.container: Optional[Container] = None
@@ -36,11 +39,20 @@ class TaskTracker:
         """Runs the task in a Docker container in detached mode."""
         container_working_dir = "/working_dir"
 
+        device_requests = []
+        if self.executer_config.use_gpu:
+            gpu_request = docker.types.DeviceRequest(
+                driver="nvidia",
+                capabilities=[["gpu"]],
+                count=-1,  # allow access to all GPUs
+            )
+            device_requests.append(gpu_request)
+
         container = self.docker.containers.run(
-            self.image,
+            self.executer_config.image,
             self.command,
             mounts=[
-                Mount(
+                docker.types.Mount(
                     container_working_dir,
                     self.working_dir_host,
                     type="bind",
@@ -49,7 +61,7 @@ class TaskTracker:
             working_dir=container_working_dir,
             detach=True,  # Run container in background.
             auto_remove=True,  # Remove container when it exits.
-        )
+            device_requests=device_requests)
         assert isinstance(
             container,
             Container), "Launched container is not of type Container."

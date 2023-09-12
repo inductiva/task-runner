@@ -94,11 +94,11 @@ def main(_):
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
     docker_client = docker.from_env()
 
-    executer_type_to_image = config.load_supported_executer_types(docker_client)
+    executers_config = config.load_executers_config(docker_client)
 
     executer_access_info = register_executer(
         api_url,
-        list(executer_type_to_image.keys()),
+        list(executers_config.keys()),
         resource_pool_id=resource_pool_id,
     )
     executer_uuid = executer_access_info.id
@@ -110,7 +110,7 @@ def main(_):
     request_handler = TaskRequestHandler(
         redis_connection=redis_conn,
         docker_client=docker_client,
-        docker_images=executer_type_to_image,
+        executers_config=executers_config,
         artifact_filesystem=artifact_filesystem_root,
         executer_uuid=executer_uuid,
         shared_dir_host=shared_dir_host,

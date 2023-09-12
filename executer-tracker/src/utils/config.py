@@ -1,6 +1,7 @@
 """Util functions related to executer-tracker config."""
 import json
 import os
+import dataclasses
 from typing import Dict, Optional
 from uuid import UUID
 from absl import logging
@@ -32,38 +33,65 @@ def get_resource_pool_id() -> Optional[UUID]:
     return UUID(resource_pool_str)
 
 
-def load_supported_executer_types(docker_client) -> Dict[str, str]:
+@dataclasses.dataclass
+class ExecuterConfig:
+    image: str
+    use_gpu: bool = False
+
+
+def load_executers_config(docker_client) -> Dict[str, ExecuterConfig]:
     """Load supported executer types from config file.
 
-    Config file is specified by the EXECUTER_DOCKER_IMAGES_CONFIG environment
+    Config file is specified by the EXECUTERS_CONFIG environment
     variable. It should be a JSON file with the following format:
         {
-            "executer_type_1": "docker_image_1",
-            "gromacs": "gromac-img",
-            "openfoam": "openfoam-img"
+            "executer_type_1": {
+                "image": "docker_image_1",
+                "gpu": true
+            },
+            "gromacs": {
+                "image": "gromacs-img",
+                "gpu": true
+            },
+            "openfoam": {
+                "image": "openfoam-img",
+                "gpu": false
+            }
         }
     """
 
-    config_path = os.getenv("EXECUTER_DOCKER_IMAGES_CONFIG")
+    config_path = os.getenv("EXECUTERS_CONFIG")
     if not config_path:
-        raise ValueError("EXECUTER_DOCKER_IMAGES_CONFIG environment variable "
+        raise ValueError("EXECUTERS_CONFIG environment variable "
                          "not set.")
 
     with open(config_path, "r", encoding="UTF-8") as f:
-        docker_images = json.load(f)
+        executers_config_unparsed = json.load(f)
 
-    if len(docker_images) == 0:
+    if len(executers_config_unparsed) == 0:
         raise ValueError("No supported executer types specified.")
 
+    executers_config = {}
+
     logging.info("Supported executer types:")
-    for executer_type, docker_image in docker_images.items():
-        if not isinstance(executer_type, str):
-            raise ValueError(f"Executer type must be a string: {executer_type}")
+    for exec_type, exec_config_unparsed in executers_config_unparsed.items():
+        if not isinstance(exec_type, str):
+            raise ValueError(f"Executer type must be a string: {exec_type}")
+        if not isinstance(exec_config_unparsed, dict):
+            raise ValueError(
+                f"Docker image must be a dict: {exec_config_unparsed}")
+
+        docker_image = exec_config_unparsed.get("image")
         if not isinstance(docker_image, str):
+            logging.error("Docker image must be a string: %s", docker_image)
             raise ValueError(f"Docker image must be a string: {docker_image}")
 
-        logging.info(" > Executer type: %s", executer_type)
+        use_gpu = exec_config_unparsed.get("gpu", False)
+
+        logging.info(" > Executer type: %s", exec_type)
         logging.info("   Docker image: %s", docker_image)
+        if use_gpu:
+            logging.info("   Use GPU: %s", use_gpu)
 
         try:
             docker_client.images.get(docker_image)
@@ -71,4 +99,7 @@ def load_supported_executer_types(docker_client) -> Dict[str, str]:
             logging.error("Docker image not found: %s", docker_image)
             raise e
 
-    return docker_images
+        executers_config[exec_type] = ExecuterConfig(image=docker_image,
+                                                     use_gpu=use_gpu)
+
+    return executers_config
