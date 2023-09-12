@@ -22,6 +22,7 @@ from inductiva_api.task_status import TaskStatusCode
 from pyarrow import fs
 from utils import make_task_key
 from utils import files
+from utils import config
 from task_tracker import TaskTracker
 
 TASK_COMMANDS_QUEUE = "commands"
@@ -103,7 +104,7 @@ class TaskRequestHandler:
         self,
         redis_connection: redis.Redis,
         docker_client: docker.DockerClient,
-        docker_images: Dict[str, str],
+        executers_config: Dict[str, config.ExecuterConfig],
         artifact_filesystem: fs.FileSystem,
         executer_uuid: UUID,
         shared_dir_host: str,
@@ -114,7 +115,7 @@ class TaskRequestHandler:
         self.artifact_filesystem = artifact_filesystem
         self.executer_uuid = executer_uuid
         self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
-        self.docker_images = docker_images
+        self.executers_config = executers_config
         self.shared_dir_host = shared_dir_host
         self.shared_dir_local = shared_dir_local
         self.task_id = None
@@ -203,11 +204,11 @@ class TaskRequestHandler:
         assert self.task_id is not None, (
             "'_execute_request' called without a task ID.")
 
-        image = self.docker_images[request["executer_type"]]
+        executer_config = self.executers_config[request["executer_type"]]
 
         tracker = TaskTracker(
             docker_client=self.docker,
-            image=image,
+            executer_config=executer_config,
             command=self._build_command(request),
             working_dir_host=working_dir_host,
         )
