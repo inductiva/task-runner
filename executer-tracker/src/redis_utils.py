@@ -38,44 +38,42 @@ def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
         request_handler: TaskRequestHandler instance that will handle
             the received request.
     """
-    sleep_ms = 0  # 0ms means block forever
+    sleep_ms = 500  # 0ms means block forever
 
     logging.info("Starting monitoring of Redis streams:")
     for stream_name in stream_names:
         logging.info(" > %s", stream_name)
 
-    streams = {
-        stream_name: DELIVER_NEW_MESSAGES for stream_name in stream_names
-    }
-
     while True:
-        try:
-            logging.info("Waiting for requests...")
-            resp = redis_connection.xreadgroup(
-                groupname=consumer_group,
-                consumername=consumer_name,
-                # Using the following ID will get messages that haven't
-                # been delivered to any consumer.
-                streams=streams,
-                count=1,  # reads one item at a time.
-                block=sleep_ms,
-            )
-            if resp:
-                logging.info("Received request:")
-                logging.info("      --> %s", str(resp))
-                stream_name, messages = resp[0]
-                stream_entry_id, request = messages[0]
-                logging.info("REDIS ID: %s", str(stream_entry_id))
-                logging.info("      --> %s", str(request))
+        # Check each stream independently
+        for stream_name in stream_names:
+            try:
+                logging.info("Waiting for requests on: %s", stream_name)
+                resp = redis_connection.xreadgroup(
+                    groupname=consumer_group,
+                    consumername=consumer_name,
+                    # Using the following ID will get messages that haven't
+                    # been delivered to any consumer.
+                    streams={stream_name: DELIVER_NEW_MESSAGES},
+                    count=1,  # reads one item at a time.
+                    block=sleep_ms,
+                )
+                if resp:
+                    logging.info("Received request:")
+                    logging.info("      --> %s", str(resp))
+                    stream_name, messages = resp[0]
+                    stream_entry_id, request = messages[0]
+                    logging.info("REDIS ID: %s", str(stream_entry_id))
+                    logging.info("      --> %s", str(request))
 
-                request_handler(request)
+                    request_handler(request)
 
-                # Acknowledge successful processing of the received message
-                redis_connection.xack(stream_name, consumer_group,
-                                      stream_entry_id)
+                    # Acknowledge successful processing of the received message
+                    redis_connection.xack(stream_name, consumer_group,
+                                          stream_entry_id)
 
-        except ConnectionError as e:
-            logging.info("ERROR REDIS CONNECTION: %s", str(e))
+            except ConnectionError as e:
+                logging.info("ERROR REDIS CONNECTION: %s", str(e))
 
 
 def delete_redis_consumer_multiple_streams(redis_hostname, redis_port,
