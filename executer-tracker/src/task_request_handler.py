@@ -12,6 +12,7 @@ import threading
 from typing import Dict, Tuple
 import docker
 import redis
+import json
 from uuid import UUID
 
 import utils
@@ -298,38 +299,9 @@ class TaskRequestHandler:
         Returns:
             Python command to execute received request.
         """
-        method_to_script = {
-            "linalg.eigs":
-                "/scripts/run_eigensolver.py",
-            "math.matmul":
-                "/scripts/matmul.py",
-            "math.sum":
-                "/scripts/sum.py",
-            "test.sleep":
-                "/scripts/sleep.py",
-            "sph.splishsplash.run_simulation":
-                "/scripts/simulation.py",
-            "fluid_tank.splishsplash.run_simulation":
-                "/scripts/fluid_tank_simulation.py",
-            "sph.dualsphysics.run_simulation":
-                "/scripts/simulation.py",
-            "sw.swash.run_simulation":
-                "/scripts/simulation.py",
-            "sw.xbeach.run_simulation":
-                "/scripts/simulation.py",
-            "fvm.openfoam.run_simulation":
-                "/scripts/simulation.py",
-            "fem.fenicsx.run_simulation":
-                "/scripts/simulation.py",
-            "windtunnel.openfoam.run_simulation":
-                "/scripts/windtunnel_simulation.py",
-            "md.gromacs.run_simulation":
-                "/scripts/simulation.py",
-            "proteinsolvation.gromacs.run_simulation":
-                "/scripts/protein_solvation_simulation.py",
-            "stellarators.simsopt.run_simulation":
-                "/scripts/simulation.py",
-        }
+        with open("method_to_script.json", "r", encoding="utf-8") as json_file:
+            method_to_script = json.load(json_file)
+
         method = request["method"]
 
         return f"python {method_to_script[method]}"
