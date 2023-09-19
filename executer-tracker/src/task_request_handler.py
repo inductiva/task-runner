@@ -299,7 +299,7 @@ class TaskRequestHandler:
         Returns:
             Python command to execute received request.
         """
-        with open("method_to_script.json", "r", encoding="utf-8") as json_file:
+        with open("methods_to_script.json", "r", encoding="utf-8") as json_file:
             method_to_script = json.load(json_file)
 
         method = request["method"]
