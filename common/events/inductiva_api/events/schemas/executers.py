@@ -21,6 +21,7 @@ class GCloudHostInfo(BaseModel):
 class InductivaHostInfo(BaseModel):
     """Info about the Inductiva server hosting the executer."""
     host_type: Literal["inductiva-hardware"]
+    hostname: str
 
 
 class ExecuterCreate(BaseModel):
