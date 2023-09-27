@@ -1,6 +1,7 @@
 """Module for registering an executer with the API."""
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import os
 from typing import Dict, List, Optional, Sequence
 from uuid import UUID
 
@@ -47,8 +48,13 @@ def _get_executer_info() -> Dict:
         logging.info("\t> VM type: %s", vm_info.type)
         logging.info("\t> VM preemptible: %s", vm_info.preemptible)
     else:
+        hostname = os.environ.get("HOSTNAME", None)
+        if hostname is None:
+            raise RuntimeError("HOSTNAME environment variable not provided.")
+
         provider_specific_info = {
             "host_type": "inductiva-hardware",
+            "hostname": hostname
         }
         logging.logging.info("Running on Inductiva machine.")
 
