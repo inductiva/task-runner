@@ -16,6 +16,9 @@ def _get_executer_info() -> Dict:
     cpu_info = host.get_cpu_info_verbose()
     cpu_count = host.get_cpu_count()
     memory = host.get_total_memory()
+    git_commit_hash = os.environ.get("GIT_COMMIT")
+    if git_commit_hash is None:
+        raise RuntimeError("GIT_COMMIT environment variable not provided.")
 
     common_info = {
         "create_time": datetime.now(timezone.utc).isoformat(),
@@ -23,6 +26,7 @@ def _get_executer_info() -> Dict:
         "cpu_count_physical": cpu_count.physical,
         "memory": memory,
         "cpu_info": cpu_info,
+        "git_commit_hash": git_commit_hash,
     }
 
     logging.info("Executer resources:")
