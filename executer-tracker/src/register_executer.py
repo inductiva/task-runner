@@ -16,9 +16,9 @@ def _get_executer_info() -> Dict:
     cpu_info = host.get_cpu_info_verbose()
     cpu_count = host.get_cpu_count()
     memory = host.get_total_memory()
-    git_commit_hash = os.environ.get("GIT_COMMIT")
+    git_commit_hash = os.environ.get("GIT_COMMIT_HASH")
     if git_commit_hash is None:
-        raise RuntimeError("GIT_COMMIT environment variable not provided.")
+        raise RuntimeError("GIT_COMMIT_HASH environment variable not provided.")
 
     common_info = {
         "create_time": datetime.now(timezone.utc).isoformat(),
@@ -60,7 +60,8 @@ def _get_executer_info() -> Dict:
             "host_type": "inductiva-hardware",
             "hostname": hostname
         }
-        logging.logging.info("Running on Inductiva machine.")
+        logging.info("Running on Inductiva machine:")
+        logging.info("\t> Hostname: %s", hostname)
 
     return {
         **common_info,
