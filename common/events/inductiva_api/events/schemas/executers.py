@@ -33,6 +33,7 @@ class ExecuterCreate(BaseModel):
     memory: int
     cpu_info: str
     resource_pool_id: Optional[UUID4]
+    git_commit_hash: str
 
     # Use the "type" field to discriminate between different executer types.
     host_info: Annotated[Union[GCloudHostInfo, InductivaHostInfo],
