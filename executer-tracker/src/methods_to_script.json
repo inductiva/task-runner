@@ -35,6 +35,8 @@
         "/scripts/simulation.py",
     "stellarators.simsopt.run_simulation":
         "/scripts/simulation.py",
+    "fem.fenicsx.run_simulation":
+        "/scripts/simulation.py",
     "deformable_plate.fenicsx.run_simulation":
         "/scripts/deformable_plate_simulation.py"
 }
