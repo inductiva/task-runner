@@ -31,7 +31,6 @@ class ExecuterCreate(BaseModel):
     cpu_count_logical: int
     cpu_count_physical: int
     memory: int
-    cpu_info: str
     resource_pool_id: Optional[UUID4]
     git_commit_hash: str
 
