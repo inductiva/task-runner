@@ -13,7 +13,6 @@ REGISTER_EXECUTER_ENDPOINT = "/executers/register"
 
 
 def _get_executer_info() -> Dict:
-    cpu_info = host.get_cpu_info_verbose()
     cpu_count = host.get_cpu_count()
     memory = host.get_total_memory()
     git_commit_hash = os.environ.get("GIT_COMMIT_HASH")
@@ -25,7 +24,6 @@ def _get_executer_info() -> Dict:
         "cpu_count_logical": cpu_count.logical,
         "cpu_count_physical": cpu_count.physical,
         "memory": memory,
-        "cpu_info": cpu_info,
         "git_commit_hash": git_commit_hash,
     }
 
