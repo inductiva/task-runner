@@ -1,6 +1,6 @@
 """Util functions to get info about the GCloud VM the executer is on."""
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 from utils import bool_string_to_bool
 import requests
 
@@ -79,9 +79,9 @@ def get_vm_metadata_value(key: str) -> Optional[str]:
 class GCloudVMInfo:
     type: str
     name: str
+    zone: str
     id: str
     preemptible: bool
-    metadata: Dict[str, Any]
 
 
 def get_vm_info() -> Optional[GCloudVMInfo]:
@@ -98,8 +98,8 @@ def get_vm_info() -> Optional[GCloudVMInfo]:
         type=metadata["machineType"],
         name=metadata["name"],
         id=str(metadata["id"]),
+        zone=metadata["zone"],
         preemptible=preemptible,
-        metadata=metadata,
     )
 
 
