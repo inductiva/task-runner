@@ -222,10 +222,26 @@ class TaskRequestHandler:
             daemon=True,
         )
 
+        executer_docker_image_digest = None
+        executer_git_commit_hash = None
+        executer_docker_image = self.docker.images.get(executer_config.image)
+        if executer_docker_image is not None:
+            if executer_docker_image.labels is not None:
+                executer_git_commit_hash = executer_docker_image.labels.get(
+                    "org.opencontainers.image.revision")
+            if executer_docker_image.attrs is not None:
+                executer_docker_image_digests = executer_docker_image.attrs.get(
+                    "RepoDigests")
+                if len(executer_docker_image_digests) > 0:
+                    executer_docker_image_digest = executer_docker_image_digests[
+                        0]
+
         self.event_logger.log(
             events.TaskStarted(
                 id=self.task_id,
                 executer_id=self.executer_uuid,
+                executer_git_commit_hash=executer_git_commit_hash,
+                executer_docker_image_digest=executer_docker_image_digest,
             ))
 
         thread.start()
