@@ -1,39 +1,54 @@
 """Events related to tasks."""
-from typing import Optional
-from .event import Event
-from inductiva_api.task_status import TaskStatusCode
-from uuid import UUID
+from typing import Optional, Dict, Any
+import uuid
+
+import inductiva_api.events.schemas as event_schemas
 
 
-class TaskEvent(Event):
+class TaskEvent(event_schemas.Event):
     id: str
-    status: TaskStatusCode
 
 
 class TaskCreated(TaskEvent):
     method: str
     user_id: int
-    status: TaskStatusCode = TaskStatusCode.PENDING_INPUT
+    machine_group_id: uuid.UUID
+    scenario_name: Optional[str]
+    client_version: str
+    request: Dict[str, Any]
 
 
 class TaskInputUploaded(TaskEvent):
-    status: TaskStatusCode = TaskStatusCode.SUBMITTED
+    input_size_b: int
 
 
-class TaskStarted(TaskEvent):
-    status: TaskStatusCode = TaskStatusCode.STARTED
-    executer_id: UUID
+class TaskPickedUp(TaskEvent):
+    machine_id: uuid.UUID
     executer_docker_image_digest: Optional[str] = None
     executer_git_commit_hash: Optional[str] = None
 
 
+class TaskWorkStarted(TaskEvent):
+    machine_id: uuid.UUID
+
+
+class TaskWorkFinished(TaskEvent):
+    machine_id: uuid.UUID
+
+
+class TaskOutputUploaded(TaskEvent):
+    machine_id: uuid.UUID
+    output_size_b: int
+
+
 class TaskKillRequested(TaskEvent):
-    status: TaskStatusCode = TaskStatusCode.PENDING_KILL
+    user_id: int
 
 
 class TaskKilled(TaskEvent):
-    status: TaskStatusCode = TaskStatusCode.KILLED
+    machine_id: uuid.UUID
 
 
 class TaskCompleted(TaskEvent):
-    pass
+    machine_id: uuid.UUID
+    success: bool
