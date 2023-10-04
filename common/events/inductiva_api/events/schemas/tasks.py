@@ -1,4 +1,5 @@
 """Events related to tasks."""
+from typing import Optional
 from .event import Event
 from inductiva_api.task_status import TaskStatusCode
 from uuid import UUID
@@ -22,6 +23,8 @@ class TaskInputUploaded(TaskEvent):
 class TaskStarted(TaskEvent):
     status: TaskStatusCode = TaskStatusCode.STARTED
     executer_id: UUID
+    executer_docker_image_digest: Optional[str] = None
+    executer_git_commit_hash: Optional[str] = None
 
 
 class TaskKillRequested(TaskEvent):
