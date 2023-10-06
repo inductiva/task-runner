@@ -49,7 +49,14 @@ class TaskOutputUploaded(TaskEvent):
 
 class TaskKillRequested(TaskEvent):
     user_id: int
+    current_status: str
+
+
+class TaskKillCommandIssued(TaskEvent):
+    redis_queue: str
 
 
 class TaskKilled(TaskEvent):
-    machine_id: uuid.UUID
+    # optional because the task may have been killed before
+    # it was assigned to a machine
+    machine_id: Optional[uuid.UUID] = None

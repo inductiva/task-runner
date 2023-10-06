@@ -1,11 +1,12 @@
-"""Events related to executers."""
+"""Schemas of events issued by the executer-tracker."""
 from typing import List, Literal, Union, Optional
 from typing_extensions import Annotated
+import uuid
 import datetime
 import pydantic
 
 import inductiva_api.events.schemas as event_schemas
-from inductiva_api.task_status import ExecuterTerminationReason
+from inductiva_api import task_status
 
 
 class GCloudHostInfo(pydantic.BaseModel):
@@ -32,7 +33,7 @@ class ExecuterTrackerRegisterInfo(pydantic.BaseModel):
     cpu_count_physical: int
     memory: int
     git_commit_hash: str
-    resource_pool_id: Optional[pydantic.UUID4]
+    machine_group_id: Optional[uuid.UUID]
 
     # Use the "type" field to discriminate between different executer types.
     host_info: Annotated[Union[GCloudHostInfo, InductivaHostInfo],
@@ -41,7 +42,7 @@ class ExecuterTrackerRegisterInfo(pydantic.BaseModel):
 
 # Shared properties of executer tracker events.
 class ExecuterTrackerEvent(event_schemas.Event):
-    uuid: pydantic.UUID4
+    uuid: uuid.UUID
 
 
 # Executer tracker up event.
@@ -51,6 +52,6 @@ class ExecuterTrackerRegistered(ExecuterTrackerEvent):
 
 # Executer tracker down event.
 class ExecuterTrackerTerminated(ExecuterTrackerEvent):
-    reason: ExecuterTerminationReason
+    reason: task_status.ExecuterTerminationReason
     detail: Optional[str]
     stopped_tasks: List[str]

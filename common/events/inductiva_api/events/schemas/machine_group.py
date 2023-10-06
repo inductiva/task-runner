@@ -1,9 +1,10 @@
-"""Schema for resource pool related events."""
-from uuid import UUID
+"""Schemas for machine group related events."""
 
-from .event import Event
+from events import schemas as event_schemas
 
 
-class ResourcePoolCreated(Event):
-    uuid: UUID
-    created_by: str
+class MachineGroupCreated(event_schemas.Event):
+    uuid: pydantic.UUID
+    user_id: str
+
+class MachineGroupStarted(event_schemas.)
