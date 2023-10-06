@@ -46,7 +46,7 @@ class ExecuterTrackerEvent(event_schemas.Event):
 
 # Executer tracker up event.
 class ExecuterTrackerRegistered(ExecuterTrackerEvent):
-    executer_info: ExecuterTrackerRegisterInfo
+    machine_info: ExecuterTrackerRegisterInfo
 
 
 # Executer tracker down event.

@@ -10,12 +10,12 @@ class TaskEvent(event_schemas.Event):
 
 
 class TaskCreated(TaskEvent):
-    method: str
     user_id: int
+    api_method_name: str
     machine_group_id: uuid.UUID
     scenario_name: Optional[str]
-    client_version: str
-    request: Dict[str, Any]
+    client_version: Optional[str]
+    request_params: Dict[str, Any]
 
 
 class TaskInputUploaded(TaskEvent):
@@ -32,8 +32,14 @@ class TaskWorkStarted(TaskEvent):
     machine_id: uuid.UUID
 
 
+class TaskWorkStartFailed(TaskEvent):
+    machine_id: uuid.UUID
+    detail: str
+
+
 class TaskWorkFinished(TaskEvent):
     machine_id: uuid.UUID
+    success: bool
 
 
 class TaskOutputUploaded(TaskEvent):
@@ -47,8 +53,3 @@ class TaskKillRequested(TaskEvent):
 
 class TaskKilled(TaskEvent):
     machine_id: uuid.UUID
-
-
-class TaskCompleted(TaskEvent):
-    machine_id: uuid.UUID
-    success: bool
