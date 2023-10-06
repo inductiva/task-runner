@@ -16,8 +16,8 @@ def _get_executer_info() -> Dict:
     cpu_count = host.get_cpu_count()
     memory = host.get_total_memory()
     git_commit_hash = os.environ.get("GIT_COMMIT_HASH")
-    if git_commit_hash is None:
-        raise RuntimeError("GIT_COMMIT_HASH environment variable not provided.")
+    if not git_commit_hash:
+        raise RuntimeError("GIT_COMMIT_HASH environment variable not set.")
 
     common_info = {
         "create_time": datetime.now(timezone.utc).isoformat(),
