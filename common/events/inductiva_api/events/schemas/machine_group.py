@@ -1,10 +1,9 @@
 """Schemas for machine group related events."""
+import uuid
 
-from events import schemas as event_schemas
+from inductiva_api.events import schemas as event_schemas
 
 
 class MachineGroupCreated(event_schemas.Event):
-    uuid: pydantic.UUID
+    uuid: uuid.UUID
     user_id: str
-
-class MachineGroupStarted(event_schemas.)
