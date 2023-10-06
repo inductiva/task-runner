@@ -1,36 +1,36 @@
 """Util functions related to executer-tracker config."""
-import json
-import os
-import dataclasses
 from typing import Dict, Optional
-from uuid import UUID
+import os
+import json
+import uuid
+import dataclasses
+import docker.errors
 from absl import logging
-from docker.errors import ImageNotFound
 
 from utils import gcloud
 
 
-def get_resource_pool_id() -> Optional[UUID]:
-    """Get resource pool ID from env variable or GCloud VM metadata.
+def get_machine_group_id() -> Optional[uuid.UUID]:
+    """Get machine group ID from env variable or GCloud VM metadata.
 
-    First checks if the RESOURCE_POOL env variable is set. If not, tries to
+    First checks if the MACHINE_GROUP_ID env variable is set. If not, tries to
     get the value from the GCloud VM metadata.
 
     Returns:
-        Resource pool ID or None if not found.
+        Machiune group UUID or None if not found.
     """
 
-    resource_pool_str = os.getenv("RESOURCE_POOL")
-    if resource_pool_str is None:
-        resource_pool_str = gcloud.get_vm_metadata_value(
-            "attributes/resource_pool")
+    machine_group_str = os.getenv("MACHINE_GROUP_ID")
+    if machine_group_str is None:
+        machine_group_str = gcloud.get_vm_metadata_value(
+            "attributes/machine_group")
 
-    logging.info("Resource pool: %s", resource_pool_str)
+    logging.info("Resource pool: %s", machine_group_str)
 
-    if not resource_pool_str:  # check if is None or empty string
+    if not machine_group_str:  # check if is None or empty string
         return None
 
-    return UUID(resource_pool_str)
+    return uuid.UUID(machine_group_str)
 
 
 @dataclasses.dataclass
@@ -95,7 +95,7 @@ def load_executers_config(docker_client) -> Dict[str, ExecuterConfig]:
 
         try:
             docker_client.images.get(docker_image)
-        except ImageNotFound as e:
+        except docker.errors.ImageNotFound as e:
             logging.error("Docker image not found: %s", docker_image)
             raise e
 

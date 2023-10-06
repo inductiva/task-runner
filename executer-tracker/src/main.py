@@ -85,11 +85,11 @@ def main(_):
     artifact_filesystem_root = fs.SubTreeFileSystem(base_path,
                                                     artifact_filesystem_root)
 
-    resource_pool_id = config.get_resource_pool_id()
-    if not resource_pool_id:
+    machine_group_id = config.get_machine_group_id()
+    if not machine_group_id:
         logging.info("No resource pool specified. Using default.")
     else:
-        logging.info("Using resource pool: %s", resource_pool_id)
+        logging.info("Using resource pool: %s", machine_group_id)
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
     docker_client = docker.from_env()
@@ -99,7 +99,7 @@ def main(_):
     executer_access_info = register_executer(
         api_url,
         list(executers_config.keys()),
-        resource_pool_id=resource_pool_id,
+        machine_group_id=machine_group_id,
     )
     executer_uuid = executer_access_info.id
 

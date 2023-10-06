@@ -81,7 +81,7 @@ class ExecuterAccessInfo:
 
 
 def register_executer(api_url: str, supported_executer_types: Sequence[str],
-                      resource_pool_id: Optional[UUID]) -> ExecuterAccessInfo:
+                      machine_group_id: Optional[UUID]) -> ExecuterAccessInfo:
     """Registers an executer in the API.
 
     This function inspects the environment of the executer and makes a request
@@ -94,8 +94,8 @@ def register_executer(api_url: str, supported_executer_types: Sequence[str],
 
     executer_info = _get_executer_info()
     executer_info["supported_executer_types"] = supported_executer_types
-    if resource_pool_id:
-        executer_info["resource_pool_id"] = str(resource_pool_id)
+    if machine_group_id:
+        executer_info["machine_group_id"] = str(machine_group_id)
 
     logging.info("Registering executer with the API...")
     r = requests.post(
