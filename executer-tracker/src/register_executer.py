@@ -16,8 +16,8 @@ def _get_executer_info() -> Dict:
     cpu_count = host.get_cpu_count()
     memory = host.get_total_memory()
     git_commit_hash = os.environ.get("GIT_COMMIT_HASH")
-    if git_commit_hash is None:
-        raise RuntimeError("GIT_COMMIT_HASH environment variable not provided.")
+    if not git_commit_hash:
+        raise RuntimeError("GIT_COMMIT_HASH environment variable not set.")
 
     common_info = {
         "create_time": datetime.now(timezone.utc).isoformat(),
@@ -81,7 +81,7 @@ class ExecuterAccessInfo:
 
 
 def register_executer(api_url: str, supported_executer_types: Sequence[str],
-                      resource_pool_id: Optional[UUID]) -> ExecuterAccessInfo:
+                      machine_group_id: Optional[UUID]) -> ExecuterAccessInfo:
     """Registers an executer in the API.
 
     This function inspects the environment of the executer and makes a request
@@ -94,8 +94,8 @@ def register_executer(api_url: str, supported_executer_types: Sequence[str],
 
     executer_info = _get_executer_info()
     executer_info["supported_executer_types"] = supported_executer_types
-    if resource_pool_id:
-        executer_info["resource_pool_id"] = str(resource_pool_id)
+    if machine_group_id:
+        executer_info["machine_group_id"] = str(machine_group_id)
 
     logging.info("Registering executer with the API...")
     r = requests.post(

@@ -26,7 +26,7 @@ def log_executer_termination(request_handler,
     event_logger = RedisStreamEventLoggerSync(redis_conn)
 
     event_logger.log(
-        events.ExecuterTerminated(
+        events.ExecuterTrackerTerminated(
             uuid=executer_uuid,
             reason=reason,
             stopped_tasks=stopped_tasks,
