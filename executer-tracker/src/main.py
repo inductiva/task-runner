@@ -87,9 +87,9 @@ def main(_):
 
     machine_group_id = config.get_machine_group_id()
     if not machine_group_id:
-        logging.info("No resource pool specified. Using default.")
+        logging.info("No machine group specified. Using default.")
     else:
-        logging.info("Using resource pool: %s", machine_group_id)
+        logging.info("Using machine group: %s", machine_group_id)
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
     docker_client = docker.from_env()

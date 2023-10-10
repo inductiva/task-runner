@@ -125,6 +125,13 @@ class TaskRequestHandler:
         return self.task_id is not None
 
     def _log_task_picked_up(self):
+        """Log that a task was picked up by the executer.
+
+        This gets the necessary information from the Docker image metadata
+        (git commit hash, docker image digest), and logs an event with
+        the information that this task was picked up by the machine and
+        will be run with the Docker image with that information.
+        """
         docker_image = self.current_task_executer_config.image
 
         executer_docker_image_digest = None

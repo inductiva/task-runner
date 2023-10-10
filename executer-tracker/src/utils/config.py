@@ -17,7 +17,7 @@ def get_machine_group_id() -> Optional[uuid.UUID]:
     get the value from the GCloud VM metadata.
 
     Returns:
-        Machiune group UUID or None if not found.
+        Machine group UUID or None if not found.
     """
 
     machine_group_str = os.getenv("MACHINE_GROUP_ID")
@@ -25,7 +25,7 @@ def get_machine_group_id() -> Optional[uuid.UUID]:
         machine_group_str = gcloud.get_vm_metadata_value(
             "attributes/machine_group")
 
-    logging.info("Resource pool: %s", machine_group_str)
+    logging.info("Machine group: %s", machine_group_str)
 
     if not machine_group_str:  # check if is None or empty string
         return None
