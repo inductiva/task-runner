@@ -1,10 +1,12 @@
 """Class for running and tracking a task in a Docker container."""
+import os
+
 from typing import Optional
 import docker
 import docker.types
 from docker.models.containers import Container
 
-from utils import config
+from utils import config, write
 
 from absl import logging
 
@@ -68,11 +70,15 @@ class TaskTracker:
 
         self.container = container
 
-    def wait(self) -> int:
+    def wait(self,
+             resources_stream=None,
+             stdout_stream=None,
+             std_file=None) -> int:
         """Blocks until end of execution, returning the command's exit code."""
         if not self.container:
             raise RuntimeError("Container not running.")
 
+        stdout_live = ""
         for s in self.container.stats(decode=True):
             # Reference:
             # - https://docs.docker.com/engine/reference/commandline/stats/#description # pylint: disable=line-too-long
@@ -106,6 +112,16 @@ class TaskTracker:
                 logging.info("CPU usage: %s", cpu_usage_percent)
             except KeyError:
                 continue
+
+            if resources_stream is not None:
+                string = "%s, %s, %s \n " % (s["read"], memory_usage_percent,
+                                             cpu_usage_percent)
+                resources_stream.write(string.encode("utf-8"))
+
+            if stdout_stream is not None:
+                if os.path.exists(std_file):
+                    stdout_live = write.update_stdout_file(
+                        std_file, stdout_live, stdout_stream)
 
         status = self.container.wait()
 
