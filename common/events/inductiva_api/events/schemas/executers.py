@@ -1,6 +1,6 @@
 """Events related to executers."""
 import datetime
-from typing import Any, Dict, List, Literal, Union, Optional
+from typing import List, Literal, Union, Optional
 
 from inductiva_api.events.schemas import Event
 from inductiva_api.task_status import ExecuterTerminationReason
@@ -14,8 +14,8 @@ class GCloudHostInfo(BaseModel):
     vm_type: str
     vm_name: str
     vm_id: str
+    vm_zone: str
     preemptible: bool
-    vm_metadata: Dict[str, Any]
 
 
 class InductivaHostInfo(BaseModel):
