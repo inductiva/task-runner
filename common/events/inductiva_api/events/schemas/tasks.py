@@ -1,36 +1,62 @@
 """Events related to tasks."""
-from .event import Event
-from inductiva_api.task_status import TaskStatusCode
-from uuid import UUID
+from typing import Optional, Dict, Any
+import uuid
+
+import inductiva_api.events.schemas as event_schemas
 
 
-class TaskEvent(Event):
+class TaskEvent(event_schemas.Event):
     id: str
-    status: TaskStatusCode
 
 
 class TaskCreated(TaskEvent):
-    method: str
     user_id: int
-    status: TaskStatusCode = TaskStatusCode.PENDING_INPUT
+    api_method_name: str
+    machine_group_id: uuid.UUID
+    scenario_name: Optional[str]
+    client_version: Optional[str]
+    request_params: Dict[str, Any]
 
 
 class TaskInputUploaded(TaskEvent):
-    status: TaskStatusCode = TaskStatusCode.SUBMITTED
+    input_size_b: int
 
 
-class TaskStarted(TaskEvent):
-    status: TaskStatusCode = TaskStatusCode.STARTED
-    executer_id: UUID
+class TaskPickedUp(TaskEvent):
+    machine_id: uuid.UUID
+    executer_docker_image_digest: Optional[str] = None
+    executer_git_commit_hash: Optional[str] = None
+
+
+class TaskWorkStarted(TaskEvent):
+    machine_id: uuid.UUID
+
+
+class TaskWorkStartFailed(TaskEvent):
+    machine_id: uuid.UUID
+    detail: str
+
+
+class TaskWorkFinished(TaskEvent):
+    machine_id: uuid.UUID
+    success: bool
+
+
+class TaskOutputUploaded(TaskEvent):
+    machine_id: uuid.UUID
+    output_size_b: int
 
 
 class TaskKillRequested(TaskEvent):
-    status: TaskStatusCode = TaskStatusCode.PENDING_KILL
+    user_id: int
+    current_status: str
+
+
+class TaskKillCommandIssued(TaskEvent):
+    redis_queue: str
 
 
 class TaskKilled(TaskEvent):
-    status: TaskStatusCode = TaskStatusCode.KILLED
-
-
-class TaskCompleted(TaskEvent):
-    pass
+    # optional because the task may have been killed before
+    # it was assigned to a machine
+    machine_id: Optional[uuid.UUID] = None
