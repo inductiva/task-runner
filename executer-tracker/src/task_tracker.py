@@ -79,6 +79,10 @@ class TaskTracker:
             raise RuntimeError("Container not running.")
 
         stdout_live = ""
+        if resources_stream is not None:
+            header = "Timestamp, Memory_usage_percent, CPU_usage_percent \n"
+            resources_stream.write(header.encode("utf-8"))
+
         for s in self.container.stats(decode=True):
             # Reference:
             # - https://docs.docker.com/engine/reference/commandline/stats/#description # pylint: disable=line-too-long
@@ -114,9 +118,9 @@ class TaskTracker:
                 continue
 
             if resources_stream is not None:
-                string = "%s, %s, %s \n " % (s["read"], memory_usage_percent,
-                                             cpu_usage_percent)
-                resources_stream.write(string.encode("utf-8"))
+                current_resources = "%s, %s, %s \n " % (
+                    s["read"], memory_usage_percent, cpu_usage_percent)
+                resources_stream.write(current_resources.encode("utf-8"))
 
             if stdout_stream is not None:
                 if os.path.exists(std_file):
