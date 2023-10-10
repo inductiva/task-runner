@@ -1,6 +1,7 @@
 """Module for registering an executer with the API."""
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import os
 from typing import Dict, List, Optional, Sequence
 from uuid import UUID
 
@@ -12,16 +13,18 @@ REGISTER_EXECUTER_ENDPOINT = "/executers/register"
 
 
 def _get_executer_info() -> Dict:
-    cpu_info = host.get_cpu_info_verbose()
     cpu_count = host.get_cpu_count()
     memory = host.get_total_memory()
+    git_commit_hash = os.environ.get("GIT_COMMIT_HASH")
+    if git_commit_hash is None:
+        raise RuntimeError("GIT_COMMIT_HASH environment variable not provided.")
 
     common_info = {
         "create_time": datetime.now(timezone.utc).isoformat(),
         "cpu_count_logical": cpu_count.logical,
         "cpu_count_physical": cpu_count.physical,
         "memory": memory,
-        "cpu_info": cpu_info,
+        "git_commit_hash": git_commit_hash,
     }
 
     logging.info("Executer resources:")
@@ -47,10 +50,16 @@ def _get_executer_info() -> Dict:
         logging.info("\t> VM type: %s", vm_info.type)
         logging.info("\t> VM preemptible: %s", vm_info.preemptible)
     else:
+        hostname = os.environ.get("HOSTNAME", None)
+        if hostname is None:
+            raise RuntimeError("HOSTNAME environment variable not provided.")
+
         provider_specific_info = {
             "host_type": "inductiva-hardware",
+            "hostname": hostname
         }
-        logging.logging.info("Running on Inductiva machine.")
+        logging.info("Running on Inductiva machine:")
+        logging.info("\t> Hostname: %s", hostname)
 
     return {
         **common_info,
