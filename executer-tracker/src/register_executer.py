@@ -37,13 +37,18 @@ def _get_executer_info() -> Dict:
         if not vm_info:
             raise RuntimeError("Failed to get VM info.")
 
+        # Example zone: "projects/12412341234/zones/europe-west1-b"
+        # We only want the last part.
+        vm_zone = vm_info.zone.split("/")[-1]
+        vm_type = vm_info.type.split("/")[-1]
+
         provider_specific_info = {
             "host_type": "gcloud",
-            "vm_type": vm_info.type,
+            "vm_type": vm_type,
             "vm_name": vm_info.name,
             "vm_id": vm_info.id,
             "preemptible": vm_info.preemptible,
-            "vm_metadata": vm_info.metadata,
+            "vm_zone": vm_zone,
         }
 
         logging.info("Running on GCloud VM:")
