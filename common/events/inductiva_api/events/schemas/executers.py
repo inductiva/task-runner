@@ -21,6 +21,7 @@ class GCloudHostInfo(BaseModel):
 class InductivaHostInfo(BaseModel):
     """Info about the Inductiva server hosting the executer."""
     host_type: Literal["inductiva-hardware"]
+    hostname: str
 
 
 class ExecuterCreate(BaseModel):
@@ -30,8 +31,8 @@ class ExecuterCreate(BaseModel):
     cpu_count_logical: int
     cpu_count_physical: int
     memory: int
-    cpu_info: str
     resource_pool_id: Optional[UUID4]
+    git_commit_hash: str
 
     # Use the "type" field to discriminate between different executer types.
     host_info: Annotated[Union[GCloudHostInfo, InductivaHostInfo],
