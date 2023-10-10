@@ -88,7 +88,8 @@ class TaskTracker:
             # - https://docs.docker.com/engine/reference/commandline/stats/#description # pylint: disable=line-too-long
             # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats # pylint: disable=line-too-long
             try:
-                logging.info("Read: %s", s["read"])
+                timestamp = s["read"]
+                logging.info("Read: %s", timestamp)
                 used_memory = s["memory_stats"]["usage"] - s["memory_stats"][
                     "stats"]["inactive_file"]
                 available_memory = s["memory_stats"]["limit"]
@@ -118,8 +119,7 @@ class TaskTracker:
                 continue
 
             if resources_stream is not None:
-                current_resources = "%s, %s, %s \n " % (
-                    s["read"], memory_usage_percent, cpu_usage_percent)
+                current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent}"
                 resources_stream.write(current_resources.encode("utf-8"))
 
             if stdout_stream is not None:
