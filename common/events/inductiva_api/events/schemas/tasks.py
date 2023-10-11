@@ -16,6 +16,7 @@ class TaskCreated(TaskEvent):
     scenario_name: Optional[str]
     client_version: Optional[str]
     request_params: Dict[str, Any]
+    task_storage_dir: str
 
 
 class TaskInputUploaded(TaskEvent):
