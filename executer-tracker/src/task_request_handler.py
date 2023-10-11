@@ -339,6 +339,6 @@ class TaskRequestHandler:
         local = self.artifact_filesystem
         #local.create_dir(self.artifact_filesystem, task_dir_remote)
         with local.open_output_stream(path=output_stdout_remote,
-                                compression=None) as stream:
+                                      compression=None) as stream:
 
             yield stream
