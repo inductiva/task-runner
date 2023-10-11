@@ -6,7 +6,7 @@ import docker
 import docker.types
 from docker.models.containers import Container
 
-from utils import config, write
+from utils import config, sync_write
 
 from absl import logging
 
