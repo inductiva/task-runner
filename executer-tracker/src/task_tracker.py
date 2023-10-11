@@ -78,7 +78,7 @@ class TaskTracker:
         if not self.container:
             raise RuntimeError("Container not running.")
 
-        stdout_live = ""
+        offset = 0
         if resources_stream is not None:
             header = "Timestamp, Memory_usage_percent, CPU_usage_percent \n"
             resources_stream.write(header.encode("utf-8"))
@@ -124,8 +124,8 @@ class TaskTracker:
 
             if stdout_stream is not None:
                 if os.path.exists(std_file):
-                    stdout_live = write.update_stdout_file(
-                        std_file, stdout_live, stdout_stream)
+                    offset = write.update_stdout_file(std_file, offset,
+                                                      stdout_stream)
 
         status = self.container.wait()
 

@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import threading
 from typing import Dict, Tuple
+import contextlib
 import docker
 import redis
 import json
@@ -324,6 +325,7 @@ class TaskRequestHandler:
 
         return f"python {method_to_script[method]}"
 
+    @contextlib.contextmanager
     def _open_usage_stream(self, task_dir_remote, output_write_file):
         """Open generic write stream in the shared drive
 
@@ -339,4 +341,4 @@ class TaskRequestHandler:
         stream = local.open_output_stream(path=output_stdout_remote,
                                           compression=None)
 
-        return stream
+        yield stream
