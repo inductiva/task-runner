@@ -124,8 +124,8 @@ class TaskTracker:
 
             if stdout_stream is not None:
                 if os.path.exists(std_file):
-                    offset = write.update_stdout_file(std_file, offset,
-                                                      stdout_stream)
+                    offset = sync_write.update_stdout_file(
+                        std_file, offset, stdout_stream)
 
         status = self.container.wait()
 
