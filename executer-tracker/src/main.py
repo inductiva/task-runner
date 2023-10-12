@@ -72,6 +72,19 @@ def main(_):
     redis_port = os.getenv("REDIS_PORT", "6379")
     artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
 
+    if config.gcloud.is_running_on_gcloud_vm():
+        # Check if there are any metadata values that override the provided
+        # environment variables.
+        metadata_redis_hostname = config.gcloud.get_vm_metadata_value(
+            "attributes/api-redis-hostname")
+        if metadata_redis_hostname:
+            redis_hostname = metadata_redis_hostname
+
+        metadata_api_url = config.gcloud.get_vm_metadata_value(
+            "attributes/api-url")
+        if metadata_api_url:
+            api_url = metadata_api_url
+
     shared_dir_host = os.getenv("SHARED_DIR_HOST")
     if not shared_dir_host:
         raise ValueError("SHARED_DIR_HOST environment variable not set.")
