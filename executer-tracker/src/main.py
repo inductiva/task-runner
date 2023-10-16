@@ -72,6 +72,19 @@ def main(_):
     redis_port = os.getenv("REDIS_PORT", "6379")
     artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
 
+    if config.gcloud.is_running_on_gcloud_vm():
+        # Check if there are any metadata values that override the provided
+        # environment variables.
+        metadata_redis_hostname = config.gcloud.get_vm_metadata_value(
+            "attributes/api-redis-hostname")
+        if metadata_redis_hostname:
+            redis_hostname = metadata_redis_hostname
+
+        metadata_api_url = config.gcloud.get_vm_metadata_value(
+            "attributes/api-url")
+        if metadata_api_url:
+            api_url = metadata_api_url
+
     shared_dir_host = os.getenv("SHARED_DIR_HOST")
     if not shared_dir_host:
         raise ValueError("SHARED_DIR_HOST environment variable not set.")
@@ -85,11 +98,11 @@ def main(_):
     artifact_filesystem_root = fs.SubTreeFileSystem(base_path,
                                                     artifact_filesystem_root)
 
-    resource_pool_id = config.get_resource_pool_id()
-    if not resource_pool_id:
-        logging.info("No resource pool specified. Using default.")
+    machine_group_id = config.get_machine_group_id()
+    if not machine_group_id:
+        logging.info("No machine group specified. Using default.")
     else:
-        logging.info("Using resource pool: %s", resource_pool_id)
+        logging.info("Using machine group: %s", machine_group_id)
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
     docker_client = docker.from_env()
@@ -99,7 +112,7 @@ def main(_):
     executer_access_info = register_executer(
         api_url,
         list(executers_config.keys()),
-        resource_pool_id=resource_pool_id,
+        machine_group_id=machine_group_id,
     )
     executer_uuid = executer_access_info.id
 
