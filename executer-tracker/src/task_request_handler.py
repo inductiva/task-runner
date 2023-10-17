@@ -208,10 +208,6 @@ class TaskRequestHandler:
                     stdout_stream=stdout_stream,
                     std_file=std_path)
 
-        self._pack_output(task_dir_remote, working_dir_local)
-
-        self._cleanup(working_dir_local)
-
         if task_killed:
             event = events.TaskKilled(id=self.task_id,
                                       machine_id=self.executer_uuid)
@@ -236,7 +232,6 @@ class TaskRequestHandler:
             ))
 
         self._cleanup(working_dir_local)
-
         self.task_id = None
 
     def _setup_working_dir(self, task_dir_remote) -> Tuple[str, str]:
