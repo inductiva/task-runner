@@ -14,3 +14,4 @@ class TaskStatusCode(Enum):
     SPOT_INSTANCE_PREEMPTED = "spot-instance-preempted"
     EXECUTER_TERMINATED = "executer-terminated"
     EXECUTER_FAILED = "executer-failed"
+    ZOMBIE = "zombie"
