@@ -19,13 +19,15 @@
         "/scripts/simulation.py",
     "sw.xbeach.run_simulation":
         "/scripts/simulation.py",
-    "fvm.openfoam.run_simulation":
+    "fvm.openfoam_foundation.run_simulation":
         "/scripts/simulation.py",
-    "wind_tunnel.openfoam.run_simulation":
+    "fvm.openfoam_esi.run_simulation":
+        "/scripts/simulation.py",
+    "wind_tunnel.openfoam_foundation.run_simulation":
         "/scripts/windtunnel_simulation.py",
-    "wind_terrain.openfoam.run_simulation":
+    "wind_terrain.openfoam_foundation.run_simulation":
         "/scripts/simulation.py",
-    "heat_sink.openfoam.run_simulation":
+    "heat_sink.openfoam_foundation.run_simulation":
         "/scripts/simulation.py",
     "md.gromacs.run_simulation":
         "/scripts/simulation.py",
