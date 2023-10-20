@@ -38,5 +38,7 @@
     "fem.fenicsx.run_simulation":
         "/scripts/simulation.py",
     "deformable_plate.fenicsx.run_simulation":
-        "/scripts/deformable_plate_simulation.py"
+        "/scripts/deformable_plate_simulation.py",
+    "fdm.fds.run_simulation":
+        "/scripts/simulation.py"
 }
