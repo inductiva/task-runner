@@ -9,7 +9,7 @@ import requests
 from absl import logging
 from utils import gcloud, host
 
-REGISTER_EXECUTER_ENDPOINT = "/executers/register"
+REGISTER_EXECUTER_ENDPOINT = "/executer-tracker/register"
 
 
 def _get_executer_info() -> Dict:
