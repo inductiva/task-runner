@@ -20,6 +20,7 @@ import utils
 from absl import logging
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
+from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
 from utils import files
@@ -208,27 +209,27 @@ class TaskRequestHandler:
                     stdout_stream=stdout_stream,
                     std_file=std_path)
 
-        if task_killed:
-            event = events.TaskKilled(id=self.task_id,
-                                      machine_id=self.executer_uuid)
-        else:
-            event = events.TaskWorkFinished(
-                id=self.task_id,
-                machine_id=self.executer_uuid,
-                success=True,
-            )
-            if exit_code:
-                event.success = False
+        event = events.TaskWorkFinished(
+            id=self.task_id,
+            machine_id=self.executer_uuid,
+        )
 
         self.event_logger.log(event)
 
         output_size_b = self._pack_output(task_dir_remote, working_dir_local)
+
+        new_status = task_status.TaskStatusCode.SUCCESS.value
+        if task_killed:
+            new_status = task_status.TaskStatusCode.KILLED.value
+        if exit_code != 0:
+            new_status = task_status.TaskStatusCode.FAILED.value
 
         self.event_logger.log(
             events.TaskOutputUploaded(
                 id=self.task_id,
                 machine_id=self.executer_uuid,
                 output_size_b=output_size_b,
+                new_status=new_status,
             ))
 
         self._cleanup(working_dir_local)
