@@ -33,17 +33,12 @@ class TaskWorkStarted(TaskEvent):
     machine_id: uuid.UUID
 
 
-class TaskWorkStartFailed(TaskEvent):
-    machine_id: uuid.UUID
-    detail: str
-
-
 class TaskWorkFinished(TaskEvent):
     machine_id: uuid.UUID
-    success: bool
 
 
 class TaskOutputUploaded(TaskEvent):
+    new_status: str
     machine_id: uuid.UUID
     output_size_b: int
 
