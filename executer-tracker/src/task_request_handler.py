@@ -15,6 +15,7 @@ import docker
 import redis
 import json
 from uuid import UUID
+from google.cloud import storage
 
 import utils
 from absl import logging
@@ -191,23 +192,25 @@ class TaskRequestHandler:
 
         std_path = os.path.join(working_dir_local, utils.OUTPUT_DIR,
                                 "artifacts/stdout.txt")
+        resources_path = os.path.join(working_dir_local, utils.OUTPUT_DIR,
+                                "artifacts/resources.txt")
+        stdout_blob = task_dir_remote.split("/")[0]
 
-        with self._open_usage_stream(task_dir_remote,
-                                     "resource_usage.txt") as resources_stream:
-            with self._open_usage_stream(task_dir_remote,
-                                         "stdout_live.txt") as stdout_stream:
+        # with self._open_usage_stream(resources_path) as resources_file:
+        #     with self._open_usage_stream(std_path) as stdout_file:
 
-                self.event_logger.log(
-                    events.TaskWorkStarted(
-                        id=self.task_id,
-                        machine_id=self.executer_uuid,
-                    ))
-                exit_code, task_killed = self._execute_request(
-                    request,
-                    working_dir_host,
-                    resources_stream=resources_stream,
-                    stdout_stream=stdout_stream,
-                    std_file=std_path)
+        self.event_logger.log(
+            events.TaskWorkStarted(
+                id=self.task_id,
+                machine_id=self.executer_uuid,
+            ))
+        exit_code, task_killed = self._execute_request(
+            request,
+            working_dir_host,
+            resources_stream=resources_path,
+            stdout_stream=std_path,
+            std_file=std_path,
+            stdout_blob=stdout_blob)
 
         event = events.TaskWorkFinished(
             id=self.task_id,
@@ -269,7 +272,8 @@ class TaskRequestHandler:
                          working_dir_host,
                          resources_stream=None,
                          stdout_stream=None,
-                         std_file=None) -> Tuple[int, bool]:
+                         std_file=None,
+                         stdout_blob=None) -> Tuple[int, bool]:
         """Execute the request.
 
         This uses a second thread to listen for possible "kill" messages from
@@ -300,7 +304,7 @@ class TaskRequestHandler:
         thread.start()
         tracker.run()
 
-        exit_code = tracker.wait(resources_stream, stdout_stream, std_file)
+        exit_code = tracker.wait(resources_stream, stdout_stream, stdout_blob)
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)
         thread.join()
@@ -380,19 +384,22 @@ class TaskRequestHandler:
         return f"python {method_to_script[method]}"
 
     @contextlib.contextmanager
-    def _open_usage_stream(self, task_dir_remote, output_write_file):
+    def _open_usage_stream(self, task_dir_remote, output_write_file, ):
         """Open generic write stream in the shared drive
 
         Args:
             task_dir_remote: Path to the directory with the task's files. Path
                 is relative to "artifact_filesystem".
         """
+        # Create a client
+        client = storage.Client()
 
-        output_stdout_remote = os.path.join(task_dir_remote, output_write_file)
+        # Get the bucket
+        bucket = client.get_bucket('your-bucket-name')
 
-        local = self.artifact_filesystem
-        #local.create_dir(self.artifact_filesystem, task_dir_remote)
-        with local.open_output_stream(path=output_stdout_remote,
-                                      compression=None) as stream:
+        # Get the blob
+        blob = bucket.blob(task_dir_remote + '/' + output_write_file)
 
-            yield stream
+        # Open a file for writing
+        with open(output_write_file, 'wb') as output_file:
+            yield output_file

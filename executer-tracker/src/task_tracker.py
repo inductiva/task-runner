@@ -71,17 +71,18 @@ class TaskTracker:
         self.container = container
 
     def wait(self,
-             resources_stream=None,
-             stdout_stream=None,
-             std_file=None) -> int:
+             resources_file=None,
+             stdout_file=None,
+             stdout_blob=None,
+             resources_blob=None) -> int:
         """Blocks until end of execution, returning the command's exit code."""
         if not self.container:
             raise RuntimeError("Container not running.")
 
         offset = 0
-        if resources_stream is not None:
+        if resources_file is not None:
             header = "Timestamp, Memory_usage_percent, CPU_usage_percent \n"
-            resources_stream.write(header.encode("utf-8"))
+            resources_file.write(header.encode("utf-8"))
 
         for s in self.container.stats(decode=True):
             # Reference:
@@ -118,14 +119,16 @@ class TaskTracker:
             except KeyError:
                 continue
 
-            if resources_stream is not None:
+            with resources_file as file:
                 current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
-                resources_stream.write(current_resources.encode("utf-8"))
+                file.write(current_resources.encode("utf-8"))
 
-            if stdout_stream is not None:
-                if os.path.exists(std_file):
-                    offset = sync_write.update_stdout_file(
-                        std_file, offset, stdout_stream)
+            if stdout_file is not None:
+                # if os.path.exists(std_file):
+                #     offset = sync_write.update_stdout_file(
+                #         stdout_file, offset, stdout_stream)
+                with stdout_file as std_file:
+                    stdout_blob.upload_from_file(std_file)
 
         status = self.container.wait()
 
