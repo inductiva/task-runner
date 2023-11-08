@@ -119,7 +119,7 @@ class TaskTracker:
                 continue
 
             if resources_stream is not None:
-                current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent}"
+                current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
                 resources_stream.write(current_resources.encode("utf-8"))
 
             if stdout_stream is not None:

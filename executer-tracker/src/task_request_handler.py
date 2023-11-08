@@ -20,7 +20,7 @@ import utils
 from absl import logging
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
-from inductiva_api.task_status import TaskStatusCode
+from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
 from utils import files
@@ -126,6 +126,47 @@ class TaskRequestHandler:
         """Checks if a task is currently running."""
         return self.task_id is not None
 
+    def _log_task_picked_up(self):
+        """Log that a task was picked up by the executer.
+
+        This gets the necessary information from the Docker image metadata
+        (git commit hash, docker image digest), and logs an event with
+        the information that this task was picked up by the machine and
+        will be run with the Docker image with that information.
+        """
+        docker_image = self.current_task_executer_config.image
+
+        executer_docker_image_digest = None
+        executer_git_commit_hash = None
+        executer_docker_image = self.docker.images.get(docker_image)
+        if executer_docker_image is not None:
+            if executer_docker_image.labels is not None:
+                executer_git_commit_hash = executer_docker_image.labels.get(
+                    "org.opencontainers.image.revision")
+            if executer_docker_image.attrs is not None:
+                executer_docker_image_digests = executer_docker_image.attrs.get(
+                    "RepoDigests")
+                if len(executer_docker_image_digests) > 0:
+                    executer_docker_image_digest = \
+                        executer_docker_image_digests[0]
+
+        assert self.task_id is not None
+        self.event_logger.log(
+            events.TaskPickedUp(
+                id=self.task_id,
+                machine_id=self.executer_uuid,
+                executer_git_commit_hash=executer_git_commit_hash,
+                executer_docker_image_digest=executer_docker_image_digest,
+            ))
+
+    def _log_task_work_started(self):
+        assert self.task_id is not None
+        self.event_logger.log(
+            events.TaskWorkStarted(
+                id=self.task_id,
+                machine_id=self.executer_uuid,
+            ))
+
     def __call__(self, request: Dict[str, str]) -> None:
         """Execute the task described by the request.
 
@@ -140,6 +181,10 @@ class TaskRequestHandler:
         """
         self.task_id = request["id"]
         task_dir_remote = request["task_dir"]
+        self.current_task_executer_config = self.executers_config[
+            request["executer_type"]]
+
+        self._log_task_picked_up()
 
         working_dir_local, working_dir_host = self._setup_working_dir(
             task_dir_remote)
@@ -152,6 +197,11 @@ class TaskRequestHandler:
             with self._open_usage_stream(task_dir_remote,
                                          "stdout_live.txt") as stdout_stream:
 
+                self.event_logger.log(
+                    events.TaskWorkStarted(
+                        id=self.task_id,
+                        machine_id=self.executer_uuid,
+                    ))
                 exit_code, task_killed = self._execute_request(
                     request,
                     working_dir_host,
@@ -159,22 +209,30 @@ class TaskRequestHandler:
                     stdout_stream=stdout_stream,
                     std_file=std_path)
 
-        self._pack_output(task_dir_remote, working_dir_local)
+        event = events.TaskWorkFinished(
+            id=self.task_id,
+            machine_id=self.executer_uuid,
+        )
 
-        self._cleanup(working_dir_local)
+        self.event_logger.log(event)
 
+        output_size_b = self._pack_output(task_dir_remote, working_dir_local)
+
+        new_status = task_status.TaskStatusCode.SUCCESS.value
         if task_killed:
-            self.event_logger.log(events.TaskKilled(id=self.task_id),)
-            return
-
-        if exit_code:
-            new_status = TaskStatusCode.FAILED
-        else:
-            new_status = TaskStatusCode.SUCCESS
+            new_status = task_status.TaskStatusCode.KILLED.value
+        if exit_code != 0:
+            new_status = task_status.TaskStatusCode.FAILED.value
 
         self.event_logger.log(
-            events.TaskCompleted(id=self.task_id, status=new_status))
+            events.TaskOutputUploaded(
+                id=self.task_id,
+                machine_id=self.executer_uuid,
+                output_size_b=output_size_b,
+                new_status=new_status,
+            ))
 
+        self._cleanup(working_dir_local)
         self.task_id = None
 
     def _setup_working_dir(self, task_dir_remote) -> Tuple[str, str]:
@@ -224,11 +282,9 @@ class TaskRequestHandler:
         assert self.task_id is not None, (
             "'_execute_request' called without a task ID.")
 
-        executer_config = self.executers_config[request["executer_type"]]
-
         tracker = TaskTracker(
             docker_client=self.docker,
-            executer_config=executer_config,
+            executer_config=self.current_task_executer_config,
             command=self._build_command(request),
             working_dir_host=working_dir_host,
         )
@@ -241,12 +297,6 @@ class TaskRequestHandler:
             daemon=True,
         )
 
-        self.event_logger.log(
-            events.TaskStarted(
-                id=self.task_id,
-                executer_id=self.executer_uuid,
-            ))
-
         thread.start()
         tracker.run()
 
@@ -258,7 +308,7 @@ class TaskRequestHandler:
 
         return exit_code, task_killed_flag.is_set()
 
-    def _pack_output(self, task_dir_remote, working_dir_local):
+    def _pack_output(self, task_dir_remote, working_dir_local) -> int:
         """Compress outputs and store them in the shared drive.
 
         Args:
@@ -279,6 +329,8 @@ class TaskRequestHandler:
 
             files.make_zip_archive(output_zip_path_local, output_dir)
 
+            output_archive_size_b = os.path.getsize(output_zip_path_local)
+
             output_zip_path_remote = os.path.join(task_dir_remote,
                                                   utils.OUTPUT_ZIP_FILENAME)
 
@@ -294,6 +346,8 @@ class TaskRequestHandler:
                     self.artifact_filesystem.base_path,
                     output_zip_path_remote,
                 ))
+
+        return output_archive_size_b
 
     def _cleanup(self, working_dir_local):
         """Cleanup after task execution.
