@@ -24,8 +24,7 @@ from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
-from utils import files
-from utils import config
+from utils import files, config, gcloud
 from task_tracker import TaskTracker
 
 TASK_COMMANDS_QUEUE = "commands"
@@ -112,6 +111,7 @@ class TaskRequestHandler:
         executer_uuid: UUID,
         shared_dir_host: str,
         shared_dir_local: str,
+        project_id=str,
     ):
         self.docker = docker_client
         self.redis = redis_connection
@@ -122,6 +122,7 @@ class TaskRequestHandler:
         self.shared_dir_host = shared_dir_host
         self.shared_dir_local = shared_dir_local
         self.task_id = None
+        self.project_id = project_id
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
@@ -193,11 +194,9 @@ class TaskRequestHandler:
         std_path = os.path.join(working_dir_local, utils.OUTPUT_DIR,
                                 "artifacts/stdout.txt")
         resources_path = os.path.join(working_dir_local, utils.OUTPUT_DIR,
-                                "artifacts/resources.txt")
-        stdout_blob = task_dir_remote.split("/")[0]
+                                      "artifacts/resources_usage.txt")
 
-        # with self._open_usage_stream(resources_path) as resources_file:
-        #     with self._open_usage_stream(std_path) as stdout_file:
+        stdout_blob, resources_blob = self._get_storage_blob(task_dir_remote)
 
         self.event_logger.log(
             events.TaskWorkStarted(
@@ -207,10 +206,10 @@ class TaskRequestHandler:
         exit_code, task_killed = self._execute_request(
             request,
             working_dir_host,
-            resources_stream=resources_path,
-            stdout_stream=std_path,
-            std_file=std_path,
-            stdout_blob=stdout_blob)
+            stdout_file=std_path,
+            stdout_blob=stdout_blob,
+            resources_file=resources_path,
+            resources_blob=resources_blob)
 
         event = events.TaskWorkFinished(
             id=self.task_id,
@@ -270,10 +269,10 @@ class TaskRequestHandler:
     def _execute_request(self,
                          request,
                          working_dir_host,
-                         resources_stream=None,
-                         stdout_stream=None,
-                         std_file=None,
-                         stdout_blob=None) -> Tuple[int, bool]:
+                         stdout_file=None,
+                         stdout_blob=None,
+                         resources_blob=None,
+                         resources_file=None) -> Tuple[int, bool]:
         """Execute the request.
 
         This uses a second thread to listen for possible "kill" messages from
@@ -304,13 +303,33 @@ class TaskRequestHandler:
         thread.start()
         tracker.run()
 
-        exit_code = tracker.wait(resources_stream, stdout_stream, stdout_blob)
+        exit_code = tracker.wait(stdout_file, stdout_blob,
+                                 resources_file, resources_blob)
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)
         thread.join()
         logging.info("Message catcher thread stopped.")
 
         return exit_code, task_killed_flag.is_set()
+
+    def _get_storage_blob(self, task_dir_remote):
+        """Get Google Storage object class.
+
+        Args:
+            task_dir_remote: Path to the directory with the task's files. Path
+                is relative to "artifact_filesystem".
+        Returns:
+            Blob object of stdout and resource file."""
+        bucket_name = task_dir_remote.split("/")[0]
+
+        storage_client = storage.Client(project=self.project_id)
+        bucket = storage_client.bucket(bucket_name)
+        stdout_blob = bucket.blob(os.path.join(self.task_id,
+                                               "stdout_live.txt"))
+        resource_blob = bucket.blob(os.path.join(self.task_id,
+                                                 "resource_usage.txt"))
+
+        return stdout_blob, resource_blob
 
     def _pack_output(self, task_dir_remote, working_dir_local) -> int:
         """Compress outputs and store them in the shared drive.

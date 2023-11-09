@@ -71,6 +71,7 @@ def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
     redis_port = os.getenv("REDIS_PORT", "6379")
     artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
+    project_id = os.getenv("PROJECT_ID", "inductiva-api")
 
     if config.gcloud.is_running_on_gcloud_vm():
         # Check if there are any metadata values that override the provided
@@ -128,6 +129,7 @@ def main(_):
         executer_uuid=executer_uuid,
         shared_dir_host=shared_dir_host,
         shared_dir_local=shared_dir_local,
+        project_id=project_id
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,

@@ -1,12 +1,13 @@
 """Class for running and tracking a task in a Docker container."""
 import os
+import time
 
 from typing import Optional
 import docker
 import docker.types
 from docker.models.containers import Container
 
-from utils import config, sync_write
+from utils import config
 
 from absl import logging
 
@@ -62,7 +63,7 @@ class TaskTracker:
             ],
             working_dir=container_working_dir,
             detach=True,  # Run container in background.
-            auto_remove=True,  # Remove container when it exits.
+            auto_remove=False,
             device_requests=device_requests)
         assert isinstance(
             container,
@@ -71,18 +72,13 @@ class TaskTracker:
         self.container = container
 
     def wait(self,
-             resources_file=None,
              stdout_file=None,
              stdout_blob=None,
+             resources_file=None,
              resources_blob=None) -> int:
         """Blocks until end of execution, returning the command's exit code."""
         if not self.container:
             raise RuntimeError("Container not running.")
-
-        offset = 0
-        if resources_file is not None:
-            header = "Timestamp, Memory_usage_percent, CPU_usage_percent \n"
-            resources_file.write(header.encode("utf-8"))
 
         for s in self.container.stats(decode=True):
             # Reference:
@@ -101,7 +97,7 @@ class TaskTracker:
             except KeyError as e:
                 logging.error("KeyError: %s", str(e))
                 logging.info("Stats dict: %s", str(s))
-                continue
+                break
 
             try:
                 precpu_system_cpu_usage = s["precpu_stats"]["system_cpu_usage"]
@@ -117,20 +113,28 @@ class TaskTracker:
                                      system_cpu_delta) * number_cpus * 100
                 logging.info("CPU usage: %s", cpu_usage_percent)
             except KeyError:
-                continue
-
-            with resources_file as file:
-                current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
-                file.write(current_resources.encode("utf-8"))
+                break
 
             if stdout_file is not None:
-                # if os.path.exists(std_file):
-                #     offset = sync_write.update_stdout_file(
-                #         stdout_file, offset, stdout_stream)
-                with stdout_file as std_file:
-                    stdout_blob.upload_from_file(std_file)
+                if os.path.exists(stdout_file):
+                    with open(stdout_file, "r", encoding="utf-8") as f_src:
+                        stdout_blob.upload_from_file(f_src)
+
+            if resources_file is not None:
+                if os.path.exists(os.path.dirname(resources_file)):
+                    with open(resources_file, "a", encoding="utf-8") as file:
+                        current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
+                        file.write(current_resources)
+                    with open(resources_file, "r", encoding="utf-8") as file:
+                        resources_blob.upload_from_file(file)
+
+            # Wait for one second before uploading file to Google Storage
+            # this is done because it Google throws an error when trying to
+            # upload files too frequently
+            time.sleep(1)
 
         status = self.container.wait()
+        self.container.remove()
 
         return status["StatusCode"]
 
