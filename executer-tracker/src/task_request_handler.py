@@ -401,24 +401,3 @@ class TaskRequestHandler:
         method = request["method"]
 
         return f"python {method_to_script[method]}"
-
-    @contextlib.contextmanager
-    def _open_usage_stream(self, task_dir_remote, output_write_file, ):
-        """Open generic write stream in the shared drive
-
-        Args:
-            task_dir_remote: Path to the directory with the task's files. Path
-                is relative to "artifact_filesystem".
-        """
-        # Create a client
-        client = storage.Client()
-
-        # Get the bucket
-        bucket = client.get_bucket('your-bucket-name')
-
-        # Get the blob
-        blob = bucket.blob(task_dir_remote + '/' + output_write_file)
-
-        # Open a file for writing
-        with open(output_write_file, 'wb') as output_file:
-            yield output_file
