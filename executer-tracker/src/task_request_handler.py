@@ -332,7 +332,8 @@ class TaskRequestHandler:
 
             return stdout_blob, resource_blob
 
-        except google.auth.exceptions.DefaultCredentialsError:
+        except google.auth.exceptions.DefaultCredentialsError as e:
+            logging.error(f"Failed to authenticate with Google Cloud.")
             return None, None
 
     def _pack_output(self, task_dir_remote, working_dir_local) -> int:
