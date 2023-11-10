@@ -332,7 +332,7 @@ class TaskRequestHandler:
 
             return stdout_blob, resource_blob
 
-        except google.auth.exceptions.DefaultCredentialsError as e:
+        except google.auth.exceptions.DefaultCredentialsError:
             logging.error("Failed to authenticate with Google Cloud.")
             return None, None
 
