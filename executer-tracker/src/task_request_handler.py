@@ -10,7 +10,6 @@ import shutil
 import tempfile
 import threading
 from typing import Dict, Tuple
-import contextlib
 import docker
 import redis
 import json
@@ -24,7 +23,7 @@ from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
-from utils import files, config, gcloud
+from utils import files, config
 from task_tracker import TaskTracker
 
 TASK_COMMANDS_QUEUE = "commands"
@@ -303,8 +302,8 @@ class TaskRequestHandler:
         thread.start()
         tracker.run()
 
-        exit_code = tracker.wait(stdout_file, stdout_blob,
-                                 resources_file, resources_blob)
+        exit_code = tracker.wait(stdout_file, stdout_blob, resources_file,
+                                 resources_blob)
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)
         thread.join()
@@ -324,10 +323,9 @@ class TaskRequestHandler:
 
         storage_client = storage.Client(project=self.project_id)
         bucket = storage_client.bucket(bucket_name)
-        stdout_blob = bucket.blob(os.path.join(self.task_id,
-                                               "stdout_live.txt"))
-        resource_blob = bucket.blob(os.path.join(self.task_id,
-                                                 "resource_usage.txt"))
+        stdout_blob = bucket.blob(os.path.join(self.task_id, "stdout_live.txt"))
+        resource_blob = bucket.blob(
+            os.path.join(self.task_id, "resource_usage.txt"))
 
         return stdout_blob, resource_blob
 

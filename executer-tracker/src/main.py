@@ -129,7 +129,7 @@ def main(_):
         executer_uuid=executer_uuid,
         shared_dir_host=shared_dir_host,
         shared_dir_local=shared_dir_local,
-        project_id=project_id
+        project_id=project_id,
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
