@@ -321,14 +321,14 @@ class TaskRequestHandler:
         Returns:
             Blob object of stdout and resource file."""
         try:
-            bucket_name = task_dir_remote.split("/")[0]
+            bucket_name = task_dir_remote.split("/", 1)[0]
+            task_dir = task_dir_remote.split("/", 1)[1]
 
             storage_client = storage.Client(project=self.project_id)
             bucket = storage_client.bucket(bucket_name)
-            stdout_blob = bucket.blob(
-                os.path.join(self.task_id, "stdout_live.txt"))
+            stdout_blob = bucket.blob(os.path.join(task_dir, "stdout_live.txt"))
             resource_blob = bucket.blob(
-                os.path.join(self.task_id, "resource_usage.txt"))
+                os.path.join(task_dir, "resource_usage.txt"))
 
             return stdout_blob, resource_blob
 
