@@ -15,6 +15,7 @@ import redis
 import json
 from uuid import UUID
 from google.cloud import storage
+import google
 
 import utils
 from absl import logging
@@ -319,15 +320,20 @@ class TaskRequestHandler:
                 is relative to "artifact_filesystem".
         Returns:
             Blob object of stdout and resource file."""
-        bucket_name = task_dir_remote.split("/")[0]
+        try:
+            bucket_name = task_dir_remote.split("/")[0]
 
-        storage_client = storage.Client(project=self.project_id)
-        bucket = storage_client.bucket(bucket_name)
-        stdout_blob = bucket.blob(os.path.join(self.task_id, "stdout_live.txt"))
-        resource_blob = bucket.blob(
-            os.path.join(self.task_id, "resource_usage.txt"))
+            storage_client = storage.Client(project=self.project_id)
+            bucket = storage_client.bucket(bucket_name)
+            stdout_blob = bucket.blob(
+                os.path.join(self.task_id, "stdout_live.txt"))
+            resource_blob = bucket.blob(
+                os.path.join(self.task_id, "resource_usage.txt"))
 
-        return stdout_blob, resource_blob
+            return stdout_blob, resource_blob
+
+        except google.auth.exceptions.DefaultCredentialsError:
+            return None, None
 
     def _pack_output(self, task_dir_remote, working_dir_local) -> int:
         """Compress outputs and store them in the shared drive.

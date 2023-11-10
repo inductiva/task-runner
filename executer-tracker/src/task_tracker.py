@@ -115,12 +115,12 @@ class TaskTracker:
             except KeyError:
                 break
 
-            if stdout_file is not None:
+            if stdout_file is not None and stdout_blob is not None:
                 if os.path.exists(stdout_file):
                     with open(stdout_file, "r", encoding="utf-8") as f_src:
                         stdout_blob.upload_from_file(f_src)
 
-            if resources_file is not None:
+            if resources_file is not None and resources_blob is not None:
                 if os.path.exists(os.path.dirname(resources_file)):
                     with open(resources_file, "a", encoding="utf-8") as file:
                         current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
