@@ -1,6 +1,5 @@
 """Class for running and tracking a task in a Docker container."""
 import os
-import time
 
 from typing import Optional
 import docker
@@ -63,7 +62,7 @@ class TaskTracker:
             ],
             working_dir=container_working_dir,
             detach=True,  # Run container in background.
-            auto_remove=False,
+            auto_remove=True,  # Remove container when it exits.
             device_requests=device_requests)
         assert isinstance(
             container,
@@ -73,9 +72,9 @@ class TaskTracker:
 
     def wait(self,
              stdout_file=None,
-             stdout_blob=None,
-             resources_file=None,
-             resources_blob=None) -> int:
+             stdout_file_remote=None,
+             artifact_filesystem=None,
+             resource_file_remote=None) -> int:
         """Blocks until end of execution, returning the command's exit code."""
         if not self.container:
             raise RuntimeError("Container not running.")
@@ -115,26 +114,20 @@ class TaskTracker:
             except KeyError:
                 break
 
-            if stdout_file is not None and stdout_blob is not None:
+            if stdout_file is not None and stdout_file_remote is not None:
                 if os.path.exists(stdout_file):
-                    with open(stdout_file, "r", encoding="utf-8") as f_src:
-                        stdout_blob.upload_from_file(f_src)
+                    with artifact_filesystem.open_output_stream(
+                            path=stdout_file_remote) as std_file:
+                        with open(stdout_file, "rb") as f_src:
+                            std_file.write(f_src.read())
 
-            if resources_file is not None and resources_blob is not None:
-                if os.path.exists(os.path.dirname(resources_file)):
-                    with open(resources_file, "a", encoding="utf-8") as file:
-                        current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
-                        file.write(current_resources)
-                    with open(resources_file, "r", encoding="utf-8") as file:
-                        resources_blob.upload_from_file(file)
-
-            # Wait for one second before uploading file to Google Storage
-            # this is done because it Google throws an error when trying to
-            # upload files too frequently
-            time.sleep(1)
+            if resource_file_remote is not None:
+                with artifact_filesystem.open_output_stream(
+                        path=resource_file_remote) as r_file:
+                    current_usage = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
+                    r_file.write(current_usage.encode("utf-8"))
 
         status = self.container.wait()
-        self.container.remove()
 
         return status["StatusCode"]
 

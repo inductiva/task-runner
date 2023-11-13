@@ -4,4 +4,3 @@ redis
 requests
 pyarrow
 docker
-google-cloud-storage

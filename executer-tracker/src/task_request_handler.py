@@ -14,8 +14,6 @@ import docker
 import redis
 import json
 from uuid import UUID
-from google.cloud import storage
-import google
 
 import utils
 from absl import logging
@@ -191,12 +189,12 @@ class TaskRequestHandler:
         working_dir_local, working_dir_host = self._setup_working_dir(
             task_dir_remote)
 
-        std_path = os.path.join(working_dir_local, utils.OUTPUT_DIR,
-                                "artifacts/stdout.txt")
-        resources_path = os.path.join(working_dir_local, utils.OUTPUT_DIR,
-                                      "artifacts/resources_usage.txt")
+        std_path_local = os.path.join(working_dir_local, utils.OUTPUT_DIR,
+                                      "artifacts/stdout.txt")
+        std_path_remote = os.path.join(task_dir_remote, "stdout_live.txt")
 
-        stdout_blob, resources_blob = self._get_storage_blob(task_dir_remote)
+        resource_path_remote = os.path.join(task_dir_remote,
+                                            "resource_usage.txt")
 
         self.event_logger.log(
             events.TaskWorkStarted(
@@ -206,10 +204,9 @@ class TaskRequestHandler:
         exit_code, task_killed = self._execute_request(
             request,
             working_dir_host,
-            stdout_file=std_path,
-            stdout_blob=stdout_blob,
-            resources_file=resources_path,
-            resources_blob=resources_blob)
+            std_file_local=std_path_local,
+            std_file_remote=std_path_remote,
+            resource_file_remote=resource_path_remote)
 
         event = events.TaskWorkFinished(
             id=self.task_id,
@@ -269,10 +266,9 @@ class TaskRequestHandler:
     def _execute_request(self,
                          request,
                          working_dir_host,
-                         stdout_file=None,
-                         stdout_blob=None,
-                         resources_blob=None,
-                         resources_file=None) -> Tuple[int, bool]:
+                         std_file_local=None,
+                         std_file_remote=None,
+                         resource_file_remote=None) -> Tuple[int, bool]:
         """Execute the request.
 
         This uses a second thread to listen for possible "kill" messages from
@@ -303,38 +299,14 @@ class TaskRequestHandler:
         thread.start()
         tracker.run()
 
-        exit_code = tracker.wait(stdout_file, stdout_blob, resources_file,
-                                 resources_blob)
+        exit_code = tracker.wait(std_file_local, std_file_remote,
+                                 self.artifact_filesystem, resource_file_remote)
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)
         thread.join()
         logging.info("Message catcher thread stopped.")
 
         return exit_code, task_killed_flag.is_set()
-
-    def _get_storage_blob(self, task_dir_remote):
-        """Get Google Storage object class.
-
-        Args:
-            task_dir_remote: Path to the directory with the task's files. Path
-                is relative to "artifact_filesystem".
-        Returns:
-            Blob object of stdout and resource file."""
-        try:
-            bucket_name = task_dir_remote.split("/", 1)[0]
-            task_dir = task_dir_remote.split("/", 1)[1]
-
-            storage_client = storage.Client(project=self.project_id)
-            bucket = storage_client.bucket(bucket_name)
-            stdout_blob = bucket.blob(os.path.join(task_dir, "stdout_live.txt"))
-            resource_blob = bucket.blob(
-                os.path.join(task_dir, "resource_usage.txt"))
-
-            return stdout_blob, resource_blob
-
-        except google.auth.exceptions.DefaultCredentialsError:
-            logging.error("Failed to authenticate with Google Cloud.")
-            return None, None
 
     def _pack_output(self, task_dir_remote, working_dir_local) -> int:
         """Compress outputs and store them in the shared drive.
