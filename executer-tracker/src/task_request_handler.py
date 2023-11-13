@@ -109,7 +109,6 @@ class TaskRequestHandler:
         executer_uuid: UUID,
         shared_dir_host: str,
         shared_dir_local: str,
-        project_id=str,
     ):
         self.docker = docker_client
         self.redis = redis_connection
@@ -120,7 +119,6 @@ class TaskRequestHandler:
         self.shared_dir_host = shared_dir_host
         self.shared_dir_local = shared_dir_local
         self.task_id = None
-        self.project_id = project_id
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
