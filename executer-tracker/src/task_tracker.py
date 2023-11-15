@@ -96,7 +96,7 @@ class TaskTracker:
             except KeyError as e:
                 logging.error("KeyError: %s", str(e))
                 logging.info("Stats dict: %s", str(s))
-                break
+                continue
 
             try:
                 precpu_system_cpu_usage = s["precpu_stats"]["system_cpu_usage"]
@@ -112,7 +112,7 @@ class TaskTracker:
                                      system_cpu_delta) * number_cpus * 100
                 logging.info("CPU usage: %s", cpu_usage_percent)
             except KeyError:
-                break
+                continue
 
             if stdout_file is not None and stdout_file_remote is not None:
                 if os.path.exists(stdout_file):
@@ -128,7 +128,6 @@ class TaskTracker:
                     r_file.write(current_usage.encode("utf-8"))
 
         status = self.container.wait()
-
         return status["StatusCode"]
 
     def kill(self):

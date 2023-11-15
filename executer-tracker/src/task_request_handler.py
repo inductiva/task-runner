@@ -187,9 +187,9 @@ class TaskRequestHandler:
         working_dir_local, working_dir_host = self._setup_working_dir(
             task_dir_remote)
 
-        std_path_local = os.path.join(working_dir_local, utils.OUTPUT_DIR,
-                                      "artifacts/stdout.txt")
-        std_path_remote = os.path.join(task_dir_remote, "stdout_live.txt")
+        stdout_path_local = os.path.join(working_dir_local, utils.OUTPUT_DIR,
+                                         "artifacts/stdout.txt")
+        stdout_path_remote = os.path.join(task_dir_remote, "stdout_live.txt")
 
         resource_path_remote = os.path.join(task_dir_remote,
                                             "resource_usage.txt")
@@ -202,8 +202,8 @@ class TaskRequestHandler:
         exit_code, task_killed = self._execute_request(
             request,
             working_dir_host,
-            std_file_local=std_path_local,
-            std_file_remote=std_path_remote,
+            stdout_file_local=stdout_path_local,
+            stdout_file_remote=stdout_path_remote,
             resource_file_remote=resource_path_remote)
 
         event = events.TaskWorkFinished(
@@ -264,8 +264,8 @@ class TaskRequestHandler:
     def _execute_request(self,
                          request,
                          working_dir_host,
-                         std_file_local=None,
-                         std_file_remote=None,
+                         stdout_file_local=None,
+                         stdout_file_remote=None,
                          resource_file_remote=None) -> Tuple[int, bool]:
         """Execute the request.
 
@@ -297,7 +297,7 @@ class TaskRequestHandler:
         thread.start()
         tracker.run()
 
-        exit_code = tracker.wait(std_file_local, std_file_remote,
+        exit_code = tracker.wait(stdout_file_local, stdout_file_remote,
                                  self.artifact_filesystem, resource_file_remote)
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)
