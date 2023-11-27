@@ -6,7 +6,7 @@ import docker
 import docker.types
 from docker.models.containers import Container
 
-from utils import config, sync_write
+from utils import config
 
 from absl import logging
 
@@ -71,17 +71,13 @@ class TaskTracker:
         self.container = container
 
     def wait(self,
-             resources_stream=None,
-             stdout_stream=None,
-             std_file=None) -> int:
+             stdout_file=None,
+             stdout_file_remote=None,
+             artifact_filesystem=None,
+             resource_file_remote=None) -> int:
         """Blocks until end of execution, returning the command's exit code."""
         if not self.container:
             raise RuntimeError("Container not running.")
-
-        offset = 0
-        if resources_stream is not None:
-            header = "Timestamp, Memory_usage_percent, CPU_usage_percent \n"
-            resources_stream.write(header.encode("utf-8"))
 
         for s in self.container.stats(decode=True):
             # Reference:
@@ -118,17 +114,20 @@ class TaskTracker:
             except KeyError:
                 continue
 
-            if resources_stream is not None:
-                current_resources = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
-                resources_stream.write(current_resources.encode("utf-8"))
+            if stdout_file is not None and stdout_file_remote is not None:
+                if os.path.exists(stdout_file):
+                    with artifact_filesystem.open_output_stream(
+                            path=stdout_file_remote) as std_file:
+                        with open(stdout_file, "rb") as f_src:
+                            std_file.write(f_src.read())
 
-            if stdout_stream is not None:
-                if os.path.exists(std_file):
-                    offset = sync_write.update_stdout_file(
-                        std_file, offset, stdout_stream)
+            if resource_file_remote is not None:
+                with artifact_filesystem.open_output_stream(
+                        path=resource_file_remote) as r_file:
+                    current_usage = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
+                    r_file.write(current_usage.encode("utf-8"))
 
         status = self.container.wait()
-
         return status["StatusCode"]
 
     def kill(self):

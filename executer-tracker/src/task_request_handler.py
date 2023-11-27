@@ -10,7 +10,6 @@ import shutil
 import tempfile
 import threading
 from typing import Dict, Tuple
-import contextlib
 import docker
 import redis
 import json
@@ -23,8 +22,7 @@ from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
-from utils import files
-from utils import config
+from utils import files, config
 from task_tracker import TaskTracker
 
 TASK_COMMANDS_QUEUE = "commands"
@@ -189,25 +187,24 @@ class TaskRequestHandler:
         working_dir_local, working_dir_host = self._setup_working_dir(
             task_dir_remote)
 
-        std_path = os.path.join(working_dir_local, utils.OUTPUT_DIR,
-                                "artifacts/stdout.txt")
+        stdout_path_local = os.path.join(working_dir_local, utils.OUTPUT_DIR,
+                                         "artifacts/stdout.txt")
+        stdout_path_remote = os.path.join(task_dir_remote, "stdout_live.txt")
 
-        with self._open_usage_stream(task_dir_remote,
-                                     "resource_usage.txt") as resources_stream:
-            with self._open_usage_stream(task_dir_remote,
-                                         "stdout_live.txt") as stdout_stream:
+        resource_path_remote = os.path.join(task_dir_remote,
+                                            "resource_usage.txt")
 
-                self.event_logger.log(
-                    events.TaskWorkStarted(
-                        id=self.task_id,
-                        machine_id=self.executer_uuid,
-                    ))
-                exit_code, task_killed = self._execute_request(
-                    request,
-                    working_dir_host,
-                    resources_stream=resources_stream,
-                    stdout_stream=stdout_stream,
-                    std_file=std_path)
+        self.event_logger.log(
+            events.TaskWorkStarted(
+                id=self.task_id,
+                machine_id=self.executer_uuid,
+            ))
+        exit_code, task_killed = self._execute_request(
+            request,
+            working_dir_host,
+            stdout_file_local=stdout_path_local,
+            stdout_file_remote=stdout_path_remote,
+            resource_file_remote=resource_path_remote)
 
         event = events.TaskWorkFinished(
             id=self.task_id,
@@ -267,9 +264,9 @@ class TaskRequestHandler:
     def _execute_request(self,
                          request,
                          working_dir_host,
-                         resources_stream=None,
-                         stdout_stream=None,
-                         std_file=None) -> Tuple[int, bool]:
+                         stdout_file_local=None,
+                         stdout_file_remote=None,
+                         resource_file_remote=None) -> Tuple[int, bool]:
         """Execute the request.
 
         This uses a second thread to listen for possible "kill" messages from
@@ -300,7 +297,8 @@ class TaskRequestHandler:
         thread.start()
         tracker.run()
 
-        exit_code = tracker.wait(resources_stream, stdout_stream, std_file)
+        exit_code = tracker.wait(stdout_file_local, stdout_file_remote,
+                                 self.artifact_filesystem, resource_file_remote)
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)
         thread.join()
@@ -378,21 +376,3 @@ class TaskRequestHandler:
         method = request["method"]
 
         return f"python {method_to_script[method]}"
-
-    @contextlib.contextmanager
-    def _open_usage_stream(self, task_dir_remote, output_write_file):
-        """Open generic write stream in the shared drive
-
-        Args:
-            task_dir_remote: Path to the directory with the task's files. Path
-                is relative to "artifact_filesystem".
-        """
-
-        output_stdout_remote = os.path.join(task_dir_remote, output_write_file)
-
-        local = self.artifact_filesystem
-        #local.create_dir(self.artifact_filesystem, task_dir_remote)
-        with local.open_output_stream(path=output_stdout_remote,
-                                      compression=None) as stream:
-
-            yield stream
