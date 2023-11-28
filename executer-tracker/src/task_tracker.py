@@ -62,7 +62,7 @@ class TaskTracker:
             ],
             working_dir=container_working_dir,
             detach=True,  # Run container in background.
-            auto_remove=True,  # Remove container when it exits.
+            auto_remove=False,
             device_requests=device_requests)
         assert isinstance(
             container,
@@ -96,7 +96,7 @@ class TaskTracker:
             except KeyError as e:
                 logging.error("KeyError: %s", str(e))
                 logging.info("Stats dict: %s", str(s))
-                continue
+                break
 
             try:
                 precpu_system_cpu_usage = s["precpu_stats"]["system_cpu_usage"]
@@ -112,7 +112,7 @@ class TaskTracker:
                                      system_cpu_delta) * number_cpus * 100
                 logging.info("CPU usage: %s", cpu_usage_percent)
             except KeyError:
-                continue
+                break
 
             if stdout_file is not None and stdout_file_remote is not None:
                 if os.path.exists(stdout_file):
@@ -128,6 +128,7 @@ class TaskTracker:
                     r_file.write(current_usage.encode("utf-8"))
 
         status = self.container.wait()
+        self.container.remove()
         return status["StatusCode"]
 
     def kill(self):
