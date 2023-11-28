@@ -83,6 +83,10 @@ class TaskTracker:
             # Reference:
             # - https://docs.docker.com/engine/reference/commandline/stats/#description # pylint: disable=line-too-long
             # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats # pylint: disable=line-too-long
+            self.container.reload()
+            if self.container.status in ("exited", "dead"):
+                break
+
             try:
                 timestamp = s["read"]
                 logging.info("Read: %s", timestamp)
@@ -96,7 +100,7 @@ class TaskTracker:
             except KeyError as e:
                 logging.error("KeyError: %s", str(e))
                 logging.info("Stats dict: %s", str(s))
-                break
+                continue
 
             try:
                 precpu_system_cpu_usage = s["precpu_stats"]["system_cpu_usage"]
@@ -112,7 +116,7 @@ class TaskTracker:
                                      system_cpu_delta) * number_cpus * 100
                 logging.info("CPU usage: %s", cpu_usage_percent)
             except KeyError:
-                break
+                continue
 
             if stdout_file is not None and stdout_file_remote is not None:
                 if os.path.exists(stdout_file):
