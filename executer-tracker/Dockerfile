@@ -1,5 +1,11 @@
 FROM python:3.11
 
+RUN apt-get update && apt-get install -y wget
+RUN cd /tmp \
+    && wget https://github.com/apptainer/apptainer/releases/download/v1.2.5/apptainer_1.2.5_amd64.deb \
+    && apt-get install -y ./apptainer_1.2.5_amd64.deb \
+    && rm /tmp/*
+
 # Accept git commit as a build argument and set it as environment variable
 # so that it can be accessed in the code.
 # Provide argument by adding the following to the docker build command:
