@@ -36,10 +36,9 @@ def get_machine_group_id() -> Optional[uuid.UUID]:
 @dataclasses.dataclass
 class ExecuterConfig:
     image: str
-    use_gpu: bool = False
 
 
-def load_executers_config(docker_client) -> Dict[str, ExecuterConfig]:
+def load_executers_config(executer_images_dir) -> Dict[str, ExecuterConfig]:
     """Load supported executer types from config file.
 
     Config file is specified by the EXECUTERS_CONFIG environment
@@ -81,25 +80,25 @@ def load_executers_config(docker_client) -> Dict[str, ExecuterConfig]:
             raise ValueError(
                 f"Docker image must be a dict: {exec_config_unparsed}")
 
-        docker_image = exec_config_unparsed.get("image")
-        if not isinstance(docker_image, str):
-            logging.error("Docker image must be a string: %s", docker_image)
-            raise ValueError(f"Docker image must be a string: {docker_image}")
+        executer_image = exec_config_unparsed.get("image")
+        if not isinstance(executer_image, str):
+            logging.error("Executer image must be a string: %s", executer_image)
+            raise ValueError(
+                f"Apptainer image must be a string: {executer_image}")
 
-        use_gpu = exec_config_unparsed.get("gpu", False)
+        executer_image_full_path = os.path.join(executer_images_dir,
+                                                executer_image)
 
         logging.info(" > Executer type: %s", exec_type)
-        logging.info("   Docker image: %s", docker_image)
-        if use_gpu:
-            logging.info("   Use GPU: %s", use_gpu)
+        logging.info("   Apptainer image: %s", executer_image_full_path)
 
-        try:
-            docker_client.images.get(docker_image)
-        except docker.errors.ImageNotFound as e:
-            logging.error("Docker image not found: %s", docker_image)
-            raise e
+        if not os.path.exists(executer_image_full_path):
+            logging.error("Apptainer image not found: %s",
+                          executer_image_full_path)
+            raise RuntimeError(
+                f"Apptainer image not found: {executer_image_full_path}")
 
-        executers_config[exec_type] = ExecuterConfig(image=docker_image,
-                                                     use_gpu=use_gpu)
+        executers_config[exec_type] = ExecuterConfig(
+            image=executer_image_full_path)
 
     return executers_config

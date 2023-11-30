@@ -10,7 +10,6 @@ import shutil
 import tempfile
 import threading
 from typing import Dict, Tuple
-import docker
 import redis
 import json
 from uuid import UUID
@@ -103,22 +102,18 @@ class TaskRequestHandler:
     def __init__(
         self,
         redis_connection: redis.Redis,
-        docker_client: docker.DockerClient,
         executers_config: Dict[str, config.ExecuterConfig],
         artifact_filesystem: fs.FileSystem,
         executer_uuid: UUID,
-        shared_dir_host: str,
-        shared_dir_local: str,
+        workdir: str,
     ):
-        self.docker = docker_client
         self.redis = redis_connection
         self.artifact_filesystem = artifact_filesystem
         self.executer_uuid = executer_uuid
         self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
         self.executers_config = executers_config
-        self.shared_dir_host = shared_dir_host
-        self.shared_dir_local = shared_dir_local
         self.task_id = None
+        self.workdir = workdir
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
@@ -132,29 +127,30 @@ class TaskRequestHandler:
         the information that this task was picked up by the machine and
         will be run with the Docker image with that information.
         """
-        docker_image = self.current_task_executer_config.image
 
-        executer_docker_image_digest = None
-        executer_git_commit_hash = None
-        executer_docker_image = self.docker.images.get(docker_image)
-        if executer_docker_image is not None:
-            if executer_docker_image.labels is not None:
-                executer_git_commit_hash = executer_docker_image.labels.get(
-                    "org.opencontainers.image.revision")
-            if executer_docker_image.attrs is not None:
-                executer_docker_image_digests = executer_docker_image.attrs.get(
-                    "RepoDigests")
-                if len(executer_docker_image_digests) > 0:
-                    executer_docker_image_digest = \
-                        executer_docker_image_digests[0]
+        #     docker_image = self.current_task_executer_config.image
+
+        #     executer_docker_image_digest = None
+        #     executer_git_commit_hash = None
+        #     executer_docker_image = self.docker.images.get(docker_image)
+        #     if executer_docker_image is not None:
+        #         if executer_docker_image.labels is not None:
+        #             executer_git_commit_hash = executer_docker_image.labels.get(
+        #                 "org.opencontainers.image.revision")
+        #         if executer_docker_image.attrs is not None:
+        #             executer_docker_image_digests = executer_docker_image.attrs.get(
+        #                 "RepoDigests")
+        #             if len(executer_docker_image_digests) > 0:
+        #                 executer_docker_image_digest = \
+        #                     executer_docker_image_digests[0]
 
         assert self.task_id is not None
         self.event_logger.log(
             events.TaskPickedUp(
                 id=self.task_id,
                 machine_id=self.executer_uuid,
-                executer_git_commit_hash=executer_git_commit_hash,
-                executer_docker_image_digest=executer_docker_image_digest,
+                executer_git_commit_hash="abc",
+                executer_docker_image_digest="abc",
             ))
 
     def _log_task_work_started(self):
@@ -184,10 +180,9 @@ class TaskRequestHandler:
 
         self._log_task_picked_up()
 
-        working_dir_local, working_dir_host = self._setup_working_dir(
-            task_dir_remote)
+        task_workdir = self._setup_working_dir(task_dir_remote)
 
-        stdout_path_local = os.path.join(working_dir_local, utils.OUTPUT_DIR,
+        stdout_path_local = os.path.join(task_workdir, utils.OUTPUT_DIR,
                                          "artifacts/stdout.txt")
         stdout_path_remote = os.path.join(task_dir_remote, "stdout_live.txt")
 
@@ -201,10 +196,11 @@ class TaskRequestHandler:
             ))
         exit_code, task_killed = self._execute_request(
             request,
-            working_dir_host,
+            task_workdir,
             stdout_file_local=stdout_path_local,
             stdout_file_remote=stdout_path_remote,
-            resource_file_remote=resource_path_remote)
+            resource_file_remote=resource_path_remote,
+        )
 
         event = events.TaskWorkFinished(
             id=self.task_id,
@@ -213,7 +209,7 @@ class TaskRequestHandler:
 
         self.event_logger.log(event)
 
-        output_size_b = self._pack_output(task_dir_remote, working_dir_local)
+        output_size_b = self._pack_output(task_dir_remote, task_workdir)
 
         new_status = task_status.TaskStatusCode.SUCCESS.value
         if task_killed:
@@ -229,10 +225,10 @@ class TaskRequestHandler:
                 new_status=new_status,
             ))
 
-        self._cleanup(working_dir_local)
+        self._cleanup(task_workdir)
         self.task_id = None
 
-    def _setup_working_dir(self, task_dir_remote) -> Tuple[str, str]:
+    def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
 
         Returns:
@@ -243,12 +239,11 @@ class TaskRequestHandler:
         assert self.task_id is not None, (
             "'_setup_working_dir' called without a task ID.")
 
-        working_dir_local = os.path.join(self.shared_dir_local, self.task_id)
-        working_dir_host = os.path.join(self.shared_dir_host, self.task_id)
+        task_workdir = os.path.join(self.workdir, self.task_id)
 
         # Both vars point to the same directory (one is the path on the host
         # machine and the other is the path inside the container).
-        os.makedirs(working_dir_local)
+        os.makedirs(task_workdir)
 
         input_zip_path_remote = os.path.join(task_dir_remote,
                                              utils.INPUT_ZIP_FILENAME)
@@ -256,10 +251,10 @@ class TaskRequestHandler:
         files.download_and_extract_zip_archive(
             self.artifact_filesystem,
             input_zip_path_remote,
-            working_dir_local,
+            task_workdir,
         )
 
-        return working_dir_local, working_dir_host
+        return task_workdir
 
     def _execute_request(self,
                          request,
@@ -280,7 +275,6 @@ class TaskRequestHandler:
             "'_execute_request' called without a task ID.")
 
         tracker = TaskTracker(
-            docker_client=self.docker,
             executer_config=self.current_task_executer_config,
             command=self._build_command(request),
             working_dir_host=working_dir_host,
@@ -306,7 +300,7 @@ class TaskRequestHandler:
 
         return exit_code, task_killed_flag.is_set()
 
-    def _pack_output(self, task_dir_remote, working_dir_local) -> int:
+    def _pack_output(self, task_dir_remote, task_workdir) -> int:
         """Compress outputs and store them in the shared drive.
 
         Args:
@@ -319,7 +313,7 @@ class TaskRequestHandler:
             Path to the zip file.
         """
         # Compress outputs, storing them in the shared drive
-        output_dir = os.path.join(working_dir_local, utils.OUTPUT_DIR)
+        output_dir = os.path.join(task_workdir, utils.OUTPUT_DIR)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_zip_path_local = os.path.join(tmp_dir,

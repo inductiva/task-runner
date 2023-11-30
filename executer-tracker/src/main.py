@@ -53,6 +53,7 @@ Usage (note the required environment variables):
   python executer_tracker.py
 """
 import os
+import sys
 
 from absl import app, logging
 from pyarrow import fs
@@ -71,6 +72,11 @@ def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
     redis_port = os.getenv("REDIS_PORT", "6379")
     artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
+    workdir = os.getenv("WORKDIR", "/workdir")
+    executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
+    if not executer_images_dir:
+        logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
+        sys.exit(1)
 
     if config.gcloud.is_running_on_gcloud_vm():
         # Check if there are any metadata values that override the provided
@@ -85,14 +91,6 @@ def main(_):
         if metadata_api_url:
             api_url = metadata_api_url
 
-    shared_dir_host = os.getenv("SHARED_DIR_HOST")
-    if not shared_dir_host:
-        raise ValueError("SHARED_DIR_HOST environment variable not set.")
-
-    shared_dir_local = os.getenv("SHARED_DIR_LOCAL")
-    if not shared_dir_local:
-        raise ValueError("SHARED_DIR_LOCAL environment variable not set.")
-
     artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
         artifact_store_uri)
     artifact_filesystem_root = fs.SubTreeFileSystem(base_path,
@@ -105,9 +103,8 @@ def main(_):
         logging.info("Using machine group: %s", machine_group_id)
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
-    docker_client = docker.from_env()
 
-    executers_config = config.load_executers_config(docker_client)
+    executers_config = config.load_executers_config(executer_images_dir)
 
     executer_access_info = register_executer(
         api_url,
@@ -122,12 +119,10 @@ def main(_):
 
     request_handler = TaskRequestHandler(
         redis_connection=redis_conn,
-        docker_client=docker_client,
         executers_config=executers_config,
         artifact_filesystem=artifact_filesystem_root,
         executer_uuid=executer_uuid,
-        shared_dir_host=shared_dir_host,
-        shared_dir_local=shared_dir_local,
+        workdir=workdir,
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
