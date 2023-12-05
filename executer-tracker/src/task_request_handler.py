@@ -22,7 +22,7 @@ from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
 from utils import files, config
-from task_tracker import TaskTracker
+import subprocess_tracker
 
 TASK_COMMANDS_QUEUE = "commands"
 
@@ -30,7 +30,7 @@ TASK_COMMANDS_QUEUE = "commands"
 def redis_kill_msg_catcher(
     redis_conn: redis.Redis,
     task_id: str,
-    task_tracker: TaskTracker,
+    tracker: subprocess_tracker.SubprocessTracker,
     killed_flag: threading.Event,
 ) -> None:
     """Function to handle the kill request for the running task.
@@ -62,7 +62,7 @@ def redis_kill_msg_catcher(
         content = element[1]
         if content == "kill":
             logging.info("Received kill message. Killing task.")
-            task_tracker.kill()
+            tracker.exit_gracefully()
             logging.info("Task killed.")
 
             # set flag so that the main thread knows the task was killed
@@ -127,30 +127,11 @@ class TaskRequestHandler:
         the information that this task was picked up by the machine and
         will be run with the Docker image with that information.
         """
-
-        #     docker_image = self.current_task_executer_config.image
-
-        #     executer_docker_image_digest = None
-        #     executer_git_commit_hash = None
-        #     executer_docker_image = self.docker.images.get(docker_image)
-        #     if executer_docker_image is not None:
-        #         if executer_docker_image.labels is not None:
-        #             executer_git_commit_hash = executer_docker_image.labels.get(
-        #                 "org.opencontainers.image.revision")
-        #         if executer_docker_image.attrs is not None:
-        #             executer_docker_image_digests = executer_docker_image.attrs.get(
-        #                 "RepoDigests")
-        #             if len(executer_docker_image_digests) > 0:
-        #                 executer_docker_image_digest = \
-        #                     executer_docker_image_digests[0]
-
         assert self.task_id is not None
         self.event_logger.log(
             events.TaskPickedUp(
                 id=self.task_id,
                 machine_id=self.executer_uuid,
-                executer_git_commit_hash="abc",
-                executer_docker_image_digest="abc",
             ))
 
     def _log_task_work_started(self):
@@ -174,33 +155,20 @@ class TaskRequestHandler:
             request: Request describing the task to be executed.
         """
         self.task_id = request["id"]
-        task_dir_remote = request["task_dir"]
+        self.task_dir_remote = request["task_dir"]
         self.current_task_executer_config = self.executers_config[
             request["executer_type"]]
 
         self._log_task_picked_up()
 
-        task_workdir = self._setup_working_dir(task_dir_remote)
-
-        stdout_path_local = os.path.join(task_workdir, utils.OUTPUT_DIR,
-                                         "artifacts/stdout.txt")
-        stdout_path_remote = os.path.join(task_dir_remote, "stdout_live.txt")
-
-        resource_path_remote = os.path.join(task_dir_remote,
-                                            "resource_usage.txt")
+        self.task_workdir = self._setup_working_dir(self.task_dir_remote)
 
         self.event_logger.log(
             events.TaskWorkStarted(
                 id=self.task_id,
                 machine_id=self.executer_uuid,
             ))
-        exit_code, task_killed = self._execute_request(
-            request,
-            task_workdir,
-            stdout_file_local=stdout_path_local,
-            stdout_file_remote=stdout_path_remote,
-            resource_file_remote=resource_path_remote,
-        )
+        exit_code, task_killed = self._execute_request(request,)
 
         event = events.TaskWorkFinished(
             id=self.task_id,
@@ -209,7 +177,7 @@ class TaskRequestHandler:
 
         self.event_logger.log(event)
 
-        output_size_b = self._pack_output(task_dir_remote, task_workdir)
+        output_size_b = self._pack_output()
 
         new_status = task_status.TaskStatusCode.SUCCESS.value
         if task_killed:
@@ -225,7 +193,7 @@ class TaskRequestHandler:
                 new_status=new_status,
             ))
 
-        self._cleanup(task_workdir)
+        self._cleanup()
         self.task_id = None
 
     def _setup_working_dir(self, task_dir_remote) -> str:
@@ -256,12 +224,22 @@ class TaskRequestHandler:
 
         return task_workdir
 
-    def _execute_request(self,
-                         request,
-                         working_dir_host,
-                         stdout_file_local=None,
-                         stdout_file_remote=None,
-                         resource_file_remote=None) -> Tuple[int, bool]:
+    def _log_stdout(self):
+        stdout_path_local = os.path.join(self.task_workdir, utils.OUTPUT_DIR,
+                                         "artifacts/stdout.txt")
+        stdout_path_remote = os.path.join(self.task_dir_remote,
+                                          "stdout_live.txt")
+        if stdout_path_local is not None and stdout_path_remote is not None:
+            if os.path.exists(stdout_path_local):
+                with self.artifact_filesystem.open_output_stream(
+                        path=stdout_path_remote) as std_file:
+                    with open(stdout_path_local, "rb") as f_src:
+                        std_file.write(f_src.read())
+
+    def _execute_request(
+        self,
+        request,
+    ) -> Tuple[int, bool]:
         """Execute the request.
 
         This uses a second thread to listen for possible "kill" messages from
@@ -274,10 +252,12 @@ class TaskRequestHandler:
         assert self.task_id is not None, (
             "'_execute_request' called without a task ID.")
 
-        tracker = TaskTracker(
-            executer_config=self.current_task_executer_config,
-            command=self._build_command(request),
-            working_dir_host=working_dir_host,
+        container_image = self.current_task_executer_config.image
+
+        tracker = subprocess_tracker.SubprocessTracker(
+            command_line=(f"apptainer exec {container_image} " +
+                          self._build_command(request)),
+            working_dir=self.task_workdir,
         )
         redis_client_id = self.redis.client_id()
 
@@ -291,8 +271,8 @@ class TaskRequestHandler:
         thread.start()
         tracker.run()
 
-        exit_code = tracker.wait(stdout_file_local, stdout_file_remote,
-                                 self.artifact_filesystem, resource_file_remote)
+        exit_code = tracker.wait(periodic_callback=self._log_stdout)
+
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)
         thread.join()
@@ -300,7 +280,7 @@ class TaskRequestHandler:
 
         return exit_code, task_killed_flag.is_set()
 
-    def _pack_output(self, task_dir_remote, task_workdir) -> int:
+    def _pack_output(self) -> int:
         """Compress outputs and store them in the shared drive.
 
         Args:
@@ -313,7 +293,9 @@ class TaskRequestHandler:
             Path to the zip file.
         """
         # Compress outputs, storing them in the shared drive
-        output_dir = os.path.join(task_workdir, utils.OUTPUT_DIR)
+        output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
+        if not os.path.exists(output_dir):
+            return 0
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_zip_path_local = os.path.join(tmp_dir,
@@ -323,7 +305,7 @@ class TaskRequestHandler:
 
             output_archive_size_b = os.path.getsize(output_zip_path_local)
 
-            output_zip_path_remote = os.path.join(task_dir_remote,
+            output_zip_path_remote = os.path.join(self.task_dir_remote,
                                                   utils.OUTPUT_ZIP_FILENAME)
 
             files.upload_file(
@@ -341,7 +323,7 @@ class TaskRequestHandler:
 
         return output_archive_size_b
 
-    def _cleanup(self, working_dir_local):
+    def _cleanup(self):
         """Cleanup after task execution.
 
         Deletes the working directory of the task.
@@ -350,8 +332,8 @@ class TaskRequestHandler:
             working_dir_local: Working directory of the executer that performed
                 the task.
         """
-        logging.info("Cleaning up working directory: %s", working_dir_local)
-        shutil.rmtree(working_dir_local)
+        logging.info("Cleaning up working directory: %s", self.task_workdir)
+        shutil.rmtree(self.task_workdir)
 
     def _build_command(self, request) -> str:
         """Build Python command to run a requested task.

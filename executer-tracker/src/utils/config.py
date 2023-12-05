@@ -4,7 +4,6 @@ import os
 import json
 import uuid
 import dataclasses
-import docker.errors
 from absl import logging
 
 from utils import gcloud

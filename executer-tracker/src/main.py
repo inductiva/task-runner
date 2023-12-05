@@ -57,7 +57,6 @@ import sys
 
 from absl import app, logging
 from pyarrow import fs
-import docker
 
 import redis_utils
 import cleanup
