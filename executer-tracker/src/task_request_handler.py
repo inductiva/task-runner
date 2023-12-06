@@ -11,7 +11,6 @@ import tempfile
 import threading
 from typing import Dict, Tuple
 import redis
-import json
 from uuid import UUID
 
 import utils
