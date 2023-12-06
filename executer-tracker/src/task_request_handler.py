@@ -23,6 +23,7 @@ from pyarrow import fs
 from utils import make_task_key
 from utils import files, config
 import subprocess_tracker
+import api_methods_config
 
 TASK_COMMANDS_QUEUE = "commands"
 
@@ -346,9 +347,7 @@ class TaskRequestHandler:
         Returns:
             Python command to execute received request.
         """
-        with open("methods_to_script.json", "r", encoding="utf-8") as json_file:
-            method_to_script = json.load(json_file)
-
         method = request["method"]
+        script = api_methods_config.api_method_to_script[method]
 
-        return f"python {method_to_script[method]}"
+        return f"python {script}"

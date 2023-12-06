@@ -1,4 +1,6 @@
-{
+"""Mapping of API methods to scripts that perform those methods."""
+
+api_method_to_script = {
     "sph.splishsplash.run_simulation":
         "/scripts/simulation.py",
     "fluid_tank.splishsplash.run_simulation":
