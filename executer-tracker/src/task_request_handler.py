@@ -120,13 +120,7 @@ class TaskRequestHandler:
         return self.task_id is not None
 
     def _log_task_picked_up(self):
-        """Log that a task was picked up by the executer.
-
-        This gets the necessary information from the Docker image metadata
-        (git commit hash, docker image digest), and logs an event with
-        the information that this task was picked up by the machine and
-        will be run with the Docker image with that information.
-        """
+        """Log that a task was picked up by the executer."""
         assert self.task_id is not None
         self.event_logger.log(
             events.TaskPickedUp(
@@ -200,9 +194,8 @@ class TaskRequestHandler:
         """Setup the working directory for the task.
 
         Returns:
-            Tuple of the local and host paths to the working directory,
-            respectively. The local path is the path inside the container,
-            and the host path is the path on the host machine.
+            Path to the working directory for the currently
+            running task.
         """
         assert self.task_id is not None, (
             "'_setup_working_dir' called without a task ID.")

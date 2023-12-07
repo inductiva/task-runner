@@ -74,16 +74,17 @@ def load_executers_config(executer_images_dir) -> Dict[str, ExecuterConfig]:
     logging.info("Supported executer types:")
     for exec_type, exec_config_unparsed in executers_config_unparsed.items():
         if not isinstance(exec_type, str):
-            raise ValueError(f"Executer type must be a string: {exec_type}")
+            raise ValueError(f"Apptainer type must be a string: {exec_type}")
         if not isinstance(exec_config_unparsed, dict):
-            raise ValueError(
-                f"Docker image must be a dict: {exec_config_unparsed}")
+            raise ValueError(f"Apptainer image configuration must be a dict: "
+                             f"{exec_config_unparsed}")
 
         executer_image = exec_config_unparsed.get("image")
         if not isinstance(executer_image, str):
-            logging.error("Executer image must be a string: %s", executer_image)
+            logging.error("Apptainer image name must be a string: %s",
+                          executer_image)
             raise ValueError(
-                f"Apptainer image must be a string: {executer_image}")
+                f"Apptainer image name must be a string: {executer_image}")
 
         executer_image_full_path = os.path.join(executer_images_dir,
                                                 executer_image)
