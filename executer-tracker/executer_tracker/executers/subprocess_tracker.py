@@ -3,6 +3,7 @@ import os
 import shlex
 import signal
 import subprocess
+from typing import List
 import psutil
 import time
 
@@ -18,28 +19,29 @@ class SubprocessTracker:
 
     def __init__(
         self,
-        command_line,
+        args: List[str],
         working_dir,
+        stdout,
+        stderr,
     ):
-        logging.info("Creating task tracker for \"%s\".", command_line)
-        self.command_line = command_line
+        logging.info("Creating task tracker for \"%s\".", args)
+        self.args = args
         self.working_dir = working_dir
+        self.stdout = stdout
+        self.stderr = stderr
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
-        assert isinstance(self.command_line, str)
-
-        logging.info("Spawning subprocess for \"%s\".", self.command_line)
+        logging.info("Spawning subprocess for \"%s\".", self.args)
         self.spawn_time = time.perf_counter()
 
         try:
-            args = shlex.split(self.command_line)
-
             # pylint: disable=consider-using-with
             self.subproc = subprocess.Popen(
-                args,
+                self.args,
                 cwd=self.working_dir,
                 start_new_session=True,
+                #shell=True,
             )
             # pylint: enable=consider-using-with
 

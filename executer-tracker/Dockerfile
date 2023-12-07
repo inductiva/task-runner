@@ -13,12 +13,12 @@ RUN cd /tmp \
 ARG GIT_COMMIT_HASH
 ENV GIT_COMMIT_HASH=$GIT_COMMIT_HASH
 
-COPY /executer-tracker /code
-
-WORKDIR /code
-
 # Install the package dependencies in the requirements file.
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+COPY /executer-tracker/requirements.txt /requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /requirements.txt
+
+COPY /executer-tracker /executer-tracker
+WORKDIR /executer-tracker
 RUN pip install .
 
 COPY ./common/events /common/events

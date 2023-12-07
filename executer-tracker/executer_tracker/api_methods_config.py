@@ -1,4 +1,5 @@
 """Mapping of API methods to scripts that perform those methods."""
+from executer_tracker import executers
 
 api_method_to_script = {
     "sph.splishsplash.run_simulation":
@@ -34,9 +35,9 @@ api_method_to_script = {
     "md.gromacs.run_simulation":
         "/scripts/simulation.py",
     "protein_solvation.gromacs.run_simulation":
-        "/scripts/protein_solvation_simulation.py",
+        executers.gromacs.ProteinSolvationGROMACS,
     "mdwater_box.gromacs.run_simulation":
-        "/scripts/simulation.py",
+        executers.gromacs.GROMACS,
     "stellarators.simsopt.run_simulation":
         "/scripts/simulation.py",
     "fem.fenicsx.run_simulation":

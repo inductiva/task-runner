@@ -4,11 +4,13 @@ Check the `BaseExecuter` docstring for more information on the class and
 its usage.
 """
 from abc import ABC, abstractmethod
-import json
 import os
+import json
 from collections import namedtuple
-import subprocess
+import shlex
 from absl import logging
+
+from executer_tracker import executers
 
 
 class BaseExecuter(ABC):
@@ -33,16 +35,20 @@ class BaseExecuter(ABC):
     STDOUT_LOGS_FILENAME = "stdout.txt"
     STDERR_LOGS_FILENAME = "stderr.txt"
 
-    def __init__(self):
+    def __init__(self, working_dir: str, container_image: str):
         """Performs initial setup of the executer.
 
         This method creates the directories to be used for storing files
         that are sent to the client.
         """
-        self.working_dir = os.getcwd()
+        self.container_image = container_image
+        self.working_dir = working_dir
         self.output_dir = os.path.join(self.working_dir, self.OUTPUT_DIRNAME)
         self.artifacts_dir = os.path.join(self.output_dir,
                                           self.ARTIFACTS_DIRNAME)
+
+        logging.info("Working directory: %s", self.working_dir)
+
         os.makedirs(self.artifacts_dir)
         logging.info("Created output directory: %s", self.output_dir)
         logging.info("Created artifacts directory: %s", self.artifacts_dir)
@@ -144,7 +150,7 @@ class BaseExecuter(ABC):
 
             json.dump(json_obj, f)
 
-    def run_subprocess(self, cmd: str, **kwargs):
+    def run_subprocess(self, cmd: str, working_dir: str, **kwargs):
         """Wrapper to subprocess.run() that correctly handles logging to files.
 
         This method should be used by executers to execute subprocesses, since
@@ -166,14 +172,20 @@ class BaseExecuter(ABC):
             stdout.flush()
             stderr.flush()
 
-            subprocess.run(
-                cmd,
-                shell=True,
-                check=True,
+            args = ["apptainer", "exec", self.container_image]
+
+            args.extend(shlex.split(cmd))
+
+            subprocess_tracker = executers.SubprocessTracker(
+                args=args,
+                working_dir=os.path.join(self.working_dir, working_dir),
                 stdout=stdout,
                 stderr=stderr,
-                **kwargs,
             )
+            subprocess_tracker.run()
+            exit_code = subprocess_tracker.wait()
+            if exit_code != 0:
+                raise RuntimeError(f"Command failed with exit code {exit_code}")
 
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")

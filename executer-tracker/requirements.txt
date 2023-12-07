@@ -4,3 +4,7 @@ redis
 requests
 pyarrow
 docker
+
+# GROMACS
+biopython
+MDAnalysis
