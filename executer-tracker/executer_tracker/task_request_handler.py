@@ -63,8 +63,7 @@ def redis_kill_msg_catcher(
         content = element[1]
         if content == "kill":
             logging.info("Received kill message. Killing task.")
-            # TODO: kill the task
-            del executer
+            executer.terminate()
             logging.info("Task killed.")
 
             # set flag so that the main thread knows the task was killed
@@ -165,6 +164,7 @@ class TaskRequestHandler:
                 machine_id=self.executer_uuid,
             ))
         exit_code, task_killed = self._execute_request(request,)
+        logging.info("Task killed: %s", str(task_killed))
 
         event = events.TaskWorkFinished(
             id=self.task_id,
@@ -176,10 +176,10 @@ class TaskRequestHandler:
         output_size_b = self._pack_output()
 
         new_status = task_status.TaskStatusCode.SUCCESS.value
-        if task_killed:
-            new_status = task_status.TaskStatusCode.KILLED.value
         if exit_code != 0:
             new_status = task_status.TaskStatusCode.FAILED.value
+        if task_killed:
+            new_status = task_status.TaskStatusCode.KILLED.value
 
         self.event_logger.log(
             events.TaskOutputUploaded(
@@ -261,7 +261,7 @@ class TaskRequestHandler:
         exit_code = 0
         try:
             executer.run()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logging.error("Exception while running executer: %s", str(e))
             exit_code = 1
 

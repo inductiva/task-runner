@@ -17,5 +17,7 @@ class ProteinSolvationGROMACS(gromacs.GROMACS):
         pre_processing.protein_solvation_pre_process(pdb_file=pdb_file)
 
     def post_process(self):
-        rmsf_values = post_processing.calculate_rmsf_trajectory()
-        np.save("rmsf_values.npy", rmsf_values)
+        rmsf_values = post_processing.calculate_rmsf_trajectory(
+            working_dir=self.artifacts_dir)
+        np.save(os.path.join(self.artifacts_dir, "rmsf_values.npy"),
+                rmsf_values)

@@ -1,6 +1,5 @@
 """Module that defines the SubprocessTracker class."""
 import os
-import shlex
 import signal
 import subprocess
 from typing import List
@@ -23,12 +22,14 @@ class SubprocessTracker:
         working_dir,
         stdout,
         stderr,
+        stdin,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
         self.working_dir = working_dir
         self.stdout = stdout
         self.stderr = stderr
+        self.stdin = stdin
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
@@ -41,11 +42,14 @@ class SubprocessTracker:
                 self.args,
                 cwd=self.working_dir,
                 start_new_session=True,
-                #shell=True,
+                stdout=self.stdout,
+                stderr=self.stderr,
+                stdin=self.stdin,
+                shell=False,
             )
             # pylint: enable=consider-using-with
-
             logging.info("Started process with PID %d.", self.subproc.pid)
+
         except Exception as exception:  # pylint: disable=broad-except
             logging.warning("Caught exception \"%s\". Exiting gracefully",
                             exception)

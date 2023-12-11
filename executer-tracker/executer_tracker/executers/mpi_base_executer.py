@@ -17,8 +17,9 @@ MPI_DISTRIBUTION_FILENAME = "machinefile"
 class MPIExecuter(executers.BaseExecuter):
     """Implementation of a general MPI Executer."""
 
-    def __init__(self, bin_env_var, file_type, sim_specific_input_filename):
-        super().__init__()
+    def __init__(self, working_dir, container_image, bin_env_var, file_type,
+                 sim_specific_input_filename):
+        super().__init__(working_dir, container_image)
         self.bin_env_var = bin_env_var
         self.sim_specific_input_filename = sim_specific_input_filename
         self.file_type = file_type
@@ -58,7 +59,8 @@ class MPIExecuter(executers.BaseExecuter):
 
         input_files = set(os.listdir())
 
-        self.run_subprocess(f"{mpi_bin} {MPI_ALLOW} -np {n_cores} {sim_bin}")
+        self.run_subprocess(f"{mpi_bin} {MPI_ALLOW} -np {n_cores} {sim_bin}",
+                            working_dir=sim_dir)
 
         all_files = set(os.listdir())
         new_files = all_files - input_files

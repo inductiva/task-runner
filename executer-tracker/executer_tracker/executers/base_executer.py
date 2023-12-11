@@ -11,6 +11,7 @@ import shlex
 from absl import logging
 
 from executer_tracker import executers
+from executer_tracker.executers import command
 
 
 class BaseExecuter(ABC):
@@ -150,7 +151,11 @@ class BaseExecuter(ABC):
 
             json.dump(json_obj, f)
 
-    def run_subprocess(self, cmd: str, working_dir: str, **kwargs):
+    def run_subprocess(
+        self,
+        cmd: command.Command,
+        working_dir: str,
+    ):
         """Wrapper to subprocess.run() that correctly handles logging to files.
 
         This method should be used by executers to execute subprocesses, since
@@ -164,8 +169,17 @@ class BaseExecuter(ABC):
             cmd: String representing the command to run the subprocess.
             kwargs: Keyword arguments to be passed to subprocess.run().
         """
+        stdin_path = os.path.join(self.working_dir, "stdin.txt")
+        stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
+
+        with open(stdin_path, "w", encoding="UTF-8") as f:
+            f.write(stdin_contents)
+            logging.info("Wrote stdin contents to %s: %d bytes", stdin_path,
+                         len(stdin_contents))
+
         with open(self.stdout_logs_path, "a", encoding="UTF-8") as stdout, \
-            open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr:
+            open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
+                open(stdin_path, "r", encoding="UTF-8") as stdin:
 
             stdout.write(f"# COMMAND: {cmd}\n\n")
             stderr.write(f"# COMMAND: {cmd}\n\n")
@@ -173,19 +187,20 @@ class BaseExecuter(ABC):
             stderr.flush()
 
             args = ["apptainer", "exec", self.container_image]
+            args.extend(shlex.split(cmd.cmd))
 
-            args.extend(shlex.split(cmd))
-
-            subprocess_tracker = executers.SubprocessTracker(
+            self.subprocess = executers.SubprocessTracker(
                 args=args,
                 working_dir=os.path.join(self.working_dir, working_dir),
                 stdout=stdout,
                 stderr=stderr,
+                stdin=stdin,
             )
-            subprocess_tracker.run()
-            exit_code = subprocess_tracker.wait()
+            self.subprocess.run()
+            exit_code = self.subprocess.wait()
             if exit_code != 0:
-                raise RuntimeError(f"Command failed with exit code {exit_code}")
+                raise RuntimeError(
+                    f"Command failed with exit code: {exit_code}")
 
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")
@@ -197,3 +212,7 @@ class BaseExecuter(ABC):
         self.execute()
         self.post_process()
         self.pack_output()
+
+    def terminate(self):
+        if self.subprocess is not None:
+            self.subprocess.exit_gracefully()
