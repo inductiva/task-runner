@@ -47,5 +47,5 @@ api_method_to_script = {
     "fdm.fds.run_simulation":
         "/scripts/simulation.py",
     "reef3d.reef3d.run_simulation":
-        "/scripts/simulation.py"
+        executers.reef3d.REEF3DExecuter,
 }
