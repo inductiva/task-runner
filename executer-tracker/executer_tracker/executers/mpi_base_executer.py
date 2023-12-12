@@ -17,10 +17,10 @@ MPI_DISTRIBUTION_FILENAME = "machinefile"
 class MPIExecuter(executers.BaseExecuter):
     """Implementation of a general MPI Executer."""
 
-    def __init__(self, working_dir, container_image, bin_env_var, file_type,
+    def __init__(self, working_dir, container_image, sim_binary, file_type,
                  sim_specific_input_filename):
         super().__init__(working_dir, container_image)
-        self.bin_env_var = bin_env_var
+        self.sim_binary = sim_binary
         self.sim_specific_input_filename = sim_specific_input_filename
         self.file_type = file_type
 
@@ -32,12 +32,11 @@ class MPIExecuter(executers.BaseExecuter):
             f.write(f"{node_name} : {n_cores}\n")
 
     def execute(self):
-        sim_dir = self.args.sim_dir
+        sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
         input_filename = self.args.input_filename
         n_cores = psutil.cpu_count(logical=False)
 
         mpi_bin = "mpirun"
-        sim_bin = os.getenv(self.bin_env_var)
 
         host_name = platform.node()
         if n_cores > 1:
@@ -45,31 +44,33 @@ class MPIExecuter(executers.BaseExecuter):
                                               node_name=host_name,
                                               dir_path=sim_dir)
 
-        os.chdir(sim_dir)
+        input_file_full_path = os.path.join(sim_dir, input_filename)
 
-        if not os.path.exists(input_filename):
-            if os.path.exists(f"{input_filename}.{self.file_type}"):
-                input_filename = f"{input_filename}.{self.file_type}"
+        if not os.path.exists(input_file_full_path):
+            if os.path.exists(f"{input_file_full_path}.{self.file_type}"):
+                input_filename = f"{input_file_full_path}.{self.file_type}"
             else:
                 raise ValueError(
                     f"A file with name {input_filename} doesn't exist.")
 
         # Renaming input file as the simulator expects it to be
-        os.rename(input_filename, self.sim_specific_input_filename)
+        os.rename(input_file_full_path,
+                  os.path.join(sim_dir, self.sim_specific_input_filename))
 
-        input_files = set(os.listdir())
+        input_files = set(os.listdir(sim_dir))
 
         cmd = executers.Command(
-            f"{mpi_bin} {MPI_ALLOW} -np {n_cores} {sim_bin}")
+            f"{mpi_bin} {MPI_ALLOW} -np {n_cores} {self.sim_binary}")
         self.run_subprocess(cmd, working_dir=sim_dir)
 
-        all_files = set(os.listdir())
+        all_files = set(os.listdir(sim_dir))
         new_files = all_files - input_files
 
         for filename in new_files:
             dst_path = os.path.join(self.artifacts_dir, filename)
+            src_path = os.path.join(sim_dir, filename)
 
-            if os.path.isfile(filename):
-                shutil.copy(filename, dst_path)
-            elif os.path.isdir(filename):
-                shutil.copytree(filename, dst_path)
+            if os.path.isfile(src_path):
+                shutil.copy(src_path, dst_path)
+            elif os.path.isdir(src_path):
+                shutil.copytree(src_path, dst_path)

@@ -17,9 +17,9 @@ api_method_to_script = {
     "fluid_block.dualsphysics.run_simulation":
         "/scripts/simulation.py",
     "sw.swash.run_simulation":
-        "/scripts/simulation.py",
+        executers.swash.SWASHExecuter,
     "coastal_area.swash.run_simulation":
-        "/scripts/simulation.py",
+        executers.swash.SWASHExecuter,
     "sw.xbeach.run_simulation":
         "/scripts/simulation.py",
     "fvm.openfoam_foundation.run_simulation":
