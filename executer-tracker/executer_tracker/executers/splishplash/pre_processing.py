@@ -1,6 +1,6 @@
 """"Pre-processing utilities for the fluid tank scenario."""
 
-import gmsh_utils
+from executer_tracker.executers.splishplash import gmsh_utils
 
 
 def create_tank_mesh_file(tank_dict, obj_file_path):

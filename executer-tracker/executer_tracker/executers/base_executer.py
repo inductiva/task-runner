@@ -154,7 +154,7 @@ class BaseExecuter(ABC):
     def run_subprocess(
         self,
         cmd: command.Command,
-        working_dir: str,
+        working_dir: str = "",
     ):
         """Wrapper to subprocess.run() that correctly handles logging to files.
 
@@ -189,9 +189,14 @@ class BaseExecuter(ABC):
             args = ["apptainer", "exec", self.container_image]
             args.extend(shlex.split(cmd.cmd))
 
+            if working_dir:
+                working_dir = os.path.join(self.working_dir, working_dir)
+            else:
+                working_dir = self.working_dir
+
             self.subprocess = executers.SubprocessTracker(
                 args=args,
-                working_dir=os.path.join(self.working_dir, working_dir),
+                working_dir=working_dir,
                 stdout=stdout,
                 stderr=stderr,
                 stdin=stdin,

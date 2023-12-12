@@ -3,13 +3,13 @@ from executer_tracker import executers
 
 api_method_to_script = {
     "sph.splishsplash.run_simulation":
-        "/scripts/simulation.py",
+        executers.splishplash.SPlisHSPlasHExecuter,
     "fluid_tank.splishsplash.run_simulation":
-        "/scripts/fluid_tank_simulation.py",
+        executers.splishplash.FluidTankSPlisHSPlasHExecuter,
     "dam_break.splishsplash.run_simulation":
-        "/scripts/simulation.py",
+        executers.splishplash.SPlisHSPlasHExecuter,
     "fluid_block.splishsplash.run_simulation":
-        "/scripts/simulation.py",
+        executers.splishplash.SPlisHSPlasHExecuter,
     "sph.dualsphysics.run_simulation":
         "/scripts/simulation.py",
     "dam_break.dualsphysics.run_simulation":

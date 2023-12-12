@@ -6,3 +6,4 @@ from .subprocess_tracker import SubprocessTracker
 from . import security
 from . import gromacs
 from . import openfoam
+from . import splishplash

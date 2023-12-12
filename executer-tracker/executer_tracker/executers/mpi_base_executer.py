@@ -36,7 +36,7 @@ class MPIExecuter(executers.BaseExecuter):
         input_filename = self.args.input_filename
         n_cores = psutil.cpu_count(logical=False)
 
-        mpi_bin = os.getenv("MPIRUN_BIN")
+        mpi_bin = "mpirun"
         sim_bin = os.getenv(self.bin_env_var)
 
         host_name = platform.node()
@@ -59,8 +59,9 @@ class MPIExecuter(executers.BaseExecuter):
 
         input_files = set(os.listdir())
 
-        self.run_subprocess(f"{mpi_bin} {MPI_ALLOW} -np {n_cores} {sim_bin}",
-                            working_dir=sim_dir)
+        cmd = executers.Command(
+            f"{mpi_bin} {MPI_ALLOW} -np {n_cores} {sim_bin}")
+        self.run_subprocess(cmd, working_dir=sim_dir)
 
         all_files = set(os.listdir())
         new_files = all_files - input_files

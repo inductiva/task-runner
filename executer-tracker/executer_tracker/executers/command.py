@@ -1,13 +1,11 @@
 """Generic shell commands class."""
-
-from abc import ABC, abstractmethod
 import shlex
 from typing import List, Optional
 
 from executer_tracker import executers
 
 
-class Command(ABC):
+class Command():
     """Class for shell commands.
 
     This class deals with the shell commands, represented by string with the
@@ -50,7 +48,6 @@ class Command(ABC):
         return " ".join(prompts)
 
     @staticmethod
-    @abstractmethod
     def check_security(cmd, prompts):
         """Checks for security issues."""
 

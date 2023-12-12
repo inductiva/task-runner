@@ -6,6 +6,8 @@ RUN cd /tmp \
     && apt-get install -y ./apptainer_1.2.5_amd64.deb \
     && rm /tmp/*
 
+RUN apt-get install -y gmsh
+
 # Accept git commit as a build argument and set it as environment variable
 # so that it can be accessed in the code.
 # Provide argument by adding the following to the docker build command:

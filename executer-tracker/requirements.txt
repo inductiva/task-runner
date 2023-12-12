@@ -11,3 +11,7 @@ MDAnalysis
 
 # OpenFOAM
 pyvista
+
+# SPlisHSPlasH
+gmsh
+meshio
