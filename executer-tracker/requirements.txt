@@ -15,3 +15,7 @@ pyvista
 # SPlisHSPlasH
 gmsh
 meshio
+
+# FDS utils
+glob2
+moviepy

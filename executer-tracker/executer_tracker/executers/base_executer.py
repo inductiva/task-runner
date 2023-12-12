@@ -186,7 +186,7 @@ class BaseExecuter(ABC):
             stdout.flush()
             stderr.flush()
 
-            args = ["apptainer", "exec", self.container_image]
+            args = ["apptainer", "exec", "--no-home", self.container_image]
             args.extend(shlex.split(cmd.cmd))
 
             if working_dir:

@@ -45,7 +45,7 @@ api_method_to_script = {
     "deformable_plate.fenicsx.run_simulation":
         "/scripts/deformable_plate_simulation.py",
     "fdm.fds.run_simulation":
-        "/scripts/simulation.py",
+        executers.fds.FDSExecuter,
     "reef3d.reef3d.run_simulation":
         executers.reef3d.REEF3DExecuter,
 }

@@ -4,6 +4,7 @@ from .mpi_base_executer import MPIExecuter
 from .command import Command
 from .subprocess_tracker import SubprocessTracker
 from . import security
+from . import utils
 from . import gromacs
 from . import openfoam
 from . import splishplash
@@ -11,3 +12,4 @@ from . import dualsphysics
 from . import swash
 from . import xbeach
 from . import reef3d
+from . import fds
