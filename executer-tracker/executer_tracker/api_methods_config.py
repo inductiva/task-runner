@@ -23,17 +23,17 @@ api_method_to_script = {
     "sw.xbeach.run_simulation":
         "/scripts/simulation.py",
     "fvm.openfoam_foundation.run_simulation":
-        "/scripts/simulation.py",
+        executers.openfoam.OpenFOAMExecuter,
     "fvm.openfoam_esi.run_simulation":
-        "/scripts/simulation.py",
+        executers.openfoam.OpenFOAMExecuter,
     "wind_tunnel.openfoam_foundation.run_simulation":
-        "/scripts/windtunnel_simulation.py",
+        executers.openfoam.WindTunnelOpenFOAMExecuter,
     "wind_terrain.openfoam_foundation.run_simulation":
-        "/scripts/simulation.py",
+        executers.openfoam.WindTunnelOpenFOAMExecuter,
     "heat_sink.openfoam_foundation.run_simulation":
-        "/scripts/simulation.py",
+        executers.openfoam.OpenFOAMExecuter,
     "md.gromacs.run_simulation":
-        "/scripts/simulation.py",
+        executers.gromacs.GROMACS,
     "protein_solvation.gromacs.run_simulation":
         executers.gromacs.ProteinSolvationGROMACS,
     "mdwater_box.gromacs.run_simulation":
