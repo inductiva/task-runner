@@ -11,11 +11,11 @@ api_method_to_script = {
     "fluid_block.splishsplash.run_simulation":
         executers.splishplash.SPlisHSPlasHExecuter,
     "sph.dualsphysics.run_simulation":
-        "/scripts/simulation.py",
+        executers.dualsphysics.DualSPHysicsExecuter,
     "dam_break.dualsphysics.run_simulation":
-        "/scripts/simulation.py",
+        executers.dualsphysics.DualSPHysicsExecuter,
     "fluid_block.dualsphysics.run_simulation":
-        "/scripts/simulation.py",
+        executers.dualsphysics.DualSPHysicsExecuter,
     "sw.swash.run_simulation":
         executers.swash.SWASHExecuter,
     "coastal_area.swash.run_simulation":
