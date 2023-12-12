@@ -21,7 +21,7 @@ api_method_to_script = {
     "coastal_area.swash.run_simulation":
         executers.swash.SWASHExecuter,
     "sw.xbeach.run_simulation":
-        "/scripts/simulation.py",
+        executers.xbeach.XBeachExecuter,
     "fvm.openfoam_foundation.run_simulation":
         executers.openfoam.OpenFOAMExecuter,
     "fvm.openfoam_esi.run_simulation":

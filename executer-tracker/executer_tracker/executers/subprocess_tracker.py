@@ -42,8 +42,8 @@ class SubprocessTracker:
                 self.args,
                 cwd=self.working_dir,
                 start_new_session=True,
-                stdout=self.stdout,
-                stderr=self.stderr,
+                #stdout=self.stdout,
+                #stderr=self.stderr,
                 stdin=self.stdin,
                 shell=False,
             )
