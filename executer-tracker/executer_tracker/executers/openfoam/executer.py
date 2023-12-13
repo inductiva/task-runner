@@ -12,47 +12,10 @@ class OpenFOAMCommand(executers.Command):
 
     def __init__(self, cmd, prompts, n_cores):
         cmd = self.process_openfoam_command(cmd, n_cores)
+        # This is used because OpenFOAM has some setup performed by
+        # the bashrc file, so we use bash to run the command.
+        cmd = f"bash -c \"{cmd}\""
         super().__init__(cmd, prompts)
-        self.cmd = f"bash -c \"{self.cmd}\""
-
-    @staticmethod
-    def check_security(cmd, prompts):
-        executers.Command.check_security(cmd, prompts)
-
-        tokens = shlex.split(cmd)
-        command_name = tokens[0]
-
-        # When using mpirun, the command name is the fourth token, since the
-        # command expected is of the form:
-        # `mpirun --allow-run-as-root -np [num_processes] [command_name]
-        # [command_args]`
-        if command_name == "mpirun":
-            if len(tokens) < 5:
-                raise ValueError(
-                    "Invalid MPI command. A valid MPI command syntax is "
-                    "`mpirun --allow-run-as-root -np [num_processes] "
-                    " [command_name] [command_args]`.")
-            command_name = tokens[4]
-
-        # OpenFOAM binaries are split in multiple directories:
-        # - $FOAM_BASE_DIR/bin
-        # - $FOAM_BASE_DIR/platforms/<platform>/bin
-        # Here, we get the list of all these directories.
-        # openfoam_base_dir = os.getenv("FOAM_BASE_DIR")
-
-        # openfoam_bin_dirs = [os.path.join(openfoam_base_dir, "bin")]
-
-        # platforms_dir = os.path.join(openfoam_base_dir, "platforms")
-        # for platform_dir in os.listdir(platforms_dir):
-        #     openfoam_bin_dirs.append(
-        #         os.path.join(platforms_dir, platform_dir, "bin"))
-
-        # A command is valid if it exists in one of the OpenFOAM binary
-        # directories.
-        # if not any(
-        #         os.path.exists(os.path.join(bin_dir, command_name))
-        #         for bin_dir in openfoam_bin_dirs):
-        #     raise ValueError(f"Invalid OpenFOAM command. {command_name}")
 
     @staticmethod
     def process_openfoam_command(cmd, n_cores):

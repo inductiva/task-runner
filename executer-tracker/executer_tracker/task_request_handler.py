@@ -264,7 +264,6 @@ class TaskRequestHandler:
         except Exception as e:  # pylint: disable=broad-except
             logging.error("Exception while running executer: %s", str(e))
             exit_code = 1
-            raise e
 
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)

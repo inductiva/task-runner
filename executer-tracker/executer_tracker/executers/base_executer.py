@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 import os
 import json
 from collections import namedtuple
-import shlex
 from absl import logging
 
 from executer_tracker import executers
@@ -156,18 +155,30 @@ class BaseExecuter(ABC):
         cmd: command.Command,
         working_dir: str = "",
     ):
-        """Wrapper to subprocess.run() that correctly handles logging to files.
+        """Run a command as a subprocess.
 
-        This method should be used by executers to execute subprocesses, since
-        it logs the processes' stdout and stderr to files. Since an executer
-        can call more than one subprocess, and in order to improve the
-        readibility and transparency of each command's logs, the resulting
-        "stdout.txt" and "stderr.txt" files have separators splitting the logs
-        of each command.
+        This method is used to run a command as a subprocess. It uses the
+        SubprocessTracker class to run the subprocess and wait for it to
+        finish.
+
+        The command is run in the right Apptainer container, by prefixing
+        the command with the right Apptainer instruction.
+
+        The method is also used to log the stdout and stderr of the command
+        to the files "stdout.txt" and "stderr.txt" in the artifacts directory.
+        Since an executer can call more than one subprocess, and in order to
+        improve the readibility and transparency of each command's logs, the
+        resulting "stdout.txt" and "stderr.txt" files have separators
+        splitting the logs of each command.
+
+        The method also writes the command's prompts to a file and pipes it
+        to the subprocess' stdin. This is useful for commands that require
+        user input.
 
         Args:
-            cmd: String representing the command to run the subprocess.
-            kwargs: Keyword arguments to be passed to subprocess.run().
+            cmd: Object of the Command class, encapsulating the command to
+                to run as a subprocess and user prompts if applicable.
+            working_dir: Path to the working directory of the subprocess.
         """
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
@@ -187,7 +198,7 @@ class BaseExecuter(ABC):
             stderr.flush()
 
             args = ["apptainer", "exec", "--no-home", self.container_image]
-            args.extend(shlex.split(cmd.cmd))
+            args.extend(cmd.args)
 
             if working_dir:
                 working_dir = os.path.join(self.working_dir, working_dir)

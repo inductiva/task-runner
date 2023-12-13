@@ -1,4 +1,4 @@
-"""Mapping of API methods to scripts that perform those methods."""
+"""Mapping of API methods to the Executer classes that perform those methods."""
 from executer_tracker import executers
 
 api_method_to_script = {

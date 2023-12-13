@@ -18,8 +18,6 @@ class Command():
 
     Example:
         >>> command = Command("gmx pdb2gmx -f protein.pdb", prompts=["amber94"])
-        >>> str(command)
-        "gmx pdb2gmx -f protein.pdb <<EOD0 \n amber94 \n EOD0"
     """
 
     def __init__(self, cmd: str, prompts: Optional[List[str]] = None):
@@ -27,32 +25,17 @@ class Command():
         if prompts is None:
             prompts = []
 
-        self.check_security(cmd, prompts)
-
-        self.cmd = cmd
+        self.args = self._tokenize(cmd)
         self.prompts = prompts
+        self._check_security(self.args, prompts)
 
-    def __str__(self):
-        """Builds the command as a string."""
+    def _tokenize(self, cmd) -> List[str]:
+        """Tokenize command"""
 
-        return self.cmd + " " + self._build_prompts_as_str()
+        return shlex.split(cmd)
 
-    def _build_prompts_as_str(self):
-        """Builds the command prompts as a string."""
-
-        prompts = []
-
-        for index, value in enumerate(self.prompts):
-            prompts.append(f"<<EOD{index} \n {value} \n EOD{index}")
-
-        return " ".join(prompts)
-
-    @staticmethod
-    def check_security(cmd, prompts):
-        """Checks for security issues."""
-
-        tokens = shlex.split(cmd)
-
+    def _check_security(self, tokens, prompts):
+        """Check command security."""
         if not tokens:
             raise ValueError(f"Command '{' '.join(tokens)}' is empty.")
 

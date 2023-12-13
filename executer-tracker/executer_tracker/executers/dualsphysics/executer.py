@@ -16,11 +16,6 @@ class DualSPHysicsCommand(executers.Command):
         cmd = self.process_dualsphysics_command(cmd, device)
         super().__init__(cmd, prompts)
 
-    @staticmethod
-    def check_security(cmd, prompts):
-        """Method below takes care of it."""
-        pass
-
     def process_dualsphysics_command(self, cmd, device):
         """Process the command to map to the executable."""
 
@@ -35,11 +30,6 @@ class DualSPHysicsCommand(executers.Command):
             else:
                 tokens[0] = "dualsphysics5.2cpu"
 
-        #elif cmd_name in self.executables.keys():
-        #    tokens[0] = self.executables[cmd_name]
-        #else:
-        #    raise ValueError(f"{cmd_name} is an invalid "
-        #                     "DualSPHysics command.")
         bin_dir = "/DualSPHysics_v5.2/bin/linux"
         tokens[0] = os.path.join(bin_dir, tokens[0])
 

@@ -4,7 +4,6 @@ This script wraps the GROMACS's CLI.
 """
 
 import os
-import shlex
 import shutil
 from executer_tracker import executers
 
@@ -12,13 +11,9 @@ from executer_tracker import executers
 class GROMACSCommand(executers.Command):
     """GROMACS command."""
 
-    @staticmethod
-    def check_security(cmd, prompts):
-        executers.Command.check_security(cmd, prompts)
-
-        tokens = shlex.split(cmd)
-
-        if tokens[0] != "gmx":
+    def _check_security(self, tokens, prompts):
+        super()._check_security(tokens, prompts)
+        if self.args[0] != "gmx":
             raise ValueError("The command must start with 'gmx'.")
 
 

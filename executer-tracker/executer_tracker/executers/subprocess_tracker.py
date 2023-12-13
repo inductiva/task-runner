@@ -1,8 +1,8 @@
 """Module that defines the SubprocessTracker class."""
+from typing import List
 import os
 import signal
 import subprocess
-from typing import List
 import psutil
 import time
 
@@ -10,7 +10,7 @@ from absl import logging
 
 
 class SubprocessTracker:
-    """This is the embryo of the Subprocess Tracker Class."""
+    """Class used to launch and manage a subprocess."""
 
     spawn_time = None
     command_line = None
