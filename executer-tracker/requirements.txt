@@ -12,7 +12,7 @@ MDAnalysis
 # OpenFOAM
 pyvista
 
-# SPlisHSPlasH
+# SPlisHSPlasH, FEniCSx
 gmsh
 meshio
 

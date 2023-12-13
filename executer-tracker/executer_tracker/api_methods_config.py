@@ -39,11 +39,11 @@ api_method_to_script = {
     "mdwater_box.gromacs.run_simulation":
         executers.gromacs.GROMACS,
     "stellarators.simsopt.run_simulation":
-        "/scripts/simulation.py",
+        executers.simsopt.SimsoptExecuter,
     "fem.fenicsx.run_simulation":
-        "/scripts/simulation.py",
+        executers.fenicsx.LinearElasticityFEniCSxExecuter,
     "deformable_plate.fenicsx.run_simulation":
-        "/scripts/deformable_plate_simulation.py",
+        executers.fenicsx.DeformablePlateLinearElasticityFEniCSxExecuter,
     "fdm.fds.run_simulation":
         executers.fds.FDSExecuter,
     "reef3d.reef3d.run_simulation":
