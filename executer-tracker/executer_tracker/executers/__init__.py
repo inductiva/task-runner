@@ -13,3 +13,4 @@ from . import swash
 from . import xbeach
 from . import reef3d
 from . import fds
+from . import simsopt
