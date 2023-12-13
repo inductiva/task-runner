@@ -74,6 +74,9 @@ class SubprocessTracker:
                 children_procs = process_status.children(recursive=True)
                 logging.info("Children spawned: %s", children_procs)
 
+                # TODO(luispcunha): With the current implementation, the
+                # resource usage is not being logged to the expected file
+                # in the bucket while the simulation is running.
                 if periodic_callback is not None:
                     periodic_callback()
 
