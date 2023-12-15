@@ -7,10 +7,11 @@ from abc import ABC, abstractmethod
 import os
 import json
 from collections import namedtuple
+from typing import Optional
 from absl import logging
 
 from executer_tracker import executers
-from executer_tracker.executers import command
+from executer_tracker.executers import command, mpi_configuration
 
 
 class BaseExecuter(ABC):
@@ -35,12 +36,18 @@ class BaseExecuter(ABC):
     STDOUT_LOGS_FILENAME = "stdout.txt"
     STDERR_LOGS_FILENAME = "stderr.txt"
 
-    def __init__(self, working_dir: str, container_image: str):
+    def __init__(
+        self,
+        working_dir: str,
+        container_image: str,
+        mpi_config: Optional[mpi_configuration.MPIConfiguration],
+    ):
         """Performs initial setup of the executer.
 
         This method creates the directories to be used for storing files
         that are sent to the client.
         """
+        self.mpi_config = mpi_config
         self.container_image = container_image
         self.working_dir = working_dir
         self.output_dir = os.path.join(self.working_dir, self.OUTPUT_DIRNAME)
@@ -154,6 +161,7 @@ class BaseExecuter(ABC):
         self,
         cmd: command.Command,
         working_dir: str = "",
+        mpi_command: bool = False,
     ):
         """Run a command as a subprocess.
 
@@ -197,7 +205,18 @@ class BaseExecuter(ABC):
             stdout.flush()
             stderr.flush()
 
-            args = ["apptainer", "exec", "--no-home", self.container_image]
+            args = []
+            if mpi_command:
+                args = ["mpirun"]
+                if self.mpi_config is not None:
+                    args.extend([
+                        "--hostfile",
+                        self.mpi_config.hostfile_path,
+                    ])
+                    args.extend(self.mpi_config.extra_args)
+
+            args.extend(
+                ["apptainer", "exec", "--no-home", self.container_image])
             args.extend(cmd.args)
 
             if working_dir:

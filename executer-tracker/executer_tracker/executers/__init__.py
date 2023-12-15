@@ -8,6 +8,7 @@ from .base_executer import BaseExecuter
 from .mpi_base_executer import MPIExecuter
 from .command import Command
 from .subprocess_tracker import SubprocessTracker
+from .mpi_configuration import MPIConfiguration
 from . import security
 from . import utils
 from . import gromacs

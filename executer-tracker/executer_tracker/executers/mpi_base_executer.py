@@ -1,10 +1,12 @@
 """This file provides a class to implement MPI executers."""
+from typing import Optional
 import os
 import shutil
 import psutil
 import platform
 
 from executer_tracker import executers
+from executer_tracker.executers import mpi_configuration
 
 # Instructions inside Docker containers are run by the root user (as default),
 # so we need to allow Open MPI to be run as root. This is usually strongly
@@ -17,9 +19,10 @@ MPI_DISTRIBUTION_FILENAME = "machinefile"
 class MPIExecuter(executers.BaseExecuter):
     """Implementation of a general MPI Executer."""
 
-    def __init__(self, working_dir, container_image, sim_binary, file_type,
-                 sim_specific_input_filename):
-        super().__init__(working_dir, container_image)
+    def __init__(self, working_dir, container_image,
+                 mpi_config: Optional[mpi_configuration.MPIConfiguration],
+                 sim_binary, file_type, sim_specific_input_filename):
+        super().__init__(working_dir, container_image, mpi_config)
         self.sim_binary = sim_binary
         self.sim_specific_input_filename = sim_specific_input_filename
         self.file_type = file_type
@@ -35,8 +38,6 @@ class MPIExecuter(executers.BaseExecuter):
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
         input_filename = self.args.input_filename
         n_cores = psutil.cpu_count(logical=False)
-
-        mpi_bin = "mpirun"
 
         host_name = platform.node()
         if n_cores > 1:
@@ -59,9 +60,8 @@ class MPIExecuter(executers.BaseExecuter):
 
         input_files = set(os.listdir(sim_dir))
 
-        cmd = executers.Command(
-            f"{mpi_bin} {MPI_ALLOW} -np {n_cores} {self.sim_binary}")
-        self.run_subprocess(cmd, working_dir=sim_dir)
+        cmd = executers.Command(self.sim_binary)
+        self.run_subprocess(cmd, working_dir=sim_dir, mpi_command=True)
 
         all_files = set(os.listdir(sim_dir))
         new_files = all_files - input_files

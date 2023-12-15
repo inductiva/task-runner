@@ -16,8 +16,26 @@ RUN make all
 RUN make install
 RUN ldconfig
 
-
 RUN apt-get install -y gmsh
+
+RUN apt-get install -y openssh-server
+
+RUN sed -i '/^#PermitRootLogin/s/#//' /etc/ssh/sshd_config
+RUN sed -i '/^PermitRootLogin/s/prohibit-password/yes/' /etc/ssh/sshd_config
+RUN service ssh start
+
+
+ARG SSH_DIR=/root/.ssh
+
+COPY ./executer-tracker/id_mpi $SSH_DIR/id_mpi
+COPY ./executer-tracker/id_mpi.pub $SSH_DIR/id_mpi.pub
+COPY ./executer-tracker/id_mpi.pub $SSH_DIR/authorized_keys
+
+RUN chmod 0700 $SSH_DIR
+RUN chmod 0644 $SSH_DIR/id_mpi.pub
+RUN chmod 0600 $SSH_DIR/authorized_keys
+RUN chmod 0600 $SSH_DIR/id_mpi
+RUN (echo "Host *"; echo " IdentityFile ~/.ssh/id_mpi"; echo " StrictHostKeyChecking no"; echo "") > $SSH_DIR/config
 
 # Accept git commit as a build argument and set it as environment variable
 # so that it can be accessed in the code.
@@ -40,24 +58,5 @@ COPY ./common/task_status /common/task_status
 RUN pip install --no-cache-dir --upgrade /common/task_status
 
 ENV ARTIFACT_STORE=/mnt/artifacts
-
-RUN apt-get install -y openssh-server
-
-RUN sed -i '/^#PermitRootLogin/s/#//' /etc/ssh/sshd_config
-RUN sed -i '/^PermitRootLogin/s/prohibit-password/yes/' /etc/ssh/sshd_config
-RUN service ssh start
-
-
-ARG SSH_DIR=/root/.ssh
-
-COPY ./executer-tracker/id_mpi $SSH_DIR/id_mpi
-COPY ./executer-tracker/id_mpi.pub $SSH_DIR/id_mpi.pub
-COPY ./executer-tracker/id_mpi.pub $SSH_DIR/authorized_keys
-
-RUN chmod 0700 $SSH_DIR
-RUN chmod 0644 $SSH_DIR/id_mpi.pub
-RUN chmod 0600 $SSH_DIR/authorized_keys
-RUN chmod 0600 $SSH_DIR/id_mpi
-RUN (echo "Host *"; echo " IdentityFile ~/.ssh/id_mpi"; echo " StrictHostKeyChecking no"; echo "") > $SSH_DIR/config
 
 CMD ["bash", "-c", "service ssh start && python ./executer_tracker/main.py"]

@@ -80,8 +80,12 @@ class ExecuterAccessInfo:
     redis_consumer_name: str
 
 
-def register_executer(api_url: str, supported_executer_types: Sequence[str],
-                      machine_group_id: Optional[UUID]) -> ExecuterAccessInfo:
+def register_executer(
+    api_url: str,
+    supported_executer_types: Sequence[str],
+    machine_group_id: Optional[UUID],
+    mpi_head_node: bool = False,
+) -> ExecuterAccessInfo:
     """Registers an executer in the API.
 
     This function inspects the environment of the executer and makes a request
@@ -96,6 +100,7 @@ def register_executer(api_url: str, supported_executer_types: Sequence[str],
     executer_info["supported_executer_types"] = supported_executer_types
     if machine_group_id:
         executer_info["machine_group_id"] = str(machine_group_id)
+    executer_info["mpi_head_node"] = mpi_head_node
 
     logging.info("Registering executer with the API...")
     r = requests.post(
