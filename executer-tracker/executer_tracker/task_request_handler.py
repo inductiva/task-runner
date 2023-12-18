@@ -21,7 +21,8 @@ from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
 from utils import files, config
-import subprocess_tracker
+from executer_tracker import executers
+
 import api_methods_config
 
 TASK_COMMANDS_QUEUE = "commands"
@@ -30,7 +31,7 @@ TASK_COMMANDS_QUEUE = "commands"
 def redis_kill_msg_catcher(
     redis_conn: redis.Redis,
     task_id: str,
-    tracker: subprocess_tracker.SubprocessTracker,
+    executer: executers.BaseExecuter,
     killed_flag: threading.Event,
 ) -> None:
     """Function to handle the kill request for the running task.
@@ -62,7 +63,7 @@ def redis_kill_msg_catcher(
         content = element[1]
         if content == "kill":
             logging.info("Received kill message. Killing task.")
-            tracker.exit_gracefully()
+            executer.terminate()
             logging.info("Task killed.")
 
             # set flag so that the main thread knows the task was killed
@@ -163,6 +164,7 @@ class TaskRequestHandler:
                 machine_id=self.executer_uuid,
             ))
         exit_code, task_killed = self._execute_request(request,)
+        logging.info("Task killed: %s", str(task_killed))
 
         event = events.TaskWorkFinished(
             id=self.task_id,
@@ -174,10 +176,10 @@ class TaskRequestHandler:
         output_size_b = self._pack_output()
 
         new_status = task_status.TaskStatusCode.SUCCESS.value
-        if task_killed:
-            new_status = task_status.TaskStatusCode.KILLED.value
         if exit_code != 0:
             new_status = task_status.TaskStatusCode.FAILED.value
+        if task_killed:
+            new_status = task_status.TaskStatusCode.KILLED.value
 
         self.event_logger.log(
             events.TaskOutputUploaded(
@@ -245,26 +247,23 @@ class TaskRequestHandler:
         assert self.task_id is not None, (
             "'_execute_request' called without a task ID.")
 
-        container_image = self.current_task_executer_config.image
-
-        tracker = subprocess_tracker.SubprocessTracker(
-            command_line=(f"apptainer exec {container_image} " +
-                          self._build_command(request)),
-            working_dir=self.task_workdir,
-        )
+        executer = self._build_executer(request)
         redis_client_id = self.redis.client_id()
 
         task_killed_flag = threading.Event()
         thread = threading.Thread(
             target=redis_kill_msg_catcher,
-            args=(self.redis, self.task_id, tracker, task_killed_flag),
+            args=(self.redis, self.task_id, executer, task_killed_flag),
             daemon=True,
         )
 
         thread.start()
-        tracker.run()
-
-        exit_code = tracker.wait(periodic_callback=self._log_stdout)
+        exit_code = 0
+        try:
+            executer.run()
+        except Exception as e:  # pylint: disable=broad-except
+            logging.error("Exception while running executer: %s", str(e))
+            exit_code = 1
 
         logging.info("Tracker finished with exit code: %s", str(exit_code))
         self.redis.client_unblock(redis_client_id)
@@ -328,7 +327,7 @@ class TaskRequestHandler:
         logging.info("Cleaning up working directory: %s", self.task_workdir)
         shutil.rmtree(self.task_workdir)
 
-    def _build_command(self, request) -> str:
+    def _build_executer(self, request) -> executers.BaseExecuter:
         """Build Python command to run a requested task.
 
         NOTE: this method is a candidate for improvement.
@@ -340,6 +339,8 @@ class TaskRequestHandler:
             Python command to execute received request.
         """
         method = request["method"]
-        script = api_methods_config.api_method_to_script[method]
+        executer_class = api_methods_config.api_method_to_script[method]
 
-        return f"python {script}"
+        container_image = self.current_task_executer_config.image
+
+        return executer_class(self.task_workdir, container_image)
