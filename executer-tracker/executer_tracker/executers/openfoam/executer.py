@@ -14,7 +14,7 @@ class OpenFOAMCommand(executers.Command):
         cmd = self.process_openfoam_command(cmd, n_cores)
         # This is used because OpenFOAM has some setup performed by
         # the bashrc file, so we use bash to run the command.
-        cmd = f"bash -c \"{cmd}\""
+        cmd = f"/launch.sh \"{cmd}\""
         super().__init__(cmd, prompts)
 
     @staticmethod
@@ -79,7 +79,10 @@ class OpenFOAMExecuter(executers.BaseExecuter):
 
         # The commands which aren't parallel have
         # command name as the first token.
-        openfoam_cmd = shlex.split(openfoam_command.cmd)[0]
+        # The second token in the openfoam_command is the actual command,
+        # which is what we want to check. The first element is the util
+        # script we use to run the command.
+        openfoam_cmd = shlex.split(openfoam_command.args[1])[0]
 
         if n_cores == 1:
             if openfoam_cmd in commands_excluded_of_singlecore_execution:
