@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PYTHON_BIN="/opt/executer-tracker/venv/bin/python3"
-APP_PATH="/opt/executer-tracker/src/main.py"
+APP_PATH="/opt/executer-tracker/executer_tracker/main.py"
 
 start() {
 	export WORKDIR="/opt/executer-tracker/workdir"

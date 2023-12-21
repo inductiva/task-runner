@@ -62,6 +62,7 @@ class BaseExecuter(ABC):
 
         self._create_output_json_file()
 
+        self.terminated = False
         self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
                                              self.STDOUT_LOGS_FILENAME)
@@ -191,6 +192,9 @@ class BaseExecuter(ABC):
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
 
+        if self.terminated:
+            raise RuntimeError("Executer terminated. Not running subprocess.")
+
         with open(stdin_path, "w", encoding="UTF-8") as f:
             f.write(stdin_contents)
             logging.info("Wrote stdin contents to %s: %d bytes", stdin_path,
@@ -200,8 +204,8 @@ class BaseExecuter(ABC):
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
 
-            stdout.write(f"# COMMAND: {cmd}\n\n")
-            stderr.write(f"# COMMAND: {cmd}\n\n")
+            stdout.write(f"# COMMAND: {cmd.args}\n\n")
+            stderr.write(f"# COMMAND: {cmd.args}\n\n")
             stdout.flush()
             stderr.flush()
 
@@ -249,5 +253,7 @@ class BaseExecuter(ABC):
         self.pack_output()
 
     def terminate(self):
+        self.terminated = True
+
         if self.subprocess is not None:
             self.subprocess.exit_gracefully()

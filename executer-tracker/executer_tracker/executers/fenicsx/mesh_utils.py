@@ -206,6 +206,7 @@ class GmshMesh:
         mesh_info_dict = {
             "global mesh refinement factor": self.global_refinement_factor,
             "local mesh refinement factor": self.local_refinement_factor,
+            "smooth mesh parameter": self.smoothing_parameter,
             "runtime (s)": self.runtime
         }
 
