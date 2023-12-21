@@ -6,6 +6,7 @@ its usage.
 from abc import ABC, abstractmethod
 import os
 import json
+import psutil
 from collections import namedtuple
 from typing import Optional
 from absl import logging
@@ -162,7 +163,6 @@ class BaseExecuter(ABC):
         self,
         cmd: command.Command,
         working_dir: str = "",
-        mpi_command: bool = False,
     ):
         """Run a command as a subprocess.
 
@@ -210,7 +210,7 @@ class BaseExecuter(ABC):
             stderr.flush()
 
             args = []
-            if mpi_command:
+            if cmd.is_mpi:
                 args = ["mpirun"]
                 if self.mpi_config is not None:
                     args.extend([
@@ -257,3 +257,30 @@ class BaseExecuter(ABC):
 
         if self.subprocess is not None:
             self.subprocess.exit_gracefully()
+
+    def count_cpu_cores(self):
+        if self.mpi_config is None:
+            return psutil.cpu_count(logical=False)
+
+        with open(self.mpi_config.hostfile_path, "r", encoding="utf-8") as f:
+            hosts = f.readlines()
+
+        hosts = [host.strip() for host in hosts if host != "\n"]
+
+        total_cores = 0
+        core_per_host = True
+        for host_line in hosts:
+            segments = host_line.split()
+            if len(segments) > 1:
+                _, slots = segments
+                host_cores = int(slots.split("=")[1])
+
+                total_cores += host_cores
+            else:
+                core_per_host = False
+                continue
+
+        if core_per_host:
+            return total_cores
+        else:
+            return psutil.cpu_count(logical=False) * len(hosts)

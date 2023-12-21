@@ -1,7 +1,6 @@
 """Generic Reef3D executer."""
 import os
 import shutil
-import psutil
 
 from executer_tracker import executers
 
@@ -45,7 +44,7 @@ class REEF3DExecuter(executers.BaseExecuter):
     def execute(self):
         """Reef3D simulation execution."""
 
-        n_cores = psutil.cpu_count(logical=False)
+        n_cores = self.count_cpu_cores()
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
 
         # Copy the input files to the artifacts directory
@@ -60,5 +59,5 @@ class REEF3DExecuter(executers.BaseExecuter):
 
         # Run REEF3D command
         reef3d_bin = "/REEF3D/bin/REEF3D"
-        cmd = executers.Command(f"mpirun -n {n_cores} {reef3d_bin}")
+        cmd = executers.Command(reef3d_bin, is_mpi=True)
         self.run_subprocess(cmd, working_dir=self.artifacts_dir)

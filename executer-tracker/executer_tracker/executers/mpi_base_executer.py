@@ -60,8 +60,8 @@ class MPIExecuter(executers.BaseExecuter):
 
         input_files = set(os.listdir(sim_dir))
 
-        cmd = executers.Command(self.sim_binary)
-        self.run_subprocess(cmd, working_dir=sim_dir, mpi_command=True)
+        cmd = executers.Command(self.sim_binary, is_mpi=True)
+        self.run_subprocess(cmd, working_dir=sim_dir)
 
         all_files = set(os.listdir(sim_dir))
         new_files = all_files - input_files
