@@ -1,0 +1,51 @@
+"""Mapping of API methods to the Executer classes that perform those methods."""
+from executer_tracker import executers
+
+api_method_to_script = {
+    "sph.splishsplash.run_simulation":
+        executers.splishplash.SPlisHSPlasHExecuter,
+    "fluid_tank.splishsplash.run_simulation":
+        executers.splishplash.FluidTankSPlisHSPlasHExecuter,
+    "dam_break.splishsplash.run_simulation":
+        executers.splishplash.SPlisHSPlasHExecuter,
+    "fluid_block.splishsplash.run_simulation":
+        executers.splishplash.SPlisHSPlasHExecuter,
+    "sph.dualsphysics.run_simulation":
+        executers.dualsphysics.DualSPHysicsExecuter,
+    "dam_break.dualsphysics.run_simulation":
+        executers.dualsphysics.DualSPHysicsExecuter,
+    "fluid_block.dualsphysics.run_simulation":
+        executers.dualsphysics.DualSPHysicsExecuter,
+    "sw.swash.run_simulation":
+        executers.swash.SWASHExecuter,
+    "coastal_area.swash.run_simulation":
+        executers.swash.SWASHExecuter,
+    "sw.xbeach.run_simulation":
+        executers.xbeach.XBeachExecuter,
+    "fvm.openfoam_foundation.run_simulation":
+        executers.openfoam.OpenFOAMExecuter,
+    "fvm.openfoam_esi.run_simulation":
+        executers.openfoam.OpenFOAMExecuter,
+    "wind_tunnel.openfoam_foundation.run_simulation":
+        executers.openfoam.WindTunnelOpenFOAMExecuter,
+    "wind_terrain.openfoam_foundation.run_simulation":
+        executers.openfoam.WindTunnelOpenFOAMExecuter,
+    "heat_sink.openfoam_foundation.run_simulation":
+        executers.openfoam.OpenFOAMExecuter,
+    "md.gromacs.run_simulation":
+        executers.gromacs.GROMACS,
+    "protein_solvation.gromacs.run_simulation":
+        executers.gromacs.ProteinSolvationGROMACS,
+    "mdwater_box.gromacs.run_simulation":
+        executers.gromacs.GROMACS,
+    "stellarators.simsopt.run_simulation":
+        executers.simsopt.SimsoptExecuter,
+    "fem.fenicsx.run_simulation":
+        executers.fenicsx.LinearElasticityFEniCSxExecuter,
+    "deformable_plate.fenicsx.run_simulation":
+        executers.fenicsx.DeformablePlateLinearElasticityFEniCSxExecuter,
+    "fdm.fds.run_simulation":
+        executers.fds.FDSExecuter,
+    "reef3d.reef3d.run_simulation":
+        executers.reef3d.REEF3DExecuter,
+}
