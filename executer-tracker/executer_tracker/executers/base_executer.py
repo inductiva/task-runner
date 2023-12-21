@@ -192,8 +192,8 @@ class BaseExecuter(ABC):
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
 
-            stdout.write(f"# COMMAND: {cmd}\n\n")
-            stderr.write(f"# COMMAND: {cmd}\n\n")
+            stdout.write(f"# COMMAND: {cmd.args}\n\n")
+            stderr.write(f"# COMMAND: {cmd.args}\n\n")
             stdout.flush()
             stderr.flush()
 
