@@ -14,6 +14,8 @@ start() {
 
 	if [[ $1 == "mpi" ]]; then
 		export MPI_HEAD_NODE="true"
+		export MPI_SHARE_PATH="/mpi"
+		export MPI_HOSTFILE_PATH="/root/mpi_hosts"
 	fi
 
     $PYTHON_BIN $APP_PATH
