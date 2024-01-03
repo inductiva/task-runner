@@ -11,6 +11,11 @@ start() {
 	export GIT_COMMIT_HASH="$(cat revision.txt)"
 	export API_URL="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/api-url" -H "Metadata-Flavor: Google")"
 	export REDIS_HOSTNAME="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/redis-hostname" -H "Metadata-Flavor: Google")"
+
+	if $1 == "mpi"; then
+		export MPI_HEAD_NODE="true"
+	fi
+
     $PYTHON_BIN $APP_PATH
 }
 
