@@ -219,7 +219,6 @@ class BaseExecuter(ABC):
                     ])
                     args.extend(self.mpi_config.extra_args)
 
-
             # This is the directory that contains all the task related files
             task_working_dir = self.working_dir
 
