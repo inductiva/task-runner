@@ -48,4 +48,6 @@ api_method_to_script = {
         executers.fds.FDSExecuter,
     "reef3d.reef3d.run_simulation":
         executers.reef3d.REEF3DExecuter,
+    "tester.tester.run_simulation":
+        executers.tester.TestExecuter
 }
