@@ -64,6 +64,7 @@ from inductiva_api.task_status import ExecuterTerminationReason
 from register_executer import register_executer
 from task_request_handler import TaskRequestHandler
 from utils import config
+from executer_tracker import executers
 
 
 def main(_):
@@ -76,6 +77,32 @@ def main(_):
     if not executer_images_dir:
         logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
         sys.exit(1)
+
+    mpi_head_node_str = os.getenv("MPI_HEAD_NODE", "false")
+    mpi_head_node = mpi_head_node_str.lower() in ("true", "t", "yes", "y", 1)
+
+    mpi_config = None
+    if mpi_head_node:
+        mpi_share_path = os.getenv("MPI_SHARE_PATH")
+        if not mpi_share_path:
+            logging.error("MPI_SHARE_PATH environment variable not set.")
+            sys.exit(1)
+        mpi_hostfile_path = os.getenv("MPI_HOSTFILE_PATH")
+        if not mpi_hostfile_path:
+            logging.error("MPI_HOSTFILE_PATH environment variable not set.")
+            sys.exit(1)
+        mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "")
+
+        mpi_config = executers.MPIConfiguration(
+            mpi_hostfile_path,
+            mpi_share_path,
+            mpi_extra_args,
+        )
+
+        logging.info("MPI configuration:")
+        logging.info("  > hostfile: %s", mpi_hostfile_path)
+        logging.info("  > share path: %s", mpi_share_path)
+        logging.info("  > extra args: %s", mpi_extra_args)
 
     if config.gcloud.is_running_on_gcloud_vm():
         # Check if there are any metadata values that override the provided
@@ -109,6 +136,7 @@ def main(_):
         api_url,
         list(executers_config.keys()),
         machine_group_id=machine_group_id,
+        mpi_head_node=mpi_head_node,
     )
     executer_uuid = executer_access_info.id
 
@@ -122,6 +150,7 @@ def main(_):
         artifact_filesystem=artifact_filesystem_root,
         executer_uuid=executer_uuid,
         workdir=workdir,
+        mpi_config=mpi_config,
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,

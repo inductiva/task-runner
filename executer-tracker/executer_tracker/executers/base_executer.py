@@ -6,11 +6,13 @@ its usage.
 from abc import ABC, abstractmethod
 import os
 import json
+import psutil
 from collections import namedtuple
+from typing import Optional
 from absl import logging
 
 from executer_tracker import executers
-from executer_tracker.executers import command
+from executer_tracker.executers import command, mpi_configuration
 
 
 class BaseExecuter(ABC):
@@ -35,12 +37,18 @@ class BaseExecuter(ABC):
     STDOUT_LOGS_FILENAME = "stdout.txt"
     STDERR_LOGS_FILENAME = "stderr.txt"
 
-    def __init__(self, working_dir: str, container_image: str):
+    def __init__(
+        self,
+        working_dir: str,
+        container_image: str,
+        mpi_config: Optional[mpi_configuration.MPIConfiguration],
+    ):
         """Performs initial setup of the executer.
 
         This method creates the directories to be used for storing files
         that are sent to the client.
         """
+        self.mpi_config = mpi_config
         self.container_image = container_image
         self.working_dir = working_dir
         self.output_dir = os.path.join(self.working_dir, self.OUTPUT_DIRNAME)
@@ -201,6 +209,16 @@ class BaseExecuter(ABC):
             stdout.flush()
             stderr.flush()
 
+            args = []
+            if cmd.is_mpi:
+                args = ["mpirun"]
+                if self.mpi_config is not None:
+                    args.extend([
+                        "--hostfile",
+                        self.mpi_config.hostfile_path,
+                    ])
+                    args.extend(self.mpi_config.extra_args)
+
             # This is the directory that contains all the task related files
             task_working_dir = self.working_dir
 
@@ -211,16 +229,15 @@ class BaseExecuter(ABC):
             else:
                 working_dir = self.working_dir
 
-            args = [
+            args.extend([
                 "apptainer",
                 "exec",
-                "--contain",
                 "--bind",
                 f"{task_working_dir}:{task_working_dir}",
                 "--pwd",
                 working_dir,
                 self.container_image,
-            ]
+            ])
             args.extend(cmd.args)
 
             self.subprocess = executers.SubprocessTracker(
@@ -252,3 +269,30 @@ class BaseExecuter(ABC):
 
         if self.subprocess is not None:
             self.subprocess.exit_gracefully()
+
+    def count_cpu_cores(self):
+        if self.mpi_config is None:
+            return psutil.cpu_count(logical=False)
+
+        with open(self.mpi_config.hostfile_path, "r", encoding="utf-8") as f:
+            hosts = f.readlines()
+
+        hosts = [host.strip() for host in hosts if host != "\n"]
+
+        total_cores = 0
+        core_per_host = True
+        for host_line in hosts:
+            segments = host_line.split()
+            if len(segments) > 1:
+                _, slots = segments
+                host_cores = int(slots.split("=")[1])
+
+                total_cores += host_cores
+            else:
+                core_per_host = False
+                continue
+
+        if core_per_host:
+            return total_cores
+        else:
+            return psutil.cpu_count(logical=False) * len(hosts)

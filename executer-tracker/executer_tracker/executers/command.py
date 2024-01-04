@@ -20,13 +20,19 @@ class Command():
         >>> command = Command("gmx pdb2gmx -f protein.pdb", prompts=["amber94"])
     """
 
-    def __init__(self, cmd: str, prompts: Optional[List[str]] = None):
+    def __init__(
+        self,
+        cmd: str,
+        prompts: Optional[List[str]] = None,
+        is_mpi: bool = False,
+    ):
 
         if prompts is None:
             prompts = []
 
         self.args = self._tokenize(cmd)
         self.prompts = prompts
+        self.is_mpi = is_mpi
         self._check_security(self.args, prompts)
 
     def _tokenize(self, cmd) -> List[str]:

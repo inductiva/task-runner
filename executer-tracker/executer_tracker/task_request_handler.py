@@ -9,7 +9,7 @@ import os
 import shutil
 import tempfile
 import threading
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 import redis
 from uuid import UUID
 
@@ -107,6 +107,7 @@ class TaskRequestHandler:
         artifact_filesystem: fs.FileSystem,
         executer_uuid: UUID,
         workdir: str,
+        mpi_config: Optional[executers.MPIConfiguration],
     ):
         self.redis = redis_connection
         self.artifact_filesystem = artifact_filesystem
@@ -115,6 +116,12 @@ class TaskRequestHandler:
         self.executers_config = executers_config
         self.task_id = None
         self.workdir = workdir
+        self.mpi_config = mpi_config
+
+        # If this is an MPI head node, then the working directory is the
+        # shared directory.
+        if self.mpi_config:
+            self.workdir = self.mpi_config.share_path
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
@@ -343,4 +350,5 @@ class TaskRequestHandler:
 
         container_image = self.current_task_executer_config.image
 
-        return executer_class(self.task_workdir, container_image)
+        return executer_class(self.task_workdir, container_image,
+                              self.mpi_config)

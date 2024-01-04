@@ -2,7 +2,7 @@
 import os
 import shlex
 import shutil
-import psutil
+from typing import Tuple
 
 from executer_tracker import executers
 
@@ -11,14 +11,14 @@ class OpenFOAMCommand(executers.Command):
     """OpenFOAM command."""
 
     def __init__(self, cmd, prompts, n_cores):
-        cmd = self.process_openfoam_command(cmd, n_cores)
+        cmd, is_mpi = self.process_openfoam_command(cmd, n_cores)
         # This is used because OpenFOAM has some setup performed by
         # the bashrc file, so we use bash to run the command.
         cmd = f"/launch.sh \"{cmd}\""
-        super().__init__(cmd, prompts)
+        super().__init__(cmd, prompts, is_mpi=is_mpi)
 
     @staticmethod
-    def process_openfoam_command(cmd, n_cores):
+    def process_openfoam_command(cmd, n_cores) -> Tuple[str, bool]:
         """Set the appropriate command for OpenFOAM.
 
         Define the appropriate command to be run inside the machine
@@ -38,20 +38,19 @@ class OpenFOAMCommand(executers.Command):
         openfoam_command = sane_tokens[1]
         flags = sane_tokens[2:]
 
-        if command_instruction == "runparallel" and n_cores > 1:
-            command = (
-                f"mpirun --allow-run-as-root -np "
-                f"{n_cores} {openfoam_command} {' '.join(flags)} -parallel")
-        elif command_instruction == "runparallel" and n_cores == 1:
-            command = f"{openfoam_command} {' '.join(flags)}"
-        elif command_instruction == "runapplication":
-            command = f"{openfoam_command} {' '.join(flags)}"
-        else:
+        command = f"{openfoam_command} {' '.join(flags)}"
+        is_mpi = False
+
+        if command_instruction not in ("runparallel", "runapplication"):
             raise ValueError("Invalid instruction for OpenFOAM. "
                              "Valid instructions are: runParallel"
                              " and runApplication.")
 
-        return command
+        if command_instruction == "runparallel" and n_cores > 1:
+            command += " -parallel"
+            is_mpi = True
+
+        return command, is_mpi
 
 
 class OpenFOAMExecuter(executers.BaseExecuter):
@@ -114,7 +113,7 @@ class OpenFOAMExecuter(executers.BaseExecuter):
         self.run_subprocess(cmd, self.artifacts_dir)
 
     def execute(self):
-        n_cores = psutil.cpu_count(logical=False)
+        n_cores = self.count_cpu_cores()
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
 
         # Copy the input files to the artifacts directory
