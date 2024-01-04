@@ -201,13 +201,27 @@ class BaseExecuter(ABC):
             stdout.flush()
             stderr.flush()
 
-            args = ["apptainer", "exec", "--no-home", self.container_image]
-            args.extend(cmd.args)
+            # This is the directory that contains all the task related files
+            task_working_dir = self.working_dir
 
+            # This is the directory where the command will be executed. It
+            # can be a subdirectory of the task directory.
             if working_dir:
                 working_dir = os.path.join(self.working_dir, working_dir)
             else:
                 working_dir = self.working_dir
+
+            args = [
+                "apptainer",
+                "exec",
+                "--contain",
+                "--bind",
+                f"{task_working_dir}:{task_working_dir}",
+                "--pwd",
+                working_dir,
+                self.container_image,
+            ]
+            args.extend(cmd.args)
 
             self.subprocess = executers.SubprocessTracker(
                 args=args,
