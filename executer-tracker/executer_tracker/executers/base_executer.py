@@ -232,7 +232,6 @@ class BaseExecuter(ABC):
             args.extend([
                 "apptainer",
                 "exec",
-                "--contain",
                 "--bind",
                 f"{task_working_dir}:{task_working_dir}",
                 "--pwd",

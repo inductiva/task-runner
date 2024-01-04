@@ -2,8 +2,6 @@
 from typing import Optional
 import os
 import shutil
-import psutil
-import platform
 
 from executer_tracker import executers
 from executer_tracker.executers import mpi_configuration
@@ -37,13 +35,6 @@ class MPIExecuter(executers.BaseExecuter):
     def execute(self):
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
         input_filename = self.args.input_filename
-        n_cores = psutil.cpu_count(logical=False)
-
-        host_name = platform.node()
-        if n_cores > 1:
-            self.create_mpi_distribution_file(n_cores=n_cores,
-                                              node_name=host_name,
-                                              dir_path=sim_dir)
 
         input_file_full_path = os.path.join(sim_dir, input_filename)
 
