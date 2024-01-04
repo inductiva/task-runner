@@ -16,6 +16,7 @@ class LinearElasticityFEniCSxExecuter(executers.BaseExecuter):
         mesh_path = os.path.join(sim_dir_path, MESH_FILENAME)
         bcs_path = os.path.join(sim_dir_path, self.args.bcs_filename)
         material_path = os.path.join(sim_dir_path, self.args.material_filename)
+        element_family = self.args.mesh_element_family
         element_order = self.args.mesh_element_order
         results_dir = self.artifacts_dir
 
@@ -23,6 +24,7 @@ class LinearElasticityFEniCSxExecuter(executers.BaseExecuter):
                                 f"--mesh_path {mesh_path} "
                                 f"--bcs_path {bcs_path} "
                                 f"--material_path {material_path} "
+                                f"--element_family {element_family} "
                                 f"--element_order {element_order} "
                                 f"--results_dir {results_dir}")
 
