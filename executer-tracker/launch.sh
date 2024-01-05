@@ -11,6 +11,7 @@ start() {
 	export GIT_COMMIT_HASH="$(cat revision.txt)"
 	export API_URL="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/api-url" -H "Metadata-Flavor: Google")"
 	export REDIS_HOSTNAME="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/redis-hostname" -H "Metadata-Flavor: Google")"
+	export MPI_EXTRA_ARGS="--allow-run-as-root"
 
 	if [[ $1 == "mpi" ]]; then
 		NETWORK_URI=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/network" -H "Metadata-Flavor: Google")

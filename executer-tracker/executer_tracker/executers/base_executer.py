@@ -8,7 +8,6 @@ import os
 import json
 import psutil
 from collections import namedtuple
-from typing import Optional
 from absl import logging
 
 from executer_tracker import executers
@@ -41,7 +40,7 @@ class BaseExecuter(ABC):
         self,
         working_dir: str,
         container_image: str,
-        mpi_config: Optional[mpi_configuration.MPIConfiguration],
+        mpi_config: mpi_configuration.MPIConfiguration,
     ):
         """Performs initial setup of the executer.
 
@@ -212,22 +211,22 @@ class BaseExecuter(ABC):
             args = []
             if cmd.is_mpi:
                 args = ["mpirun"]
-                if self.mpi_config is not None:
+                if self.mpi_config.hostfile_path is not None:
                     args.extend([
                         "--hostfile",
                         self.mpi_config.hostfile_path,
                     ])
-                    args.extend(self.mpi_config.extra_args)
+                args.extend(self.mpi_config.extra_args)
 
             # This is the directory that contains all the task related files
             task_working_dir = self.working_dir
 
             # This is the directory where the command will be executed. It
             # can be a subdirectory of the task directory.
+            process_working_dir = task_working_dir
             if working_dir:
-                working_dir = os.path.join(self.working_dir, working_dir)
-            else:
-                working_dir = self.working_dir
+                process_working_dir = os.path.join(process_working_dir,
+                                                   working_dir)
 
             args.extend([
                 "apptainer",
@@ -235,14 +234,14 @@ class BaseExecuter(ABC):
                 "--bind",
                 f"{task_working_dir}:{task_working_dir}",
                 "--pwd",
-                working_dir,
+                process_working_dir,
                 self.container_image,
             ])
             args.extend(cmd.args)
 
             self.subprocess = executers.SubprocessTracker(
                 args=args,
-                working_dir=working_dir,
+                working_dir=None,
                 stdout=stdout,
                 stderr=stderr,
                 stdin=stdin,
@@ -271,7 +270,7 @@ class BaseExecuter(ABC):
             self.subprocess.exit_gracefully()
 
     def count_cpu_cores(self):
-        if self.mpi_config is None:
+        if self.mpi_config.hostfile_path is None:
             return psutil.cpu_count(logical=False)
 
         with open(self.mpi_config.hostfile_path, "r", encoding="utf-8") as f:
