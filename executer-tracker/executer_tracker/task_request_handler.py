@@ -6,6 +6,7 @@ launching said executer, and providing the outputs to the Web API.
 Note that, currently, request consumption is blocking.
 """
 import os
+import shutil
 import tempfile
 import threading
 from typing import Dict, Tuple
@@ -329,8 +330,8 @@ class TaskRequestHandler:
             working_dir_local: Working directory of the executer that performed
                 the task.
         """
-        # logging.info("Cleaning up working directory: %s", self.task_workdir)
-        # shutil.rmtree(self.task_workdir)
+        logging.info("Cleaning up working directory: %s", self.task_workdir)
+        shutil.rmtree(self.task_workdir)
 
     def _build_executer(self, request) -> executers.BaseExecuter:
         """Build Python command to run a requested task.
