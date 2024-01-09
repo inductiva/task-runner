@@ -23,7 +23,7 @@ start() {
 
 		echo Subnet: $SUBNET
 
-		export MPI_HEAD_NODE="true"
+		export MPI_CLUSTER="true"
 		export MPI_SHARE_PATH="/mpi"
 		export MPI_HOSTFILE_PATH="/root/mpi_hosts"
 		export MPI_EXTRA_ARGS="--allow-run-as-root --mca btl_tcp_if_include $SUBNET --mca oob_tcp_if_include $SUBNET"

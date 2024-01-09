@@ -78,14 +78,14 @@ def main(_):
         logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
         sys.exit(1)
 
-    mpi_head_node_str = os.getenv("MPI_HEAD_NODE", "false")
-    mpi_head_node = mpi_head_node_str.lower() in ("true", "t", "yes", "y", 1)
+    mpi_cluster_str = os.getenv("MPI_CLUSTER", "false")
+    mpi_cluster = mpi_cluster_str.lower() in ("true", "t", "yes", "y", 1)
 
     mpi_share_path = None
     mpi_hostfile_path = None
     mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "")
 
-    if mpi_head_node:
+    if mpi_cluster:
         mpi_share_path = os.getenv("MPI_SHARE_PATH", None)
         mpi_hostfile_path = os.getenv("MPI_HOSTFILE_PATH", None)
         if not mpi_share_path:
@@ -138,7 +138,7 @@ def main(_):
         api_url,
         list(executers_config.keys()),
         machine_group_id=machine_group_id,
-        mpi_head_node=mpi_head_node,
+        mpi_cluster=mpi_cluster,
     )
     executer_uuid = executer_access_info.id
 
