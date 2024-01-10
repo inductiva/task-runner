@@ -8,6 +8,7 @@ import os
 import json
 from collections import namedtuple
 from absl import logging
+import google.cloud.logging
 
 from executer_tracker import executers
 from executer_tracker.executers import command
@@ -153,6 +154,7 @@ class BaseExecuter(ABC):
 
     def run_subprocess(
         self,
+        task_id,
         cmd: command.Command,
         working_dir: str = "",
     ):
@@ -184,6 +186,9 @@ class BaseExecuter(ABC):
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
 
+        client = google.cloud.logging.Client(project="inductiva-api-dev")
+        cloud_logger = client.logger(name=task_id)
+
         if self.terminated:
             raise RuntimeError("Executer terminated. Not running subprocess.")
 
@@ -195,11 +200,12 @@ class BaseExecuter(ABC):
         with open(self.stdout_logs_path, "a", encoding="UTF-8") as stdout, \
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
-
+            cloud_logger.log_text(f"# COMMAND: {cmd.args}\n\n")
             stdout.write(f"# COMMAND: {cmd.args}\n\n")
             stderr.write(f"# COMMAND: {cmd.args}\n\n")
             stdout.flush()
             stderr.flush()
+            logging.info("STDOUT FLUSH: %s", stdout.flush())
 
             args = ["apptainer", "exec", "--no-home", self.container_image]
             args.extend(cmd.args)
@@ -215,6 +221,7 @@ class BaseExecuter(ABC):
                 stdout=stdout,
                 stderr=stderr,
                 stdin=stdin,
+                cloud_logger=cloud_logger,
             )
             self.subprocess.run()
             exit_code = self.subprocess.wait()

@@ -20,7 +20,7 @@ class GROMACSCommand(executers.Command):
 class GROMACS(executers.BaseExecuter):
     """Concrete implementation of an Executer to run GROMACS."""
 
-    def execute(self):
+    def execute(self, task_id):
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
 
         # Copy the input files to the artifacts directory
@@ -30,4 +30,4 @@ class GROMACS(executers.BaseExecuter):
 
         for command in commands:
             cmd = GROMACSCommand(command["cmd"], command["prompts"])
-            self.run_subprocess(cmd, self.artifacts_dir)
+            self.run_subprocess(cmd, self.artifacts_dir, task_id)
