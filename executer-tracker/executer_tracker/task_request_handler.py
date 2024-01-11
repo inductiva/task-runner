@@ -260,7 +260,7 @@ class TaskRequestHandler:
         thread.start()
         exit_code = 0
         try:
-            executer.run()
+            executer.run(self.task_id)
         except Exception as e:  # pylint: disable=broad-except
             logging.error("Exception while running executer: %s", str(e))
             exit_code = 1

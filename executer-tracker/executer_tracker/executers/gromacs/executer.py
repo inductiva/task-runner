@@ -30,4 +30,4 @@ class GROMACS(executers.BaseExecuter):
 
         for command in commands:
             cmd = GROMACSCommand(command["cmd"], command["prompts"])
-            self.run_subprocess(cmd, self.artifacts_dir, task_id)
+            self.run_subprocess(task_id, cmd, self.artifacts_dir)

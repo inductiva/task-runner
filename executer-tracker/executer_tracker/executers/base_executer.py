@@ -232,11 +232,11 @@ class BaseExecuter(ABC):
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")
 
-    def run(self):
+    def run(self, task_id):
         """Method used to run the executer."""
         self.load_input_configuration()
         self.pre_process()
-        self.execute()
+        self.execute(task_id)
         self.post_process()
         self.pack_output()
 
