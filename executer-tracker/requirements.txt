@@ -13,7 +13,7 @@ MDAnalysis
 pyvista
 
 # SPlisHSPlasH, FEniCSx
-gmsh
+gmsh==4.11.1
 meshio
 
 # FDS utils
