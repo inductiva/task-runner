@@ -5,7 +5,6 @@ import signal
 import subprocess
 import psutil
 import time
-import google.cloud.logging
 
 from absl import logging
 
@@ -24,7 +23,7 @@ class SubprocessTracker:
         stdout,
         stderr,
         stdin,
-        cloud_logger,
+        loki_logger,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
@@ -32,7 +31,7 @@ class SubprocessTracker:
         self.stdout = stdout
         self.stderr = stderr
         self.stdin = stdin
-        self.cloud_logger = cloud_logger
+        self.loki_logger = loki_logger
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
@@ -52,7 +51,7 @@ class SubprocessTracker:
             )
             if self.subproc.stdout is not None:
                 for line in self.subproc.stdout:
-                    self.cloud_logger.log_text(line.decode("utf-8").strip())
+                    self.loki_logger.log_text(line.decode("utf-8").strip())
                     self.stdout.write(line.decode("utf-8").strip())
                     self.stdout.flush()
                     self.stdout.write("\n")
