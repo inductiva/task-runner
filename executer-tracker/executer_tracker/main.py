@@ -85,6 +85,8 @@ def main(_):
     mpi_hostfile_path = None
     mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "")
 
+    num_mpi_hosts = 1
+
     if mpi_cluster:
         mpi_share_path = os.getenv("MPI_SHARE_PATH", None)
         mpi_hostfile_path = os.getenv("MPI_HOSTFILE_PATH", None)
@@ -94,6 +96,10 @@ def main(_):
         if not mpi_hostfile_path:
             logging.error("MPI_HOSTFILE_PATH environment variable not set.")
             sys.exit(1)
+
+        with open(mpi_hostfile_path, "r", encoding="UTF-8") as f:
+            hosts = [line for line in f.readlines() if line.strip() != ""]
+            num_mpi_hosts = len(hosts)
 
     mpi_config = executers.MPIConfiguration(
         hostfile_path=mpi_hostfile_path,
@@ -105,6 +111,7 @@ def main(_):
     logging.info("  > hostfile: %s", mpi_hostfile_path)
     logging.info("  > share path: %s", mpi_share_path)
     logging.info("  > extra args: %s", mpi_extra_args)
+    logging.info("  > num hosts: %d", num_mpi_hosts)
 
     if config.gcloud.is_running_on_gcloud_vm():
         # Check if there are any metadata values that override the provided
@@ -139,6 +146,7 @@ def main(_):
         list(executers_config.keys()),
         machine_group_id=machine_group_id,
         mpi_cluster=mpi_cluster,
+        num_mpi_hosts=num_mpi_hosts,
     )
     executer_uuid = executer_access_info.id
 
