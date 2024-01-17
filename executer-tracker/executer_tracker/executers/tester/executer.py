@@ -1,7 +1,10 @@
+"""Dummy executer for testing purposes."""
 import os
 import shutil
-
 import time
+
+import json
+
 
 from executer_tracker import executers
 
@@ -17,15 +20,17 @@ class TestExecuter(executers.BaseExecuter):
 
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
         os.chdir(self.artifacts_dir)
-        
-        with open("test_arguments.txt", "w", encoding="utf-8") as f:
-            f.write(f"Input file: {input_file}")
-            f.write(f"Input directory: {self.args.sim_dir}")
-            f.write(f"Commands: {commands}")
-            f.write(f"Sleep time: {sleep_time}")
-
+       
+        filenames_list = os.listdir(input_dir)
+        with open("test_arguments.json", "w", encoding="utf-8") as f:
+            args = {"input_filename": input_file,
+                    "input_dir_list": filenames_list,
+                    "commands": commands, "sleep_time": sleep_time}
+            json.dump(args, f)
+            
         time.sleep(sleep_time)
 
-        for command in commands:
-            command = executers.Command(command["cmd"], command["prompts"])
-            self.run_subprocess(command, working_dir=self.artifacts_dir)
+        if commands is not None:
+            for command in commands:
+                command = executers.Command(command["cmd"], command["prompts"])
+                self.run_subprocess(command, working_dir=self.artifacts_dir)
