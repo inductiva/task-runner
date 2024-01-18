@@ -59,7 +59,7 @@ class SubprocessTracker:
             if self.subproc.stderr is not None:
                 for line in self.subproc.stderr:
                     log_message = line.decode("utf-8").strip()
-                    self.loki_logger.log_text(log_message, io_type="stderr")
+                    self.loki_logger.log_text(log_message, io_type="std_err")
                     self.stderr.write(log_message)
                     self.stderr.flush()
                     self.stderr.write("\n")
