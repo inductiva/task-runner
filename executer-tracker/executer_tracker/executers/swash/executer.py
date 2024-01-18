@@ -10,8 +10,8 @@ class SWASHExecuter(executers.MPIExecuter):
         self,
         working_dir,
         container_image,
-        loki_logger: loki.LokiLogger,
         mpi_config: mpi_configuration.MPIConfiguration,
+        loki_logger: loki.LokiLogger,
     ):
         super().__init__(working_dir=working_dir,
                          container_image=container_image,
