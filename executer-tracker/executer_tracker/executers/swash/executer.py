@@ -1,7 +1,7 @@
 """Run simulation with SWASH."""
-from typing import Optional
 from executer_tracker import executers
 from executer_tracker.executers import mpi_configuration
+from executer_tracker.utils import loki
 
 
 class SWASHExecuter(executers.MPIExecuter):
@@ -10,10 +10,12 @@ class SWASHExecuter(executers.MPIExecuter):
         self,
         working_dir,
         container_image,
-        mpi_config: Optional[mpi_configuration.MPIConfiguration],
+        loki_logger: loki.LokiLogger,
+        mpi_config: mpi_configuration.MPIConfiguration,
     ):
         super().__init__(working_dir=working_dir,
                          container_image=container_image,
+                         loki_logger=loki_logger,
                          mpi_config=mpi_config,
                          sim_binary="swash.exe",
                          file_type="sws",

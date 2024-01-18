@@ -1,16 +1,19 @@
+"""Logger for Loki server."""
 from time import time_ns
 import json
 import requests
 import os
 
+from absl import logging
+
 
 class LokiLogger:
+    """Logger for Loki server."""
 
     def __init__(self, task_id):
         self.task_id = task_id
-        self.server_url = (
-            f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}:3100/loki/api/v1/push"
-        )
+        self.server_url = (f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}"
+                           ":3100/loki/api/v1/push")
 
     def log_text(self,
                  log_message,
@@ -35,11 +38,14 @@ class LokiLogger:
             self.server_url,
             data=json.dumps(log_entry),
             headers={"Content-Type": "application/json"},
+            timeout=10,
         )
 
         if response.status_code != 204:
-            print(
-                f"Failed to send log entry. Status code: {response.status_code}, Response: {response.text}"
+            logging.error(
+                "Failed to send log entry. Status code: %s, Response: %s",
+                response.status_code,
+                response.text,
             )
 
     def _get_current_timestamp(self):

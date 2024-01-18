@@ -351,4 +351,9 @@ class TaskRequestHandler:
 
         container_image = self.current_task_executer_config.image
 
-        return executer_class(self.task_workdir, container_image, self.mpi_config, self.loki_logger,)
+        return executer_class(
+            self.task_workdir,
+            container_image,
+            self.mpi_config,
+            self.loki_logger,
+        )
