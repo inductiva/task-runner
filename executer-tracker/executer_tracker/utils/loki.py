@@ -34,6 +34,8 @@ class LokiLogger:
             print(
                 f"Failed to send log entry. Status code: {response.status_code}, Response: {response.text}"
             )
+        else:
+            print("Log sent to Loki")
 
     def _get_current_timestamp(self):
         # Get the current time in nanoseconds since the epoch

@@ -20,7 +20,7 @@ from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
-from utils import files, config
+from utils import files, config, loki
 from executer_tracker import executers
 
 import api_methods_config
@@ -115,6 +115,7 @@ class TaskRequestHandler:
         self.executers_config = executers_config
         self.task_id = None
         self.workdir = workdir
+        self.loki_logger = None
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
@@ -153,6 +154,7 @@ class TaskRequestHandler:
         self.task_dir_remote = request["task_dir"]
         self.current_task_executer_config = self.executers_config[
             request["executer_type"]]
+        self.loki_logger = loki.LokiLogger(self.task_id)
 
         self._log_task_picked_up()
 
@@ -260,7 +262,7 @@ class TaskRequestHandler:
         thread.start()
         exit_code = 0
         try:
-            executer.run(self.task_id)
+            executer.run()
         except Exception as e:  # pylint: disable=broad-except
             logging.error("Exception while running executer: %s", str(e))
             exit_code = 1
@@ -343,4 +345,4 @@ class TaskRequestHandler:
 
         container_image = self.current_task_executer_config.image
 
-        return executer_class(self.task_workdir, container_image)
+        return executer_class(self.task_workdir, container_image, self.loki_logger)

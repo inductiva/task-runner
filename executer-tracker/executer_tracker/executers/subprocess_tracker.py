@@ -51,8 +51,9 @@ class SubprocessTracker:
             )
             if self.subproc.stdout is not None:
                 for line in self.subproc.stdout:
-                    self.loki_logger.log_text(line.decode("utf-8").strip())
-                    self.stdout.write(line.decode("utf-8").strip())
+                    log_message = line.decode("utf-8").strip()
+                    self.loki_logger.log_text(log_message)
+                    self.stdout.write(log_message)
                     self.stdout.flush()
                     self.stdout.write("\n")
             # pylint: enable=consider-using-with

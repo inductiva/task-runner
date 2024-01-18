@@ -11,6 +11,7 @@ from absl import logging
 
 from executer_tracker import executers
 from executer_tracker.executers import command
+from executer_tracker.utils import loki
 
 
 class BaseExecuter(ABC):
@@ -35,7 +36,8 @@ class BaseExecuter(ABC):
     STDOUT_LOGS_FILENAME = "stdout.txt"
     STDERR_LOGS_FILENAME = "stderr.txt"
 
-    def __init__(self, working_dir: str, container_image: str):
+    def __init__(self, working_dir: str, container_image: str,
+                 loki_logger: loki.LokiLogger):
         """Performs initial setup of the executer.
 
         This method creates the directories to be used for storing files
@@ -46,6 +48,7 @@ class BaseExecuter(ABC):
         self.output_dir = os.path.join(self.working_dir, self.OUTPUT_DIRNAME)
         self.artifacts_dir = os.path.join(self.output_dir,
                                           self.ARTIFACTS_DIRNAME)
+        self.loki_logger = loki_logger
 
         logging.info("Working directory: %s", self.working_dir)
 
@@ -153,7 +156,6 @@ class BaseExecuter(ABC):
 
     def run_subprocess(
         self,
-        task_id,
         cmd: command.Command,
         working_dir: str = "",
     ):
@@ -185,8 +187,6 @@ class BaseExecuter(ABC):
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
 
-        loki_logger = executers.LokiLogger(task_id)
-
         if self.terminated:
             raise RuntimeError("Executer terminated. Not running subprocess.")
 
@@ -198,9 +198,10 @@ class BaseExecuter(ABC):
         with open(self.stdout_logs_path, "a", encoding="UTF-8") as stdout, \
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
-            loki_logger.log_text(log_message=f"# COMMAND: {cmd.args}\n\n")
-            stdout.write(f"# COMMAND: {cmd.args}\n\n")
-            stderr.write(f"# COMMAND: {cmd.args}\n\n")
+            log_message = f"# COMMAND: {cmd.args}\n\n"
+            self.loki_logger.log_text(log_message)
+            stdout.write(log_message)
+            stderr.write(log_message)
             stdout.flush()
             stderr.flush()
             logging.info("STDOUT FLUSH: %s", stdout.flush())
@@ -219,7 +220,7 @@ class BaseExecuter(ABC):
                 stdout=stdout,
                 stderr=stderr,
                 stdin=stdin,
-                loki_logger=loki_logger,
+                loki_logger=self.loki_logger,
             )
             self.subprocess.run()
             exit_code = self.subprocess.wait()
@@ -230,11 +231,11 @@ class BaseExecuter(ABC):
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")
 
-    def run(self, task_id):
+    def run(self):
         """Method used to run the executer."""
         self.load_input_configuration()
         self.pre_process()
-        self.execute(task_id)
+        self.execute()
         self.post_process()
         self.pack_output()
 
