@@ -12,6 +12,7 @@ from absl import logging
 
 from executer_tracker import executers
 from executer_tracker.executers import command, mpi_configuration
+from executer_tracker.utils import loki
 
 
 class BaseExecuter(ABC):
@@ -41,6 +42,7 @@ class BaseExecuter(ABC):
         working_dir: str,
         container_image: str,
         mpi_config: mpi_configuration.MPIConfiguration,
+        loki_logger: loki.LokiLogger,
     ):
         """Performs initial setup of the executer.
 
@@ -53,6 +55,7 @@ class BaseExecuter(ABC):
         self.output_dir = os.path.join(self.working_dir, self.OUTPUT_DIRNAME)
         self.artifacts_dir = os.path.join(self.output_dir,
                                           self.ARTIFACTS_DIRNAME)
+        self.loki_logger = loki_logger
 
         logging.info("Working directory: %s", self.working_dir)
 
@@ -202,9 +205,10 @@ class BaseExecuter(ABC):
         with open(self.stdout_logs_path, "a", encoding="UTF-8") as stdout, \
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
-
-            stdout.write(f"# COMMAND: {cmd.args}\n\n")
-            stderr.write(f"# COMMAND: {cmd.args}\n\n")
+            log_message = f"# COMMAND: {cmd.args}"
+            self.loki_logger.log_text(log_message, io_type="command")
+            stdout.write(log_message)
+            stderr.write(log_message)
             stdout.flush()
             stderr.flush()
 
@@ -245,6 +249,7 @@ class BaseExecuter(ABC):
                 stdout=stdout,
                 stderr=stderr,
                 stdin=stdin,
+                loki_logger=self.loki_logger,
             )
             self.subprocess.run()
             exit_code = self.subprocess.wait()
