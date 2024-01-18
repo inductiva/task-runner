@@ -107,6 +107,7 @@ class TaskRequestHandler:
         artifact_filesystem: fs.FileSystem,
         executer_uuid: UUID,
         workdir: str,
+        mpi_config: executers.MPIConfiguration,
     ):
         self.redis = redis_connection
         self.artifact_filesystem = artifact_filesystem
@@ -116,6 +117,11 @@ class TaskRequestHandler:
         self.task_id = None
         self.workdir = workdir
         self.loki_logger = None
+        self.mpi_config = mpi_config
+
+        # If a share path for MPI is set, use it as the working directory.
+        if self.mpi_config.share_path is not None:
+            self.workdir = self.mpi_config.share_path
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
@@ -345,4 +351,4 @@ class TaskRequestHandler:
 
         container_image = self.current_task_executer_config.image
 
-        return executer_class(self.task_workdir, container_image, self.loki_logger)
+        return executer_class(self.task_workdir, container_image, self.mpi_config, self.loki_logger,)

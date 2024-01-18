@@ -64,6 +64,7 @@ from inductiva_api.task_status import ExecuterTerminationReason
 from register_executer import register_executer
 from task_request_handler import TaskRequestHandler
 from utils import config
+from executer_tracker import executers
 
 
 def main(_):
@@ -76,6 +77,41 @@ def main(_):
     if not executer_images_dir:
         logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
         sys.exit(1)
+
+    mpi_cluster_str = os.getenv("MPI_CLUSTER", "false")
+    mpi_cluster = mpi_cluster_str.lower() in ("true", "t", "yes", "y", 1)
+
+    mpi_share_path = None
+    mpi_hostfile_path = None
+    mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "")
+
+    num_mpi_hosts = 1
+
+    if mpi_cluster:
+        mpi_share_path = os.getenv("MPI_SHARE_PATH", None)
+        mpi_hostfile_path = os.getenv("MPI_HOSTFILE_PATH", None)
+        if not mpi_share_path:
+            logging.error("MPI_SHARE_PATH environment variable not set.")
+            sys.exit(1)
+        if not mpi_hostfile_path:
+            logging.error("MPI_HOSTFILE_PATH environment variable not set.")
+            sys.exit(1)
+
+        with open(mpi_hostfile_path, "r", encoding="UTF-8") as f:
+            hosts = [line for line in f.readlines() if line.strip() != ""]
+            num_mpi_hosts = len(hosts)
+
+    mpi_config = executers.MPIConfiguration(
+        hostfile_path=mpi_hostfile_path,
+        share_path=mpi_share_path,
+        extra_args=mpi_extra_args,
+    )
+
+    logging.info("MPI configuration:")
+    logging.info("  > hostfile: %s", mpi_hostfile_path)
+    logging.info("  > share path: %s", mpi_share_path)
+    logging.info("  > extra args: %s", mpi_extra_args)
+    logging.info("  > num hosts: %d", num_mpi_hosts)
 
     if config.gcloud.is_running_on_gcloud_vm():
         # Check if there are any metadata values that override the provided
@@ -109,6 +145,8 @@ def main(_):
         api_url,
         list(executers_config.keys()),
         machine_group_id=machine_group_id,
+        mpi_cluster=mpi_cluster,
+        num_mpi_hosts=num_mpi_hosts,
     )
     executer_uuid = executer_access_info.id
 
@@ -122,6 +160,7 @@ def main(_):
         artifact_filesystem=artifact_filesystem_root,
         executer_uuid=executer_uuid,
         workdir=workdir,
+        mpi_config=mpi_config,
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,

@@ -76,5 +76,5 @@ class FDSExecuter(executers.BaseExecuter):
         shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         cmd = executers.Command(
-            f"bash -c \"mpiexec -np {n_cores} fds {input_filename}\"")
+            f"/launch.sh \"mpiexec -np {n_cores} fds {input_filename}\"")
         self.run_subprocess(cmd, working_dir=self.artifacts_dir)

@@ -1,5 +1,5 @@
 [Unit]
-Description=Inductiva API executer tracker
+Description=Inductiva API executer tracker %i
 After=syslog.target network.target
 
 [Service]
@@ -8,7 +8,7 @@ Restart=always
 RestartSec=60
 WorkingDirectory=/opt/executer-tracker
 User=root
-ExecStart=/opt/executer-tracker/launch.sh start
+ExecStart=/opt/executer-tracker/launch.sh %i
 
 [Install]
 WantedBy=multi-user.target
