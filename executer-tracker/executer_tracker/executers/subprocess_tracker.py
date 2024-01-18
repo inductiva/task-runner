@@ -52,10 +52,17 @@ class SubprocessTracker:
             if self.subproc.stdout is not None:
                 for line in self.subproc.stdout:
                     log_message = line.decode("utf-8").strip()
-                    self.loki_logger.log_text(log_message)
+                    self.loki_logger.log_text(log_message, io_type="std_out")
                     self.stdout.write(log_message)
                     self.stdout.flush()
                     self.stdout.write("\n")
+            if self.subproc.stderr is not None:
+                for line in self.subproc.stderr:
+                    log_message = line.decode("utf-8").strip()
+                    self.loki_logger.log_text(log_message, io_type="stderr")
+                    self.stderr.write(log_message)
+                    self.stderr.flush()
+                    self.stderr.write("\n")
             # pylint: enable=consider-using-with
             logging.info("Started process with PID %d.", self.subproc.pid)
 

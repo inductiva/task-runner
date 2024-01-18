@@ -198,13 +198,12 @@ class BaseExecuter(ABC):
         with open(self.stdout_logs_path, "a", encoding="UTF-8") as stdout, \
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
-            log_message = f"# COMMAND: {cmd.args}\n\n"
-            self.loki_logger.log_text(log_message)
+            log_message = f"# COMMAND: {cmd.args}"
+            self.loki_logger.log_text(log_message, io_type="command")
             stdout.write(log_message)
             stderr.write(log_message)
             stdout.flush()
             stderr.flush()
-            logging.info("STDOUT FLUSH: %s", stdout.flush())
 
             args = ["apptainer", "exec", "--no-home", self.container_image]
             args.extend(cmd.args)
