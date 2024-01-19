@@ -20,11 +20,11 @@ class FDSExecuter(executers.BaseExecuter):
             If any of the checks don't pass, return None.
             Else, return the smokeview output file.
         """
+        if self.args.post_processing_config is None:
+            return None
 
         smokeview_script = os.path.join(self.artifacts_dir,
                                         self.args.post_processing_config)
-        if smokeview_script is None:
-            return None
 
         if os.path.exists(smokeview_script):
             # Find Smokeview simulation input file

@@ -49,6 +49,7 @@ class SubprocessTracker:
                 stdin=self.stdin,
                 shell=False,
             )
+            logging.info("Started process with PID %d.", self.subproc.pid)
             if self.subproc.stdout is not None:
                 for line in self.subproc.stdout:
                     log_message = line.decode("utf-8").strip()
@@ -56,6 +57,7 @@ class SubprocessTracker:
                     self.stdout.write(log_message)
                     self.stdout.flush()
                     self.stdout.write("\n")
+
             if self.subproc.stderr is not None:
                 for line in self.subproc.stderr:
                     log_message = line.decode("utf-8").strip()
@@ -63,8 +65,8 @@ class SubprocessTracker:
                     self.stderr.write(log_message)
                     self.stderr.flush()
                     self.stderr.write("\n")
+
             # pylint: enable=consider-using-with
-            logging.info("Started process with PID %d.", self.subproc.pid)
 
         except Exception as exception:  # pylint: disable=broad-except
             logging.warning("Caught exception \"%s\". Exiting gracefully",
@@ -96,9 +98,6 @@ class SubprocessTracker:
                 children_procs = process_status.children(recursive=True)
                 logging.info("Children spawned: %s", children_procs)
 
-                # TODO(luispcunha): With the current implementation, the
-                # resource usage is not being logged to the expected file
-                # in the bucket while the simulation is running.
                 if periodic_callback is not None:
                     periodic_callback()
 
