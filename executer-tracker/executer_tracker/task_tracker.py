@@ -62,7 +62,7 @@ class TaskTracker:
             ],
             working_dir=container_working_dir,
             detach=True,  # Run container in background.
-            auto_remove=True,  # Remove container when it exits.
+            auto_remove=False,
             device_requests=device_requests)
         assert isinstance(
             container,
@@ -83,6 +83,10 @@ class TaskTracker:
             # Reference:
             # - https://docs.docker.com/engine/reference/commandline/stats/#description # pylint: disable=line-too-long
             # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats # pylint: disable=line-too-long
+            self.container.reload()
+            if self.container.status in ("exited", "dead"):
+                break
+
             try:
                 timestamp = s["read"]
                 logging.info("Read: %s", timestamp)
@@ -128,6 +132,7 @@ class TaskTracker:
                     r_file.write(current_usage.encode("utf-8"))
 
         status = self.container.wait()
+        self.container.remove()
         return status["StatusCode"]
 
     def kill(self):

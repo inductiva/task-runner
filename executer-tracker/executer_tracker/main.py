@@ -53,10 +53,10 @@ Usage (note the required environment variables):
   python executer_tracker.py
 """
 import os
+import sys
 
 from absl import app, logging
 from pyarrow import fs
-import docker
 
 import redis_utils
 import cleanup
@@ -64,6 +64,7 @@ from inductiva_api.task_status import ExecuterTerminationReason
 from register_executer import register_executer
 from task_request_handler import TaskRequestHandler
 from utils import config
+from executer_tracker import executers
 
 
 def main(_):
@@ -71,6 +72,46 @@ def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
     redis_port = os.getenv("REDIS_PORT", "6379")
     artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
+    workdir = os.getenv("WORKDIR", "/workdir")
+    executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
+    if not executer_images_dir:
+        logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
+        sys.exit(1)
+
+    mpi_cluster_str = os.getenv("MPI_CLUSTER", "false")
+    mpi_cluster = mpi_cluster_str.lower() in ("true", "t", "yes", "y", 1)
+
+    mpi_share_path = None
+    mpi_hostfile_path = None
+    mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "")
+
+    num_mpi_hosts = 1
+
+    if mpi_cluster:
+        mpi_share_path = os.getenv("MPI_SHARE_PATH", None)
+        mpi_hostfile_path = os.getenv("MPI_HOSTFILE_PATH", None)
+        if not mpi_share_path:
+            logging.error("MPI_SHARE_PATH environment variable not set.")
+            sys.exit(1)
+        if not mpi_hostfile_path:
+            logging.error("MPI_HOSTFILE_PATH environment variable not set.")
+            sys.exit(1)
+
+        with open(mpi_hostfile_path, "r", encoding="UTF-8") as f:
+            hosts = [line for line in f.readlines() if line.strip() != ""]
+            num_mpi_hosts = len(hosts)
+
+    mpi_config = executers.MPIConfiguration(
+        hostfile_path=mpi_hostfile_path,
+        share_path=mpi_share_path,
+        extra_args=mpi_extra_args,
+    )
+
+    logging.info("MPI configuration:")
+    logging.info("  > hostfile: %s", mpi_hostfile_path)
+    logging.info("  > share path: %s", mpi_share_path)
+    logging.info("  > extra args: %s", mpi_extra_args)
+    logging.info("  > num hosts: %d", num_mpi_hosts)
 
     if config.gcloud.is_running_on_gcloud_vm():
         # Check if there are any metadata values that override the provided
@@ -85,14 +126,6 @@ def main(_):
         if metadata_api_url:
             api_url = metadata_api_url
 
-    shared_dir_host = os.getenv("SHARED_DIR_HOST")
-    if not shared_dir_host:
-        raise ValueError("SHARED_DIR_HOST environment variable not set.")
-
-    shared_dir_local = os.getenv("SHARED_DIR_LOCAL")
-    if not shared_dir_local:
-        raise ValueError("SHARED_DIR_LOCAL environment variable not set.")
-
     artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
         artifact_store_uri)
     artifact_filesystem_root = fs.SubTreeFileSystem(base_path,
@@ -105,14 +138,15 @@ def main(_):
         logging.info("Using machine group: %s", machine_group_id)
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
-    docker_client = docker.from_env()
 
-    executers_config = config.load_executers_config(docker_client)
+    executers_config = config.load_executers_config(executer_images_dir)
 
     executer_access_info = register_executer(
         api_url,
         list(executers_config.keys()),
         machine_group_id=machine_group_id,
+        mpi_cluster=mpi_cluster,
+        num_mpi_hosts=num_mpi_hosts,
     )
     executer_uuid = executer_access_info.id
 
@@ -122,12 +156,11 @@ def main(_):
 
     request_handler = TaskRequestHandler(
         redis_connection=redis_conn,
-        docker_client=docker_client,
         executers_config=executers_config,
         artifact_filesystem=artifact_filesystem_root,
         executer_uuid=executer_uuid,
-        shared_dir_host=shared_dir_host,
-        shared_dir_local=shared_dir_local,
+        workdir=workdir,
+        mpi_config=mpi_config,
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
