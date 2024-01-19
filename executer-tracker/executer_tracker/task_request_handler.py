@@ -212,8 +212,11 @@ class TaskRequestHandler:
 
         task_workdir = os.path.join(self.workdir, self.task_id)
 
-        # Both vars point to the same directory (one is the path on the host
-        # machine and the other is the path inside the container).
+        if os.path.exists(task_workdir):
+            logging.info("Working directory already existed: %s", task_workdir)
+            logging.info("Removing directory: %s", task_workdir)
+            shutil.rmtree(task_workdir)
+
         os.makedirs(task_workdir)
 
         input_zip_path_remote = os.path.join(task_dir_remote,
