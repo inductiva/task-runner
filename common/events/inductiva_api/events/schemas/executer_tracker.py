@@ -34,6 +34,8 @@ class ExecuterTrackerRegisterInfo(pydantic.BaseModel):
     memory: int
     git_commit_hash: str
     machine_group_id: Optional[uuid.UUID]
+    mpi_cluster: bool = False
+    num_mpi_hosts: int = 1
 
     # Use the "type" field to discriminate between different executer types.
     host_info: Annotated[Union[GCloudHostInfo, InductivaHostInfo],
