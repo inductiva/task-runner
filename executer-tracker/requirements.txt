@@ -5,14 +5,7 @@ requests
 pyarrow
 docker
 
-# GROMACS
-biopython
-MDAnalysis
-
-# OpenFOAM
-pyvista
-
-# SPlisHSPlasH, FEniCSx
+# FEniCSx
 gmsh==4.11.1
 meshio
 
