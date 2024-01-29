@@ -84,7 +84,8 @@ def register_executer(
     api_url: str,
     supported_executer_types: Sequence[str],
     machine_group_id: Optional[UUID],
-    mpi_head_node: bool = False,
+    num_mpi_hosts: int,
+    mpi_cluster: bool = False,
 ) -> ExecuterAccessInfo:
     """Registers an executer in the API.
 
@@ -100,7 +101,9 @@ def register_executer(
     executer_info["supported_executer_types"] = supported_executer_types
     if machine_group_id:
         executer_info["machine_group_id"] = str(machine_group_id)
-    executer_info["mpi_head_node"] = mpi_head_node
+
+    executer_info["mpi_cluster"] = mpi_cluster
+    executer_info["num_mpi_hosts"] = num_mpi_hosts
 
     logging.info("Registering executer with the API...")
     r = requests.post(

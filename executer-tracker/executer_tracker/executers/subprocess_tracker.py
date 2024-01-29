@@ -23,6 +23,7 @@ class SubprocessTracker:
         stdout,
         stderr,
         stdin,
+        loki_logger,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
@@ -30,6 +31,7 @@ class SubprocessTracker:
         self.stdout = stdout
         self.stderr = stderr
         self.stdin = stdin
+        self.loki_logger = loki_logger
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
@@ -42,13 +44,29 @@ class SubprocessTracker:
                 self.args,
                 cwd=self.working_dir,
                 start_new_session=True,
-                stdout=self.stdout,
-                stderr=self.stderr,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 stdin=self.stdin,
                 shell=False,
             )
-            # pylint: enable=consider-using-with
             logging.info("Started process with PID %d.", self.subproc.pid)
+            if self.subproc.stdout is not None:
+                for line in self.subproc.stdout:
+                    log_message = line.decode("utf-8").strip()
+                    self.loki_logger.log_text(log_message, io_type="std_out")
+                    self.stdout.write(log_message)
+                    self.stdout.flush()
+                    self.stdout.write("\n")
+
+            if self.subproc.stderr is not None:
+                for line in self.subproc.stderr:
+                    log_message = line.decode("utf-8").strip()
+                    self.loki_logger.log_text(log_message, io_type="std_err")
+                    self.stderr.write(log_message)
+                    self.stderr.flush()
+                    self.stderr.write("\n")
+
+            # pylint: enable=consider-using-with
 
         except Exception as exception:  # pylint: disable=broad-except
             logging.warning("Caught exception \"%s\". Exiting gracefully",
@@ -80,9 +98,6 @@ class SubprocessTracker:
                 children_procs = process_status.children(recursive=True)
                 logging.info("Children spawned: %s", children_procs)
 
-                # TODO(luispcunha): With the current implementation, the
-                # resource usage is not being logged to the expected file
-                # in the bucket while the simulation is running.
                 if periodic_callback is not None:
                     periodic_callback()
 

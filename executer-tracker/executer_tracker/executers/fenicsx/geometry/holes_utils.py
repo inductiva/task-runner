@@ -196,7 +196,7 @@ class RectangularHole(Hole):
     def to_occ(self) -> int:
         """Converts hole to OpenCASCADE CAD representation.
 
-        To prevent singularity points in the Finite Element Method (points i
+        To prevent singularity points in the Finite Element Method (points of
         the model where values tend towards infinity), we will round the corners
         of the rectangle.
 
@@ -210,7 +210,7 @@ class RectangularHole(Hole):
             z=0,
             dx=self.half_size_x * 2,
             dy=self.half_size_y * 2,
-            roundedRadius=min(self.half_size_x, self.half_size_y) * 0.5)
+            roundedRadius=max(self.half_size_x, self.half_size_y) * 0.35)
         gmsh.model.occ.rotate(dimTags=[(2, hole_gmsh)],
                               x=self.center_x,
                               y=self.center_y,

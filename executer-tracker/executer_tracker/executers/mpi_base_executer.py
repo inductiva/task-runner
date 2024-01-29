@@ -1,10 +1,10 @@
 """This file provides a class to implement MPI executers."""
-from typing import Optional
 import os
 import shutil
 
 from executer_tracker import executers
 from executer_tracker.executers import mpi_configuration
+from executer_tracker.utils import loki
 
 # Instructions inside Docker containers are run by the root user (as default),
 # so we need to allow Open MPI to be run as root. This is usually strongly
@@ -17,10 +17,17 @@ MPI_DISTRIBUTION_FILENAME = "machinefile"
 class MPIExecuter(executers.BaseExecuter):
     """Implementation of a general MPI Executer."""
 
-    def __init__(self, working_dir, container_image,
-                 mpi_config: Optional[mpi_configuration.MPIConfiguration],
-                 sim_binary, file_type, sim_specific_input_filename):
-        super().__init__(working_dir, container_image, mpi_config)
+    def __init__(
+        self,
+        working_dir,
+        container_image,
+        mpi_config: mpi_configuration.MPIConfiguration,
+        loki_logger: loki.LokiLogger,
+        sim_binary,
+        file_type,
+        sim_specific_input_filename,
+    ):
+        super().__init__(working_dir, container_image, mpi_config, loki_logger)
         self.sim_binary = sim_binary
         self.sim_specific_input_filename = sim_specific_input_filename
         self.file_type = file_type

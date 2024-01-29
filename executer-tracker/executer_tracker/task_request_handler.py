@@ -9,7 +9,7 @@ import os
 import shutil
 import tempfile
 import threading
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 import redis
 from uuid import UUID
 
@@ -20,7 +20,7 @@ from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
 from pyarrow import fs
 from utils import make_task_key
-from utils import files, config
+from utils import files, config, loki
 from executer_tracker import executers
 
 import api_methods_config
@@ -107,7 +107,7 @@ class TaskRequestHandler:
         artifact_filesystem: fs.FileSystem,
         executer_uuid: UUID,
         workdir: str,
-        mpi_config: Optional[executers.MPIConfiguration],
+        mpi_config: executers.MPIConfiguration,
     ):
         self.redis = redis_connection
         self.artifact_filesystem = artifact_filesystem
@@ -116,11 +116,11 @@ class TaskRequestHandler:
         self.executers_config = executers_config
         self.task_id = None
         self.workdir = workdir
+        self.loki_logger = None
         self.mpi_config = mpi_config
 
-        # If this is an MPI head node, then the working directory is the
-        # shared directory.
-        if self.mpi_config:
+        # If a share path for MPI is set, use it as the working directory.
+        if self.mpi_config.share_path is not None:
             self.workdir = self.mpi_config.share_path
 
     def is_task_running(self) -> bool:
@@ -160,6 +160,7 @@ class TaskRequestHandler:
         self.task_dir_remote = request["task_dir"]
         self.current_task_executer_config = self.executers_config[
             request["executer_type"]]
+        self.loki_logger = loki.LokiLogger(self.task_id)
 
         self._log_task_picked_up()
 
@@ -211,8 +212,11 @@ class TaskRequestHandler:
 
         task_workdir = os.path.join(self.workdir, self.task_id)
 
-        # Both vars point to the same directory (one is the path on the host
-        # machine and the other is the path inside the container).
+        if os.path.exists(task_workdir):
+            logging.info("Working directory already existed: %s", task_workdir)
+            logging.info("Removing directory: %s", task_workdir)
+            shutil.rmtree(task_workdir)
+
         os.makedirs(task_workdir)
 
         input_zip_path_remote = os.path.join(task_dir_remote,
@@ -350,5 +354,9 @@ class TaskRequestHandler:
 
         container_image = self.current_task_executer_config.image
 
-        return executer_class(self.task_workdir, container_image,
-                              self.mpi_config)
+        return executer_class(
+            self.task_workdir,
+            container_image,
+            self.mpi_config,
+            self.loki_logger,
+        )
