@@ -3,14 +3,15 @@ import json
 import os
 import requests
 import time
+from enum import Enum
 
 from absl import logging
 
 STREAM_BUFFER_MAX_LENGTH = 10
-FLUSH_PERIOD = 0.5  # seconds
+FLUSH_PERIOD_IN_SECONDS = 0.5
 
 
-class IOTypes:
+class IOTypes(Enum):
     """Enumeration of IO types for logging."""
     COMMAND = "command"
     STD_OUT = "std_out"
@@ -20,11 +21,20 @@ class IOTypes:
 class LogStream:
     """Class for managing a stream of logs."""
 
-    def __init__(self, io_type: str, buffer_max_length: int):
+    def __init__(self, io_type: IOTypes, buffer_max_length: int):
         self.io_type = io_type
         self.buffer = []
         self.buffer_max_length = buffer_max_length
         self.last_send_time = time.time()
+
+    def is_buffer_full(self) -> bool:
+        """Returns True if the buffer is full, False otherwise."""
+        return len(self.buffer) >= self.buffer_max_length
+
+    def is_flush_period_elapsed(self) -> bool:
+        """Returns True if the flush period has elapsed since the last
+        send, False otherwise."""
+        return time.time() - self.last_send_time >= FLUSH_PERIOD_IN_SECONDS
 
 
 class LokiLogger:
@@ -37,7 +47,7 @@ class LokiLogger:
         self.project_id = project_id
         self.server_url = (f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}"
                            ":3100/loki/api/v1/push")
-        self.streams = {}
+        self.streams_dict = {}
 
     def _send_logs(self, stream: LogStream) -> None:
         """Sends logs to loki through a POST request to push endpoint."""
@@ -50,7 +60,7 @@ class LokiLogger:
                 "streams": [{
                     "stream": {
                         "task_id": self.task_id,
-                        "io_type": stream.io_type,
+                        "io_type": str(stream.io_type),
                         "project_id": self.project_id
                     },
                     "values": stream.buffer,
@@ -85,7 +95,7 @@ class LokiLogger:
     def log_text(self,
                  log_message: str,
                  timestamp: str = None,
-                 io_type: str = None) -> None:
+                 io_type: IOTypes = None) -> None:
         """Appends log messages to each stream buffer and triggers the push to
         Loki server if the buffer is full or if the flush period has elapsed."""
         if not io_type:
@@ -95,23 +105,23 @@ class LokiLogger:
         if timestamp is None:
             timestamp = self._get_current_timestamp()
 
-        if io_type not in self.streams:
+        if io_type not in self.streams_dict:
             buffer_max_size = 1 if io_type == IOTypes.COMMAND \
                 else STREAM_BUFFER_MAX_LENGTH
-            self.streams[io_type] = LogStream(io_type, buffer_max_size)
+            self.streams_dict[io_type] = LogStream(io_type, buffer_max_size)
 
-        stream = self.streams[io_type]
+        stream: LogStream = self.streams_dict.get(io_type)
         stream.buffer.append([timestamp, log_message])
 
-        if len(stream.buffer) >= stream.buffer_max_length or time.time(
-        ) - stream.last_send_time >= FLUSH_PERIOD:
+        if stream.is_buffer_full() or stream.is_flush_period_elapsed():
             self._send_logs(stream)
 
-    def flush(self, io_type: str) -> None:
-        """Flushes the log stream of the specified IO type to the Loki
-        server."""
-        stream = self.streams.get(io_type)
+    def flush(self, io_type: IOTypes) -> None:
+        """Sends the log stream of the specified IO type to Loki server, 
+        regarless of whether the buffer is full or not."""
+        stream: LogStream = self.streams_dict.get(io_type)
         if not stream:
-            logging.error("Stream %s not found. Nothing to flush.", io_type)
+            message = f"Stream {str(io_type)} not found. Nothing to flush."
+            logging.error(message)
             return
         self._send_logs(stream)

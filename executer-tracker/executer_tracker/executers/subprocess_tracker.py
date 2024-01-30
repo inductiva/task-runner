@@ -62,6 +62,7 @@ class SubprocessTracker:
         self.stderr = stderr
         self.stdin = stdin
         self.loki_logger = loki_logger
+        self.threads = []
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
@@ -87,6 +88,7 @@ class SubprocessTracker:
                     args=(self.subproc.stdout, self.loki_logger, self.stdout,
                           loki.IOTypes.STD_OUT))
                 stdout_thread.start()
+                self.threads.append(stdout_thread)
 
             if self.subproc.stderr is not None:
                 stderr_thread = threading.Thread(
@@ -94,6 +96,7 @@ class SubprocessTracker:
                     args=(self.subproc.stderr, self.loki_logger, self.stderr,
                           loki.IOTypes.STD_ERR))
                 stderr_thread.start()
+                self.threads.append(stderr_thread)
 
             # pylint: enable=consider-using-with
 
@@ -185,6 +188,9 @@ class SubprocessTracker:
                 self._invoke_signal(signal.SIGKILL)
 
             time.sleep(check_interval)
+
+        for thread in self.threads:
+            thread.join()
 
         return self.subproc.poll()
 
