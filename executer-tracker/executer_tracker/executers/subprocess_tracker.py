@@ -1,12 +1,27 @@
 """Module that defines the SubprocessTracker class."""
-from typing import List
+from typing import IO, List
 import os
 import signal
 import subprocess
 import psutil
+import threading
 import time
 
 from absl import logging
+
+from executer_tracker.utils import loki
+
+
+def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
+               io_type: str) -> None:
+    """Reads lines from a stream and logs them."""
+    for line in stream:
+        log_message = line.decode("utf-8").strip()
+        loki_logger.log_text(log_message, io_type=io_type)
+        output.write(log_message)
+        output.flush()
+        output.write("\n")
+    loki_logger.flush(io_type)
 
 
 class SubprocessTracker:
@@ -50,21 +65,20 @@ class SubprocessTracker:
                 shell=False,
             )
             logging.info("Started process with PID %d.", self.subproc.pid)
+
             if self.subproc.stdout is not None:
-                for line in self.subproc.stdout:
-                    log_message = line.decode("utf-8").strip()
-                    self.loki_logger.log_text(log_message, io_type="std_out")
-                    self.stdout.write(log_message)
-                    self.stdout.flush()
-                    self.stdout.write("\n")
+                stdout_thread = threading.Thread(
+                    target=log_stream,
+                    args=(self.subproc.stdout, self.loki_logger, self.stdout,
+                          loki.IOTypes.STD_OUT))
+                stdout_thread.start()
 
             if self.subproc.stderr is not None:
-                for line in self.subproc.stderr:
-                    log_message = line.decode("utf-8").strip()
-                    self.loki_logger.log_text(log_message, io_type="std_err")
-                    self.stderr.write(log_message)
-                    self.stderr.flush()
-                    self.stderr.write("\n")
+                stderr_thread = threading.Thread(
+                    target=log_stream,
+                    args=(self.subproc.stderr, self.loki_logger, self.stderr,
+                          loki.IOTypes.STD_ERR))
+                stderr_thread.start()
 
             # pylint: enable=consider-using-with
 
