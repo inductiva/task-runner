@@ -129,7 +129,8 @@ class SubprocessTracker:
         Args:
             check_interval (`float`): Check interval to see 
                                     if the process has exited.
-            sigterm_timeout (`float`): How long to wait before sending SIGKILL.
+            sigterm_timeout (`float`): How long the process should be given
+                                    to exit gracefully after SIGTERM.
             sigkill_delay (`float`): How long to wait before sending SIGKILL.
         
         Returns:
