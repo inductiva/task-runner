@@ -114,7 +114,7 @@ class SubprocessTracker:
 
         return exit_code
 
-    def exit_gracefully(self):
+    def exit_gracefully(self, check_interval=0.1, sigterm_timeout=5):
         """Ensures we kill the subprocess after signals or exceptions."""
         if not isinstance(self.subproc, subprocess.Popen):
             raise RuntimeError("subproc is not a subprocess.Popen object.")
@@ -124,4 +124,18 @@ class SubprocessTracker:
         if self.subproc:
             os.killpg(os.getpgid(self.subproc.pid), signal.SIGTERM)
 
+        start_time = time.time()
+        while not self._should_exit_kill_loop(start_time, sigterm_timeout):
+            if time.time() - start_time >= 1:
+                logging.info("Sending SIGKILL to PID %d", self.subproc.pid)
+                os.killpg(os.getpgid(self.subproc.pid), signal.SIGKILL)
+
+            time.sleep(check_interval)
+
         return self.subproc.poll()
+
+    def _should_exit_kill_loop(self, start_time: float, timeout: int) -> bool:
+        """Check if the process has exited or the timeout has been reached."""
+        has_process_exited = self.subproc.poll() is not None
+        has_timeout_elapsed = time.time() - start_time >= timeout
+        return has_process_exited or has_timeout_elapsed
