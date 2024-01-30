@@ -14,7 +14,22 @@ from executer_tracker.utils import loki
 
 def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
                io_type: str) -> None:
-    """Reads lines from a stream and logs them."""
+    """
+    Reads lines from a stream and logs them.
+
+    This function continuously reads lines from the given stream, decodes
+    them to strings, and logs each line using the provided logger.
+    It also writes the decoded log messages to the Executer Tracker stdout.
+
+    Args:
+        stream (IO[bytes]): Input stream to read from (stdout or stderr
+                            from a subprocess).
+        loki_logger (LokiLogger): Logger instance to use for logging the
+                                  decoded messages.
+        output (IO[str]): Executer Tracker stdout.
+        io_type (str): The I/O type associated with the stream (e.g., stdout or
+                       stderr) used by the logger for categorizing messages.
+    """
     for line in stream:
         log_message = line.decode("utf-8").strip()
         loki_logger.log_text(log_message, io_type=io_type)

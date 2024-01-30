@@ -40,6 +40,7 @@ class LokiLogger:
         self.streams = {}
 
     def _send_logs(self, stream: LogStream) -> None:
+        """Sends logs to loki through a POST request to push endpoint."""
         try:
             if not stream.buffer:
                 logging.info("Nothing to send. Buffer is empty.")
@@ -85,6 +86,8 @@ class LokiLogger:
                  log_message: str,
                  timestamp: str = None,
                  io_type: str = None) -> None:
+        """Appends log messages to each stream buffer and triggers the push to
+        Loki server if the buffer is full or if the flush period has elapsed."""
         if not io_type:
             logging.error("Stream IO type not specified. Log not sent!")
             return
@@ -105,6 +108,8 @@ class LokiLogger:
             self._send_logs(stream)
 
     def flush(self, io_type: str) -> None:
+        """Flushes the log stream of the specified IO type to the Loki
+        server."""
         stream = self.streams.get(io_type)
         if not stream:
             logging.error("Stream %s not found. Nothing to flush.", io_type)
