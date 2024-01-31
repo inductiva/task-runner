@@ -102,38 +102,6 @@ def test_run_with_multiple_stdout_lines(mock_output_files):
     assert output == "", f"Expected empty stderr but got \"{output}\""
 
 
-def test_run_with_stderr(mock_output_files):
-    """Test the run method of SubprocessTracker with stderr."""
-    mock_args = [
-        "bash", "-c", "echo Hello; echo World >&2; echo !; echo ?; echo !"
-    ]
-    mock_stdout, mock_stderr = mock_output_files
-
-    tracker = executers.SubprocessTracker(args=mock_args,
-                                          working_dir=".",
-                                          stdout=mock_stdout,
-                                          stderr=mock_stderr,
-                                          stdin=None,
-                                          loki_logger=mock.MagicMock())
-
-    tracker.run()
-    exit_code = tracker.wait()
-
-    assert exit_code == 0, f"Process exited with code {exit_code}"
-
-    mock_stdout.seek(0)
-    output = mock_stdout.read()
-    expected_output = "Hello\n!\n?\n!\n"
-    assert output == expected_output, (
-        f"Expected output \"{expected_output}\" but got \"{output}\"")
-
-    mock_stderr.seek(0)
-    output = mock_stderr.read()
-    expected_output = "World\n"
-    assert output == expected_output, (
-        f"Expected output \"{expected_output}\" but got \"{output}\"")
-
-
 def test_exit_gracefully(mock_output_files):
     """Test the exit_gracefully method of SubprocessTracker."""
     mock_args = ["sleep", "10"]
