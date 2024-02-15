@@ -32,13 +32,6 @@ class MPIExecuter(executers.BaseExecuter):
         self.sim_specific_input_filename = sim_specific_input_filename
         self.file_type = file_type
 
-    def create_mpi_distribution_file(self, n_cores: int, node_name: str,
-                                     dir_path: str) -> None:
-        with open(os.path.join(dir_path, MPI_DISTRIBUTION_FILENAME),
-                  "w",
-                  encoding="utf-8") as f:
-            f.write(f"{node_name} : {n_cores}\n")
-
     def execute(self):
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
         input_filename = self.args.input_filename
@@ -51,6 +44,9 @@ class MPIExecuter(executers.BaseExecuter):
             else:
                 raise ValueError(
                     f"A file with name {input_filename} doesn't exist.")
+
+        if self.args.n_vcpus:
+            self.mpi_config.extra_args.extend(["-np", f"{self.args.n_vcpus}"])
 
         # Renaming input file as the simulator expects it to be
         os.rename(input_file_full_path,

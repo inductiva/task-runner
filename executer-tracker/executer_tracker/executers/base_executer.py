@@ -215,6 +215,7 @@ class BaseExecuter(ABC):
             args = []
             if cmd.is_mpi:
                 args = ["mpirun"]
+                args.extend(["--use-hwthread-cpus"])
                 if self.mpi_config.hostfile_path is not None:
                     args.extend([
                         "--hostfile",
@@ -274,9 +275,9 @@ class BaseExecuter(ABC):
         if self.subprocess is not None:
             self.subprocess.exit_gracefully()
 
-    def count_cpu_cores(self):
+    def count_vcpus(self):
         if self.mpi_config.hostfile_path is None:
-            return psutil.cpu_count(logical=False)
+            return psutil.cpu_count(logical=True)
 
         with open(self.mpi_config.hostfile_path, "r", encoding="utf-8") as f:
             hosts = f.readlines()
@@ -299,4 +300,4 @@ class BaseExecuter(ABC):
         if core_per_host:
             return total_cores
         else:
-            return psutil.cpu_count(logical=False) * len(hosts)
+            return psutil.cpu_count(logical=True) * len(hosts)
