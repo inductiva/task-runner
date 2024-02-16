@@ -25,15 +25,15 @@ class DummyExecuter(executers.BaseExecuter):
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
         os.chdir(self.artifacts_dir)
         filenames_list = os.listdir(input_dir)
-        args = str({
+        args = {
             "input_filename": input_file,
             "input_dir_list": filenames_list,
             "sleep_time": sleep_time
-        })
+        }
 
         output_file_path = os.path.abspath(
             os.path.join(self.artifacts_dir, "test_arguments.json"))
 
         time.sleep(sleep_time)
         self.run_subprocess(
-            executers.Command(f"/dummy.sh \"{args}\" {output_file_path}"))
+            executers.Command(f"/dummy.sh \"${args}\" {output_file_path}"))
