@@ -26,6 +26,8 @@ api_method_to_script = {
         executers.reef3d.REEF3DExecuter,
     "tester.echo.run_simulation":
         executers.dummy.DummyExecuter,
+    "swan.swan.run_simulation":
+        executers.swan.SWANExecuter,
     "dummy.dummy.mpi_hello_world":
         executers.dummy.MPIHelloWorldExecuter,
 }
