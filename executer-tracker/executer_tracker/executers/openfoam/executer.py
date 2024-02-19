@@ -92,11 +92,11 @@ class OpenFOAMExecuter(executers.BaseExecuter):
     def execute(self):
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
 
-        hwthread = bool(self.args.use_hwthread)
-        if hwthread:
+        use_hwthread = bool(self.args.use_hwthread)
+        if use_hwthread:
             self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
 
-        n_vcpus = self.args.n_vcpus or self.count_vcpus(hwthread)
+        n_vcpus = self.args.n_vcpus or self.count_vcpus(use_hwthread)
         self.mpi_config.extra_args.extend(["-np", f"{n_vcpus}"])
 
         # Copy the input files to the artifacts directory
