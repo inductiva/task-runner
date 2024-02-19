@@ -48,6 +48,8 @@ class MPIExecuter(executers.BaseExecuter):
         if self.args.n_vcpus:
             self.mpi_config.extra_args.extend(["-np", f"{self.args.n_vcpus}"])
 
+        if self.args.use_hwthread:
+            self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
         # Renaming input file as the simulator expects it to be
         os.rename(input_file_full_path,
                   os.path.join(sim_dir, self.sim_specific_input_filename))

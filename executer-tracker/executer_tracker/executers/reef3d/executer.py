@@ -16,6 +16,9 @@ class REEF3DExecuter(executers.BaseExecuter):
         if self.args.n_vcpus:
             self.mpi_config.extra_args.extend(["-np", f"{self.args.n_vcpus}"])
 
+        if self.args.use_hwthread:
+            self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
+
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
 
         # Copy the input files to the artifacts directory
