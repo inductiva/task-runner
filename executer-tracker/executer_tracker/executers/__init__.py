@@ -22,3 +22,4 @@ from . import fds
 from . import simsopt
 from . import fenicsx
 from . import dummy
+from . import schism

@@ -26,4 +26,6 @@ api_method_to_script = {
         executers.reef3d.REEF3DExecuter,
     "dummy.dummy.mpi_hello_world":
         executers.dummy.MPIHelloWorldExecuter,
+    "schism.schism.run_simulation":
+        executers.schism.SCHISM,
 }
