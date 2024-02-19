@@ -276,7 +276,7 @@ class BaseExecuter(ABC):
 
     def count_vcpus(self, hwthread):
         """Will count the vcpus on the machine.
-        If hwthread is passed will count logical cores.
+        If hwthread is True will count logical cores.
         """
         if self.mpi_config.hostfile_path is None:
             return psutil.cpu_count(logical=hwthread)
