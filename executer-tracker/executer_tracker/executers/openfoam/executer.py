@@ -92,8 +92,8 @@ class OpenFOAMExecuter(executers.BaseExecuter):
     def execute(self):
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
 
-        hwthread = True if self.args.use_hwthread else False
-        if self.args.use_hwthread:
+        hwthread = bool(self.args.use_hwthread)
+        if hwthread:
             self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
 
         n_vcpus = self.args.n_vcpus or self.count_vcpus(hwthread)

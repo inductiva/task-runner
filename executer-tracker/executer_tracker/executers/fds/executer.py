@@ -71,11 +71,11 @@ class FDSExecuter(executers.BaseExecuter):
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
         input_filename = self.args.input_filename
 
-        hwthread = True if self.args.use_hwthread else False
+        hwthread = bool(self.args.use_hwthread)
 
         n_vcpus = self.args.n_vcpus or self.count_vcpus(hwthread)
 
-        hwthread = "--use-hwthread-cpus" if self.args.use_hwthread else ""
+        hwthread = "--use-hwthread-cpus" if hwthread else ""
 
         # Copy the input files to the artifacts directory
         shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
