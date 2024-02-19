@@ -27,5 +27,5 @@ api_method_to_script = {
     "dummy.dummy.mpi_hello_world":
         executers.dummy.MPIHelloWorldExecuter,
     "schism.schism.run_simulation":
-        executers.schism.SCHISM,
+        executers.schism.SCHISMExecuter,
 }
