@@ -15,10 +15,22 @@ class SCHISMExecuter(executers.BaseExecuter):
         n_vcpus = self.args.n_vcpus
         num_scribes = self.args.num_scribes
 
+        if self.args.n_vcpus:
+            self.mpi_config.extra_args.extend(["-np", f"{self.args.n_vcpus}"])
+
+        if self.args.use_hwthread:
+            self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
+
+        # The simulator expects a directory "outputs" to store the outputs.
+        os.mkdir(os.path.join(artifcats_dir, "outputs"))
+
+        executers.Command(f"/schism/build/bin/pschism {num_scribes}",
+                          is_mpi=True)
+
         # The simulator expects a directory "outputs" to store the outputs.
         os.mkdir(os.path.join(self.artifacts_dir, "outputs"))
 
-        cmd = executers.Command(
-            f"mpirun --np {n_vcpus} /schism/build/bin/pschism {num_scribes}")
+        cmd = executers.Command(f"/schism/build/bin/pschism {num_scribes}",
+                                is_mpi=True)
 
         self.run_subprocess(cmd, self.artifacts_dir)
