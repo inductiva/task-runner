@@ -7,7 +7,7 @@ from uuid import UUID
 
 import requests
 from absl import logging
-from utils import gcloud, host
+from executer_tracker.utils import gcloud, host
 
 REGISTER_EXECUTER_ENDPOINT = "/executer-tracker/register"
 
@@ -15,16 +15,12 @@ REGISTER_EXECUTER_ENDPOINT = "/executer-tracker/register"
 def _get_executer_info() -> Dict:
     cpu_count = host.get_cpu_count()
     memory = host.get_total_memory()
-    git_commit_hash = os.environ.get("GIT_COMMIT_HASH")
-    if not git_commit_hash:
-        raise RuntimeError("GIT_COMMIT_HASH environment variable not set.")
 
-    common_info = {
+    executer_tracker_info = {
         "create_time": datetime.now(timezone.utc).isoformat(),
         "cpu_count_logical": cpu_count.logical,
         "cpu_count_physical": cpu_count.physical,
         "memory": memory,
-        "git_commit_hash": git_commit_hash,
     }
 
     logging.info("Executer resources:")
@@ -37,39 +33,17 @@ def _get_executer_info() -> Dict:
         if not vm_info:
             raise RuntimeError("Failed to get VM info.")
 
-        # Example zone: "projects/12412341234/zones/europe-west1-b"
-        # We only want the last part.
-        vm_zone = vm_info.zone.split("/")[-1]
-        vm_type = vm_info.type.split("/")[-1]
-
-        provider_specific_info = {
-            "host_type": "gcloud",
-            "vm_type": vm_type,
-            "vm_name": vm_info.name,
-            "vm_id": vm_info.id,
-            "preemptible": vm_info.preemptible,
-            "vm_zone": vm_zone,
-        }
+        executer_tracker_info["vm_name"] = vm_info.name
+        executer_tracker_info["vm_id"] = vm_info.id
 
         logging.info("Running on GCloud VM:")
         logging.info("\t> VM type: %s", vm_info.type)
         logging.info("\t> VM preemptible: %s", vm_info.preemptible)
     else:
-        hostname = os.environ.get("HOSTNAME", None)
-        if hostname is None:
-            raise RuntimeError("HOSTNAME environment variable not provided.")
+        executer_tracker_info["vm_name"] = os.environ.get("VM_NAME", None)
+        executer_tracker_info["vm_id"] = os.environ.get("VM_ID", None)
 
-        provider_specific_info = {
-            "host_type": "inductiva-hardware",
-            "hostname": hostname
-        }
-        logging.info("Running on Inductiva machine:")
-        logging.info("\t> Hostname: %s", hostname)
-
-    return {
-        **common_info,
-        "host_info": provider_specific_info,
-    }
+    return executer_tracker_info
 
 
 @dataclass

@@ -58,13 +58,12 @@ import sys
 from absl import app, logging
 from pyarrow import fs
 
-import redis_utils
-import cleanup
 from inductiva_api.task_status import ExecuterTerminationReason
-from register_executer import register_executer
-from task_request_handler import TaskRequestHandler
-from utils import config
-from executer_tracker import executers
+
+from executer_tracker import executers, redis_utils, cleanup
+from executer_tracker.utils import config
+from executer_tracker.task_request_handler import TaskRequestHandler
+from executer_tracker.register_executer import register_executer
 
 
 def main(_):
