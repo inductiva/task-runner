@@ -71,12 +71,16 @@ class FDSExecuter(executers.BaseExecuter):
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
         input_filename = self.args.input_filename
 
-        #Fds is using an mpi version that allows hyperthreading
-        n_vcpus = self.args.n_vcpus or self.count_vcpus(True)
+        use_hwthread = bool(self.args.use_hwthread)
+
+        total_vcpus = self.count_vcpus(use_hwthread)
+        n_vcpus = self.args.n_vcpus or total_vcpus
+
+        hwthread_flag = f"--ppn {total_vcpus}" if use_hwthread else ""
 
         # Copy the input files to the artifacts directory
         shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
 
-        cmd = executers.Command(f"/launch.sh \"mpiexec"
-                                f" -np {n_vcpus} fds {input_filename}\"")
+        cmd = executers.Command(f"/launch.sh \"mpirun -np {n_vcpus} "
+                                f"{hwthread_flag} fds {input_filename}\"")
         self.run_subprocess(cmd, working_dir=self.artifacts_dir)
