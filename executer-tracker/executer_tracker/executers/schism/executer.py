@@ -12,7 +12,6 @@ class SCHISMExecuter(executers.BaseExecuter):
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
-        n_vcpus = self.args.n_vcpus
         num_scribes = self.args.num_scribes
 
         if self.args.n_vcpus:
@@ -20,9 +19,6 @@ class SCHISMExecuter(executers.BaseExecuter):
 
         if self.args.use_hwthread:
             self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
-
-        # The simulator expects a directory "outputs" to store the outputs.
-        os.mkdir(os.path.join(artifcats_dir, "outputs"))
 
         # The simulator expects a directory "outputs" to store the outputs.
         os.mkdir(os.path.join(self.artifacts_dir, "outputs"))
