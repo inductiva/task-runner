@@ -36,4 +36,4 @@ class DummyExecuter(executers.BaseExecuter):
 
         time.sleep(sleep_time)
         self.run_subprocess(
-            executers.Command(f"/dummy.sh \"${args}\" {output_file_path}"))
+            executers.Command(f"/dummy.sh \"{args}\" {output_file_path}"))
