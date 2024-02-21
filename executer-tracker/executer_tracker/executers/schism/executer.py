@@ -24,9 +24,6 @@ class SCHISMExecuter(executers.BaseExecuter):
         # The simulator expects a directory "outputs" to store the outputs.
         os.mkdir(os.path.join(artifcats_dir, "outputs"))
 
-        executers.Command(f"/schism/build/bin/pschism {num_scribes}",
-                          is_mpi=True)
-
         # The simulator expects a directory "outputs" to store the outputs.
         os.mkdir(os.path.join(self.artifacts_dir, "outputs"))
 
