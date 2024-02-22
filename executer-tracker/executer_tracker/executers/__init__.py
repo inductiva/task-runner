@@ -21,4 +21,6 @@ from . import reef3d
 from . import fds
 from . import simsopt
 from . import fenicsx
+from . import swan
 from . import dummy
+from . import schism

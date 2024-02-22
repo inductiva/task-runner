@@ -24,6 +24,12 @@ api_method_to_script = {
         executers.fds.FDSExecuter,
     "reef3d.reef3d.run_simulation":
         executers.reef3d.REEF3DExecuter,
+    "tester.echo.run_simulation":
+        executers.dummy.DummyExecuter,
+    "swan.swan.run_simulation":
+        executers.swan.SWANExecuter,
     "dummy.dummy.mpi_hello_world":
         executers.dummy.MPIHelloWorldExecuter,
+    "schism.schism.run_simulation":
+        executers.schism.SCHISMExecuter,
 }
