@@ -5,6 +5,7 @@ requests
 docker
 fsspec
 paramiko
+gcsfs
 
 # FEniCSx
 gmsh==4.11.1

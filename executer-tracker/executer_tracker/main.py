@@ -125,12 +125,7 @@ def main(_):
         if metadata_api_url:
             api_url = metadata_api_url
 
-    if artifact_store_root == "gs://":
-        protocol = "gs"
-        artifact_store_root = ""
-    else:
-        protocol = "file"
-
+    protocol = "gs" if artifact_store_root == "gs://" else "file"
     filesystem = fsspec.filesystem(protocol)
 
     machine_group_id = config.get_machine_group_id()
