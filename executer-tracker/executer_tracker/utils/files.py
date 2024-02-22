@@ -1,10 +1,10 @@
 """File related utility functions"""
+import fsspec
 import os
-import zipfile
-import tempfile
 import shutil
+import tempfile
+import zipfile
 from absl import logging
-from pyarrow import fs
 
 
 def make_zip_archive(zip_path, source_dir):
@@ -29,12 +29,12 @@ def extract_zip_archive(zip_path, dest_dir):
         zip_fp.extractall(dest_dir)
 
 
-def download_and_extract_zip_archive(filesystem: fs.FileSystem,
+def download_and_extract_zip_archive(filesystem: fsspec.AbstractFileSystem,
                                      remote_path: str, dest_dir: str):
-    """Download and extract ZIP archive from PyArrow filesystem.
+    """Download and extract ZIP archive from fsspec filesystem.
 
     Args:
-        filesystem: PyArrow filesystem.
+        filesystem: fsspec filesystem.
         remote_path: Path to the ZIP file on the filesystem.
         dest_dir: Directory where to write the uncompressed files.
     """
@@ -42,10 +42,9 @@ def download_and_extract_zip_archive(filesystem: fs.FileSystem,
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_zip_path = os.path.join(tmp_dir, "file.zip")
 
-        # `f.download` expects `f` to allow random access, so we need to
-        # use `open_input_file` instead of `open_input_stream`
-        with filesystem.open_input_file(remote_path) as f:
-            f.download(tmp_zip_path)
+        with filesystem.open(remote_path, "rb") as f:
+            with open(tmp_zip_path, "wb") as local_file:
+                local_file.write(f.read())
 
         logging.info("Downloaded zip to: %s", tmp_zip_path)
 
@@ -57,7 +56,8 @@ def download_and_extract_zip_archive(filesystem: fs.FileSystem,
         logging.info("Extracted zip to: %s", dest_dir)
 
 
-def upload_file(filesystem: fs.FileSystem, file_path, file_path_remote):
+def upload_file(filesystem: fsspec.AbstractFileSystem, file_path,
+                file_path_remote):
     with open(file_path, "rb") as f_src:
-        with filesystem.open_output_stream(file_path_remote) as f_dest:
-            f_dest.upload(f_src)
+        with filesystem.open(file_path_remote, "wb") as f_dest:
+            shutil.copyfileobj(f_src, f_dest)

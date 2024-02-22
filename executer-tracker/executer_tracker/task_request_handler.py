@@ -5,6 +5,7 @@ handles the logic related to setting up the working directory of an executer,
 launching said executer, and providing the outputs to the Web API.
 Note that, currently, request consumption is blocking.
 """
+import fsspec
 import os
 import shutil
 import tempfile
@@ -18,7 +19,6 @@ from absl import logging
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
-from pyarrow import fs
 from utils import make_task_key
 from utils import files, config, loki
 from executer_tracker import executers
@@ -104,13 +104,15 @@ class TaskRequestHandler:
         self,
         redis_connection: redis.Redis,
         executers_config: Dict[str, config.ExecuterConfig],
-        artifact_filesystem: fs.FileSystem,
+        filesystem: fsspec.spec.AbstractFileSystem,
+        artifact_store_root: str,
         executer_uuid: UUID,
         workdir: str,
         mpi_config: executers.MPIConfiguration,
     ):
         self.redis = redis_connection
-        self.artifact_filesystem = artifact_filesystem
+        self.filesystem = filesystem
+        self.artifact_store_root = artifact_store_root
         self.executer_uuid = executer_uuid
         self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
         self.executers_config = executers_config
@@ -157,7 +159,8 @@ class TaskRequestHandler:
             request: Request describing the task to be executed.
         """
         self.task_id = request["id"]
-        self.task_dir_remote = request["task_dir"]
+        self.task_dir_remote = os.path.join(self.artifact_store_root,
+                                            request["task_dir"])
         self.current_task_executer_config = self.executers_config[
             request["executer_type"]]
         self.loki_logger = loki.LokiLogger(self.task_id)
@@ -223,7 +226,7 @@ class TaskRequestHandler:
                                              utils.INPUT_ZIP_FILENAME)
 
         files.download_and_extract_zip_archive(
-            self.artifact_filesystem,
+            self.filesystem,
             input_zip_path_remote,
             task_workdir,
         )
@@ -237,8 +240,7 @@ class TaskRequestHandler:
                                           "stdout_live.txt")
         if stdout_path_local is not None and stdout_path_remote is not None:
             if os.path.exists(stdout_path_local):
-                with self.artifact_filesystem.open_output_stream(
-                        path=stdout_path_remote) as std_file:
+                with self.filesystem.open(stdout_path_remote, "wb") as std_file:
                     with open(stdout_path_local, "rb") as f_src:
                         std_file.write(f_src.read())
 
@@ -311,18 +313,10 @@ class TaskRequestHandler:
             output_zip_path_remote = os.path.join(self.task_dir_remote,
                                                   utils.OUTPUT_ZIP_FILENAME)
 
-            files.upload_file(
-                self.artifact_filesystem,
-                output_zip_path_local,
-                output_zip_path_remote,
-            )
+            files.upload_file(self.filesystem, output_zip_path_local,
+                              output_zip_path_remote)
 
-            logging.info(
-                "Uploaded output zip to: %s",
-                os.path.join(
-                    self.artifact_filesystem.base_path,
-                    output_zip_path_remote,
-                ))
+            logging.info("Uploaded output zip to: %s", output_zip_path_remote)
 
         return output_archive_size_b
 
