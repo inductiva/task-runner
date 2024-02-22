@@ -10,15 +10,15 @@ from executer_tracker import executers
 class OpenFOAMCommand(executers.Command):
     """OpenFOAM command."""
 
-    def __init__(self, cmd, prompts, n_cores):
-        cmd, is_mpi = self.process_openfoam_command(cmd, n_cores)
+    def __init__(self, cmd, prompts, n_vcpus):
+        cmd, is_mpi = self.process_openfoam_command(cmd, n_vcpus)
         # This is used because OpenFOAM has some setup performed by
         # the bashrc file, so we use bash to run the command.
         cmd = f"/launch.sh \"{cmd}\""
         super().__init__(cmd, prompts, is_mpi=is_mpi)
 
     @staticmethod
-    def process_openfoam_command(cmd, n_cores) -> Tuple[str, bool]:
+    def process_openfoam_command(cmd, n_vcpus) -> Tuple[str, bool]:
         """Set the appropriate command for OpenFOAM.
 
         Define the appropriate command to be run inside the machine
@@ -46,7 +46,7 @@ class OpenFOAMCommand(executers.Command):
                              "Valid instructions are: runParallel"
                              " and runApplication.")
 
-        if command_instruction == "runparallel" and n_cores > 1:
+        if command_instruction == "runparallel" and n_vcpus > 1:
             command += " -parallel"
             is_mpi = True
 
@@ -57,7 +57,7 @@ class OpenFOAMExecuter(executers.BaseExecuter):
     """OpenFOAM executer."""
 
     @staticmethod
-    def validate_parallel_execution(openfoam_command, n_cores):
+    def validate_parallel_execution(openfoam_command, n_vcpus):
         """Validate if a command can be run in parallel.
 
         Some OpenFOAM commands cannot and/or should not
@@ -83,56 +83,33 @@ class OpenFOAMExecuter(executers.BaseExecuter):
         # script we use to run the command.
         openfoam_cmd = shlex.split(openfoam_command.args[1])[0]
 
-        if n_cores == 1:
+        if n_vcpus == 1:
             if openfoam_cmd in commands_excluded_of_singlecore_execution:
                 return False
 
         return True
 
-    def add_n_cores_in_input_files(self, n_cores):
-        """Add the number of cores to the input files.
-
-        To run in parallel, the number of cores must be specified
-        in the file decomposeParDict. This method adds the maximum
-        number of cores in the machine to this file.
-
-        This changes whatever number of cores was specified in the
-        input file.
-
-        Args:
-            n_cores: Number of cores to run the simulation on.
-        """
-
-        set_n_cores_command = {
-            "cmd": (f"runApplication foamDictionary system/decomposeParDict "
-                    f"-entry numberOfSubdomains -set {n_cores}"),
-            "prompts": []
-        }
-        cmd = OpenFOAMCommand(set_n_cores_command["cmd"],
-                              set_n_cores_command["prompts"], n_cores)
-        self.run_subprocess(cmd, self.artifacts_dir)
-
     def execute(self):
-        n_cores = self.count_cpu_cores()
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
+
+        use_hwthread = bool(self.args.use_hwthread)
+        if use_hwthread:
+            self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
+
+        n_vcpus = self.args.n_vcpus or self.count_vcpus(use_hwthread)
+        self.mpi_config.extra_args.extend(["-np", f"{n_vcpus}"])
 
         # Copy the input files to the artifacts directory
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         commands = self.args.commands
 
-        # Does not run for n_cores=1, since the decomposeParDict this changes
-        # is not used in this case.
-        if n_cores > 1:
-            self.add_n_cores_in_input_files(n_cores)
-
         for command in commands:
             command = OpenFOAMCommand(command["cmd"], command["prompts"],
-                                      n_cores)
-            if self.validate_parallel_execution(command, n_cores):
+                                      n_vcpus)
+            if self.validate_parallel_execution(command, n_vcpus):
                 self.run_subprocess(command, self.artifacts_dir)
-
-        if n_cores > 1:
-            for core in range(n_cores):
+        if n_vcpus > 1:
+            for core in range(n_vcpus):
                 processor_dir = f"processor{core}"
                 shutil.rmtree(os.path.join(self.artifacts_dir, processor_dir))

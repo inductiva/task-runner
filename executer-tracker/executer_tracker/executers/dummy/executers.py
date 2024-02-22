@@ -23,7 +23,6 @@ class DummyExecuter(executers.BaseExecuter):
         sleep_time = self.args.sleep_time
 
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
-        os.chdir(self.artifacts_dir)
         filenames_list = os.listdir(input_dir)
         args = {
             "input_filename": input_file,
@@ -36,4 +35,5 @@ class DummyExecuter(executers.BaseExecuter):
 
         time.sleep(sleep_time)
         self.run_subprocess(
-            executers.Command(f"/dummy.sh \"${args}\" {output_file_path}"))
+            executers.Command(f"/dummy.sh \"{args}\" {output_file_path}"),
+            self.artifacts_dir)
