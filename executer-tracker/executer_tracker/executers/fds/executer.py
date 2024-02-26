@@ -76,7 +76,7 @@ class FDSExecuter(executers.BaseExecuter):
         total_vcpus = self.count_vcpus(use_hwthread)
         n_vcpus = self.args.n_vcpus or total_vcpus
 
-        hwthread_flag = f"--ppn {total_vcpus}" if use_hwthread else ""
+        hwthread_flag = "--use-hwthread-cpus" if use_hwthread else ""
 
         # Copy the input files to the artifacts directory
         shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
