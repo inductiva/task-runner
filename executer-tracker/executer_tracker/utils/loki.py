@@ -47,6 +47,7 @@ class LokiLogger:
         self.project_id = project_id
         self.server_url = (f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}"
                            ":3100/loki/api/v1/push")
+        self.source = "executer-tracker"
         self.streams_dict = {}
 
     def _send_logs(self, stream: LogStream) -> None:
@@ -61,7 +62,8 @@ class LokiLogger:
                     "stream": {
                         "task_id": self.task_id,
                         "io_type": str(stream.io_type),
-                        "project_id": self.project_id
+                        "project_id": self.project_id,
+                        "source": self.source
                     },
                     "values": stream.buffer,
                 }]
