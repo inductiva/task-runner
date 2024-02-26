@@ -9,6 +9,7 @@ from absl import logging
 
 STREAM_BUFFER_MAX_LENGTH = 10
 FLUSH_PERIOD_IN_SECONDS = 0.5
+END_OF_STREAM = "<<end_of_stream>>"
 
 
 class IOTypes(Enum):
