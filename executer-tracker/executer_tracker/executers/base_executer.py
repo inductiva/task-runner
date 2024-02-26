@@ -161,6 +161,12 @@ class BaseExecuter(ABC):
 
             json.dump(json_obj, f)
 
+    def close_streams(self):
+        """Method that signals the end of log streams used by the executer."""
+        for io_type in loki.IOTypes:
+            self.loki_logger.log_text(loki.END_OF_STREAM, io_type=io_type)
+            self.loki_logger.flush(io_type)
+
     def run_subprocess(
         self,
         cmd: command.Command,
@@ -265,6 +271,7 @@ class BaseExecuter(ABC):
         self.load_input_configuration()
         self.pre_process()
         self.execute()
+        self.close_streams()
         self.post_process()
         self.pack_output()
 
