@@ -50,17 +50,19 @@ class FDSExecuter(executers.BaseExecuter):
             # Run Smokeview based on input script
             self.run_subprocess(cmd, working_dir=self.artifacts_dir)
             # Get generated frame image files
-            frame_files = list({
-                file for file in os.listdir(self.artifacts_dir)
-                if file.lower().endswith(".png")
-            })
+            output_files = os.listdir(self.artifacts_dir)
+            frame_files = [
+                file for file in output_files if file.lower().endswith(".png")
+            ]
             frame_files = [
                 os.path.join(self.artifacts_dir, file) for file in frame_files
             ]
 
             # Generate movie and remove the frame files
             executers.utils.visualization.create_movie_from_frames(
-                frame_files, self.artifacts_dir + "/movie.mp4", fps=30)
+                frame_files,
+                os.path.join(self.artifacts_dir, "movie.mp4"),
+                fps=30)
 
             for filename in frame_files:
                 full_path = os.path.join(self.artifacts_dir, filename)
@@ -71,17 +73,17 @@ class FDSExecuter(executers.BaseExecuter):
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
         input_filename = self.args.input_filename
 
-        use_hwthread = bool(self.args.use_hwthread)
+        if self.args.n_vcpus:
+            self.mpi_config.extra_args.extend(["-np", f"{self.args.n_vcpus}"])
 
-        total_vcpus = self.count_vcpus(use_hwthread)
-        n_vcpus = self.args.n_vcpus or total_vcpus
-
-        hwthread_flag = "--use-hwthread-cpus" if use_hwthread else ""
+        if self.args.use_hwthread:
+            self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
 
         # Copy the input files to the artifacts directory
         shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
 
-        cmd = executers.Command(
-            f"/launch.sh \"mpirun --allow-run-as-root "
-            f"-np {n_vcpus} {hwthread_flag} fds {input_filename}\"")
+        #fds bin
+        fds_bin = "/opt/fds/Build/ompi_gnu_linux/fds_ompi_gnu_linux"
+
+        cmd = executers.Command(f"{fds_bin} {input_filename}", is_mpi=True)
         self.run_subprocess(cmd, working_dir=self.artifacts_dir)
