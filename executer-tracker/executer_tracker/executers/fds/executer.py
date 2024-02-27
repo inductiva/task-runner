@@ -45,17 +45,15 @@ class FDSExecuter(executers.BaseExecuter):
         smokeview_file = self.check_smokeview_exec()
 
         if smokeview_file:
-            input_files = set(os.listdir(self.artifacts_dir))
             cmd = executers.Command(f"{smokeview_script} {smokeview_file}")
 
             # Run Smokeview based on input script
             self.run_subprocess(cmd, working_dir=self.artifacts_dir)
             # Get generated frame image files
-            frame_files = list(
-                set([
-                    file for file in os.listdir(self.artifacts_dir)
-                    if file.lower().endswith('.png')
-                ]))
+            frame_files = list({
+                file for file in os.listdir(self.artifacts_dir)
+                if file.lower().endswith(".png")
+            })
             frame_files = [
                 os.path.join(self.artifacts_dir, file) for file in frame_files
             ]
