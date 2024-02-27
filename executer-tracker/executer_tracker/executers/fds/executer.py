@@ -52,15 +52,17 @@ class FDSExecuter(executers.BaseExecuter):
             self.run_subprocess(cmd, working_dir=self.artifacts_dir)
             # Get generated frame image files
             frame_files = list(
-                set(os.listdir(self.artifacts_dir)) - input_files)
+                set([
+                    file for file in os.listdir(self.artifacts_dir)
+                    if file.lower().endswith('.png')
+                ]))
             frame_files = [
                 os.path.join(self.artifacts_dir, file) for file in frame_files
             ]
 
             # Generate movie and remove the frame files
-            executers.utils.visualization.create_movie_from_frames(frame_files,
-                                                                   "movie.mp4",
-                                                                   fps=30)
+            executers.utils.visualization.create_movie_from_frames(
+                frame_files, self.artifacts_dir + "/movie.mp4", fps=30)
 
             for filename in frame_files:
                 full_path = os.path.join(self.artifacts_dir, filename)
@@ -81,6 +83,7 @@ class FDSExecuter(executers.BaseExecuter):
         # Copy the input files to the artifacts directory
         shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
 
-        cmd = executers.Command(f"/launch.sh \"mpirun -np {n_vcpus} "
-                                f"{hwthread_flag} fds {input_filename}\"")
+        cmd = executers.Command(
+            f"/launch.sh \"mpirun --allow-run-as-root "
+            f"-np {n_vcpus} {hwthread_flag} fds {input_filename}\"")
         self.run_subprocess(cmd, working_dir=self.artifacts_dir)
