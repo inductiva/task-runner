@@ -268,12 +268,14 @@ class BaseExecuter(ABC):
 
     def run(self):
         """Method used to run the executer."""
-        self.load_input_configuration()
-        self.pre_process()
-        self.execute()
-        self.close_streams()
-        self.post_process()
-        self.pack_output()
+        try:
+            self.load_input_configuration()
+            self.pre_process()
+            self.execute()
+            self.post_process()
+            self.pack_output()
+        finally:
+            self.close_streams()
 
     def terminate(self):
         self.terminated = True
