@@ -1,8 +1,8 @@
 """Enum defining the possible task status codes."""
-from enum import StrEnum
+import enum
 
 
-class TaskStatusCode(StrEnum):
+class TaskStatusCode(enum.Enum):
     """Possible task status codes."""
     PENDING_INPUT = "pending-input"
     SUBMITTED = "submitted"
