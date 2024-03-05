@@ -20,7 +20,7 @@ start() {
 		ZONE_URI=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google")
 		ZONE=$(basename $ZONE_URI)
 		REGION=$(echo $ZONE | sed 's/-.$//')
-		SUBNET=$(gcloud compute networks subnets list --filter="name=( '$NETWORK_NAME' )" --regions=$REGION --format 'csv[no-heading](RANGE)')
+		SUBNET=$(gcloud compute networks subnets list --filter="network:$NETWORK_NAME" --regions=$REGION --format 'csv[no-heading](RANGE)')
 
 		echo Subnet: $SUBNET
 
