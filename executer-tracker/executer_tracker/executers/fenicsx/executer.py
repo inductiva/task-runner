@@ -42,6 +42,8 @@ class LinearElasticityFEniCSxExecuter(executers.BaseExecuter):
         material_path = os.path.join(sim_dir_path, self.args.material_filename)
         element_family = self.args.mesh_element_family
         element_order = self.args.mesh_element_order
+        quadrature_rule=self.args.mesh_quadrature_rule
+        quadrature_degree=self.args.mesh_quadrature_degree
         results_dir = self.artifacts_dir
 
         cmd = executers.Command("python /scripts/elastic_case/elastic_case.py "
@@ -50,6 +52,8 @@ class LinearElasticityFEniCSxExecuter(executers.BaseExecuter):
                                 f"--material_path {material_path} "
                                 f"--element_family {element_family} "
                                 f"--element_order {element_order} "
+                                f"--quadrature_rule {quadrature_rule} "
+                                f"--quadrature_degree {quadrature_degree} "
                                 f"--results_dir {results_dir}")
 
         self.run_subprocess(cmd)
