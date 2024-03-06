@@ -152,19 +152,19 @@ class SubprocessTracker:
                         sigkill_delay: float = 1):
         """Ensures we kill the subprocess after signals or exceptions.
 
-        First, it sends a SIGTERM signal to request a graceful shutdown. 
-        If the process does not exit within the specified `sigkill_delay`, 
+        First, it sends a SIGTERM signal to request a graceful shutdown.
+        If the process does not exit within the specified `sigkill_delay`,
         it then sends a SIGKILL signal to forcefully terminate the process.
-        The method checks the process status at intervals by `check_interval` 
+        The method checks the process status at intervals by `check_interval`
         and returns the process's exit code upon termination.
 
         Args:
-            check_interval (`float`): Check interval to see 
+            check_interval (`float`): Check interval to see
                                     if the process has exited.
             sigterm_timeout (`float`): How long the process should be given
                                     to exit gracefully after SIGTERM.
             sigkill_delay (`float`): How long to wait before sending SIGKILL.
-        
+
         Returns:
             The exit code of the process.
 
