@@ -1,8 +1,8 @@
 """Enum defining the possible task status codes."""
-from enum import Enum
+import enum
 
 
-class TaskStatusCode(Enum):
+class TaskStatusCode(enum.Enum):
     """Possible task status codes."""
     PENDING_INPUT = "pending-input"
     SUBMITTED = "submitted"
@@ -16,3 +16,5 @@ class TaskStatusCode(Enum):
     EXECUTER_TERMINATED_BY_USER = "executer-terminated-by-user"
     EXECUTER_FAILED = "executer-failed"
     ZOMBIE = "zombie"
+    COMPUTATION_STARTED = "computation-started"
+    COMPUTATION_ENDED = "computation-ended"
