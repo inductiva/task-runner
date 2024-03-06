@@ -30,4 +30,6 @@ api_method_to_script = {
         executers.swan.SWANExecuter,
     "dummy.dummy.mpi_hello_world":
         executers.dummy.MPIHelloWorldExecuter,
+    "schism.schism.run_simulation":
+        executers.schism.SCHISMExecuter,
 }

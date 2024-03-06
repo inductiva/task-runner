@@ -7,6 +7,7 @@ Note that, currently, request consumption is blocking.
 """
 import fsspec
 import os
+import copy
 import shutil
 import tempfile
 import threading
@@ -351,6 +352,6 @@ class TaskRequestHandler:
         return executer_class(
             self.task_workdir,
             container_image,
-            self.mpi_config,
+            copy.deepcopy(self.mpi_config),
             self.loki_logger,
         )
