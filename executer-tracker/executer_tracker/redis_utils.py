@@ -3,8 +3,12 @@ from redis import Redis
 from absl import logging
 from task_request_handler import TaskRequestHandler
 from typing import Sequence
+from google.cloud import compute_v1
+from executer_tracker.utils import gcloud
+import time
 
 DELIVER_NEW_MESSAGES = ">"
+MAX_IDLE_TIME = 60 * 1000  # 2 minute
 
 
 def create_redis_connection(redis_hostname, redis_port):
@@ -44,6 +48,7 @@ def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
     for stream_name in stream_names:
         logging.info(" > %s", stream_name)
 
+    idle_time_start = time.time()
     while True:
         # Check each stream independently
         for stream_name in stream_names:
@@ -71,6 +76,34 @@ def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
                     # Acknowledge successful processing of the received message
                     redis_connection.xack(stream_name, consumer_group,
                                           stream_entry_id)
+                    idle_time_start = time.time()
+
+                # Count idle time
+                # if time.time() - idle_time_start > MAX_IDLE_TIME:
+                logging.info("Idle time exceeded. Exiting...")
+                name = gcloud.get_vm_metadata_value("name")
+
+                instance_groups_client = compute_v1.InstanceGroupManagersClient(
+                )
+
+                # Construct the instance reference
+                instances_to_remove = compute_v1.InstanceGroupManagersDeleteInstancesRequest(
+                )
+                # instance_reference = compute_v1.InstanceReference()
+                # instance_reference.instance =
+                instances_to_remove.instances = [
+                    f"zones/europe-west1-b/instances/{name}"
+                ]
+
+                # Make the request to remove the instance
+                instance_groups_client.delete_instances(
+                    project="inductiva-api-dev",
+                    zone="europe-west1-b",
+                    instance_group_manager="instance-group-1",
+                    instance_group_managers_delete_instances_request_resource=
+                    instances_to_remove,
+                )
+                return
 
             except ConnectionError as e:
                 logging.info("ERROR REDIS CONNECTION: %s", str(e))
