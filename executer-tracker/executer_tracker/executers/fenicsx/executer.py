@@ -10,6 +10,7 @@ from executer_tracker.executers.fenicsx.geometry import geometry_utils
 MESH_FILENAME = "mesh.msh"
 MESH_INFO_FILENAME = "mesh_info.json"
 
+
 class LinearElasticityFEniCSxExecuter(executers.BaseExecuter):
     """Concrete implementation of an Executer to run FEniCSx."""
 
