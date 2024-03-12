@@ -174,6 +174,12 @@ def main(_):
             consumer_name=redis_consumer_name,
             request_handler=request_handler,
         )
+    except TimeoutError:
+        logging.info("Max idle time reached. Terminating executer tracker...")
+        cleanup.kill_machine(api_url, machine_group_id)
+        reason = ExecuterTerminationReason.IDLE_TIMEOUT
+        cleanup.log_executer_termination(request_handler, redis_hostname,
+                                         redis_port, executer_uuid, reason)
     except Exception as e:  # pylint: disable=broad-except
         logging.exception("Caught exception: %s", str(e))
         logging.info("Terminating executer tracker...")
