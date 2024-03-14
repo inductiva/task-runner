@@ -1,15 +1,12 @@
 """Methods to interact with Redis server."""
 from redis import Redis
 from absl import logging
-from typing import Sequence
+from typing import Optional, Sequence
 import time
 
 from task_request_handler import TaskRequestHandler
-from executer_tracker.utils import gcloud
-from executer_tracker import cleanup
 
 DELIVER_NEW_MESSAGES = ">"
-MAX_IDLE_TIME = 300
 
 
 def create_redis_connection(redis_hostname, redis_port):
@@ -23,9 +20,12 @@ def create_redis_connection(redis_hostname, redis_port):
     return redis_conn
 
 
-def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
-                         consumer_group: str, consumer_name: str,
-                         request_handler: TaskRequestHandler):
+def monitor_redis_stream(redis_connection,
+                         stream_names: Sequence[str],
+                         consumer_group: str,
+                         consumer_name: str,
+                         request_handler: TaskRequestHandler,
+                         max_timeout: Optional[int] = None):
     """Monitors Redis stream, calling a callback to handle requests.
 
     The stream is read from via a consumer group. This requires that
@@ -54,8 +54,9 @@ def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
         # Check each stream independently
         for stream_name in stream_names:
             try:
-                if time.time() - start_time >= MAX_IDLE_TIME:
+                if max_timeout and time.time() - start_time >= max_timeout:
                     raise TimeoutError("Max idle time reached")
+
                 logging.info("Waiting for requests on: %s", stream_name)
                 resp = redis_connection.xreadgroup(
                     groupname=consumer_group,

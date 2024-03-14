@@ -68,6 +68,7 @@ from executer_tracker.register_executer import register_executer
 
 def main(_):
     api_url = os.getenv("API_URL", "http://web")
+    api_key = os.getenv("EXECUTER_API_KEY", "")
     redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
     redis_port = os.getenv("REDIS_PORT", "6379")
     artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
@@ -122,8 +123,11 @@ def main(_):
 
         metadata_api_url = config.gcloud.get_vm_metadata_value(
             "attributes/api-url")
+        metadata_max_timeout = config.gcloud.get_vm_metadata_value(
+            "attributes/timeout")
         if metadata_api_url:
             api_url = metadata_api_url
+        max_timeout = metadata_max_timeout if metadata_max_timeout else None
 
     artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
         artifact_store_uri)
@@ -173,10 +177,11 @@ def main(_):
             consumer_group=redis_consumer_group,
             consumer_name=redis_consumer_name,
             request_handler=request_handler,
+            max_timeout=max_timeout,
         )
     except TimeoutError:
         logging.info("Max idle time reached. Terminating executer tracker...")
-        cleanup.kill_machine(api_url, machine_group_id)
+        cleanup.kill_machine(api_url, machine_group_id, api_key)
         reason = ExecuterTerminationReason.IDLE_TIMEOUT
         cleanup.log_executer_termination(request_handler, redis_hostname,
                                          redis_port, executer_uuid, reason)

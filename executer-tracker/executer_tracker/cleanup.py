@@ -77,7 +77,7 @@ def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
     )
 
 
-def kill_machine(api_url, machine_group_id):
+def kill_machine(api_url, machine_group_id, api_key):
 
     vm_name = gcloud.get_vm_metadata_value("name")
     url = f"{api_url}{KILL_MACHINE_ENDPOINT}?vm_group_id=" \
@@ -86,6 +86,10 @@ def kill_machine(api_url, machine_group_id):
     r = requests.delete(
         url=url,
         timeout=5,
+        headers={
+            "X-API-Key": api_key,
+            "Content-Type": "application/json"
+        }
     )
 
     if r.status_code != 202:
