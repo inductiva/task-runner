@@ -52,11 +52,10 @@ currently active executer trackers.
 Usage (note the required environment variables):
   python executer_tracker.py
 """
+import fsspec
 import os
 import sys
-
 from absl import app, logging
-from pyarrow import fs
 
 from inductiva_api.task_status import ExecuterTerminationReason
 
@@ -71,7 +70,7 @@ def main(_):
     api_key = os.getenv("EXECUTER_API_KEY", "")
     redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
     redis_port = os.getenv("REDIS_PORT", "6379")
-    artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
+    artifact_store_root = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
     workdir = os.getenv("WORKDIR", "/workdir")
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
     if not executer_images_dir:
@@ -129,10 +128,8 @@ def main(_):
             api_url = metadata_api_url
         max_timeout = metadata_max_timeout if metadata_max_timeout else None
 
-    artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
-        artifact_store_uri)
-    artifact_filesystem_root = fs.SubTreeFileSystem(base_path,
-                                                    artifact_filesystem_root)
+    protocol = "gs" if artifact_store_root == "gs://" else "file"
+    filesystem = fsspec.filesystem(protocol)
 
     machine_group_id = config.get_machine_group_id()
     if not machine_group_id:
@@ -160,7 +157,8 @@ def main(_):
     request_handler = TaskRequestHandler(
         redis_connection=redis_conn,
         executers_config=executers_config,
-        artifact_filesystem=artifact_filesystem_root,
+        filesystem=filesystem,
+        artifact_store_root=artifact_store_root,
         executer_uuid=executer_uuid,
         workdir=workdir,
         mpi_config=mpi_config,
