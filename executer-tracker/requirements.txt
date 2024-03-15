@@ -14,5 +14,3 @@ meshio
 # FDS utils
 glob2
 moviepy
-
-google-cloud-compute
