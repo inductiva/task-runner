@@ -11,7 +11,7 @@ from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import ExecuterTerminationReason
 from utils import gcloud
 
-KILL_MACHINE_ENDPOINT = "/compue/machine"
+KILL_MACHINE_ENDPOINT = "/compute/group/machine"
 
 
 def log_executer_termination(request_handler,
@@ -83,14 +83,12 @@ def kill_machine(api_url, machine_group_id, api_key):
     url = f"{api_url}{KILL_MACHINE_ENDPOINT}?vm_group_id=" \
           f"{machine_group_id}&vm_name={vm_name}"
 
-    r = requests.delete(
-        url=url,
-        timeout=5,
-        headers={
-            "X-API-Key": api_key,
-            "Content-Type": "application/json"
-        }
-    )
+    r = requests.delete(url=url,
+                        timeout=5,
+                        headers={
+                            "X-API-Key": api_key,
+                            "Content-Type": "application/json"
+                        })
 
     if r.status_code != 202:
         logging.error("Failed to kill machine. Status code: %s", r.status_code)

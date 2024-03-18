@@ -123,7 +123,7 @@ def main(_):
         metadata_api_url = config.gcloud.get_vm_metadata_value(
             "attributes/api-url")
         metadata_max_timeout = config.gcloud.get_vm_metadata_value(
-            "attributes/timeout")
+            "attributes/idle_timeout")
         if metadata_api_url:
             api_url = metadata_api_url
         max_timeout = metadata_max_timeout if metadata_max_timeout else None
