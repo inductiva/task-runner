@@ -49,8 +49,8 @@ def monitor_redis_stream(redis_connection,
     for stream_name in stream_names:
         logging.info(" > %s", stream_name)
 
+    start_time = time.time()
     while True:
-        start_time = time.time()
         # Check each stream independently
         for stream_name in stream_names:
             try:
