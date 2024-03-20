@@ -126,7 +126,8 @@ def main(_):
             "attributes/idle_timeout")
         if metadata_api_url:
             api_url = metadata_api_url
-        max_timeout = int(metadata_max_timeout) if metadata_max_timeout else None
+        max_timeout = int(
+            metadata_max_timeout) if metadata_max_timeout else None
 
     protocol = "gs" if artifact_store_root == "gs://" else "file"
     filesystem = fsspec.filesystem(protocol)
