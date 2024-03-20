@@ -160,11 +160,15 @@ class TaskRequestHandler:
             request: Request describing the task to be executed.
         """
         self.task_id = request["id"]
+        self.project_id = request["project_id"]
         self.task_dir_remote = os.path.join(self.artifact_store_root,
                                             request["task_dir"])
         self.current_task_executer_config = self.executers_config[
             request["executer_type"]]
-        self.loki_logger = loki.LokiLogger(self.task_id)
+        self.loki_logger = loki.LokiLogger(
+            task_id=self.task_id,
+            project_id=self.project_id,
+        )
 
         self._log_task_picked_up()
 
