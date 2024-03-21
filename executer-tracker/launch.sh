@@ -4,7 +4,7 @@ PYTHON_BIN="/opt/executer-tracker/venv/bin/python3"
 APP_PATH="/opt/executer-tracker/executer_tracker/main.py"
 
 start() {
-	export EXECUTER_API_KEY="$(gcloud secrets versions access latest --secret=executer-traker-api-key)"
+	export EXECUTER_API_KEY="$(gcloud secrets versions access latest --secret=executer-tracker-api-key)"
 	export WORKDIR="/opt/executer-tracker/workdir"
 	export ARTIFACT_STORE="gs://"
 	export EXECUTER_IMAGES_DIR="/root/apptainer"
