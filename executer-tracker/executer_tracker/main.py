@@ -112,6 +112,7 @@ def main(_):
     logging.info("  > extra args: %s", mpi_extra_args)
     logging.info("  > num hosts: %d", num_mpi_hosts)
 
+    max_timeout = None
     if config.gcloud.is_running_on_gcloud_vm():
         # Check if there are any metadata values that override the provided
         # environment variables.

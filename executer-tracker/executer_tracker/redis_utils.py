@@ -49,12 +49,12 @@ def monitor_redis_stream(redis_connection,
     for stream_name in stream_names:
         logging.info(" > %s", stream_name)
 
-    start_time = time.time()
+    idle_timestamp = time.time()
     while True:
         # Check each stream independently
         for stream_name in stream_names:
             try:
-                if max_timeout and time.time() - start_time >= max_timeout:
+                if max_timeout and time.time() - idle_timestamp >= max_timeout:
                     raise TimeoutError("Max idle time reached")
 
                 logging.info("Waiting for requests on: %s", stream_name)
@@ -82,7 +82,7 @@ def monitor_redis_stream(redis_connection,
                                           stream_entry_id)
 
                     # Update the start time to avoid killing the machine
-                    start_time = time.time()
+                    idle_timestamp = time.time()
 
             except ConnectionError as e:
                 logging.info("ERROR REDIS CONNECTION: %s", str(e))
