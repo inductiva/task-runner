@@ -9,4 +9,6 @@ ExecuterTerminationReasonToTaskStatus = {
         TaskStatusCode.SPOT_INSTANCE_PREEMPTED,
     ExecuterTerminationReason.ERROR:
         TaskStatusCode.EXECUTER_FAILED,
+    ExecuterTerminationReason.IDLE_TIMEOUT:
+        TaskStatusCode.EXECUTER_TERMINATED,
 }
