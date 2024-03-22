@@ -1,8 +1,10 @@
 """Methods to interact with Redis server."""
 from redis import Redis
 from absl import logging
+from typing import Optional, Sequence
+import time
+
 from task_request_handler import TaskRequestHandler
-from typing import Sequence
 
 DELIVER_NEW_MESSAGES = ">"
 
@@ -18,9 +20,12 @@ def create_redis_connection(redis_hostname, redis_port):
     return redis_conn
 
 
-def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
-                         consumer_group: str, consumer_name: str,
-                         request_handler: TaskRequestHandler):
+def monitor_redis_stream(redis_connection,
+                         stream_names: Sequence[str],
+                         consumer_group: str,
+                         consumer_name: str,
+                         request_handler: TaskRequestHandler,
+                         max_timeout: Optional[int] = None):
     """Monitors Redis stream, calling a callback to handle requests.
 
     The stream is read from via a consumer group. This requires that
@@ -44,10 +49,14 @@ def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
     for stream_name in stream_names:
         logging.info(" > %s", stream_name)
 
+    idle_timestamp = time.time()
     while True:
         # Check each stream independently
         for stream_name in stream_names:
             try:
+                if max_timeout and time.time() - idle_timestamp >= max_timeout:
+                    raise TimeoutError("Max idle time reached")
+
                 logging.info("Waiting for requests on: %s", stream_name)
                 resp = redis_connection.xreadgroup(
                     groupname=consumer_group,
@@ -71,6 +80,9 @@ def monitor_redis_stream(redis_connection, stream_names: Sequence[str],
                     # Acknowledge successful processing of the received message
                     redis_connection.xack(stream_name, consumer_group,
                                           stream_entry_id)
+
+                    # Update the start time to avoid killing the machine
+                    idle_timestamp = time.time()
 
             except ConnectionError as e:
                 logging.info("ERROR REDIS CONNECTION: %s", str(e))
