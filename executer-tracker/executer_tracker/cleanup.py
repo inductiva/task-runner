@@ -77,7 +77,7 @@ def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
     )
 
 
-def kill_machine(api_url, machine_group_id, api_key):
+def kill_machine(api_url, machine_group_id, api_key) -> int:
 
     vm_name = gcloud.get_vm_metadata_value("name")
     url = f"{api_url}{KILL_MACHINE_ENDPOINT}?vm_group_id=" \
@@ -92,4 +92,5 @@ def kill_machine(api_url, machine_group_id, api_key):
 
     if r.status_code != 202:
         logging.error("Failed to kill machine. Status code: %s", r.status_code)
-        return
+
+    return r.status_code
