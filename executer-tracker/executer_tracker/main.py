@@ -170,44 +170,29 @@ def main(_):
                                    redis_streams, redis_consumer_name,
                                    redis_consumer_group, request_handler)
 
-    monitoring_flag = True
-    while monitoring_flag:
-        try:
-            redis_utils.monitor_redis_stream(
-                redis_connection=redis_conn,
-                stream_names=redis_streams,
-                consumer_group=redis_consumer_group,
-                consumer_name=redis_consumer_name,
-                request_handler=request_handler,
-                max_timeout=max_timeout,
-            )
-            monitoring_flag = False
-        except TimeoutError:
-            logging.info(
-                "Max idle time reached. Terminating executer tracker...")
-
-            status_code = cleanup.kill_machine(api_url, machine_group_id,
-                                               api_key)
-            if status_code == 422:
-                logging.warn(
-                    "Received 422 status code, cannot terminate due to minimum"
-                    " VM constraint. Restarting monitoring process.")
-                monitoring_flag = True
-            else:
-                reason = ExecuterTerminationReason.IDLE_TIMEOUT
-                cleanup.log_executer_termination(request_handler,
-                                                 redis_hostname, redis_port,
-                                                 executer_uuid, reason)
-                monitoring_flag = False
-        except Exception as e:  # pylint: disable=broad-except
-            logging.exception("Caught exception: %s", str(e))
-            logging.info("Terminating executer tracker...")
-            reason = ExecuterTerminationReason.ERROR
-            detail = repr(e)
-            cleanup.log_executer_termination(request_handler, redis_hostname,
-                                             redis_port, executer_uuid, reason,
-                                             detail)
-            monitoring_flag = False
+    try:
+        redis_utils.monitor_redis_stream(
+            redis_connection=redis_conn,
+            stream_names=redis_streams,
+            consumer_group=redis_consumer_group,
+            consumer_name=redis_consumer_name,
+            request_handler=request_handler,
+            max_timeout=max_timeout,
+        )
+    except TimeoutError:
+        logging.info("Max idle time reached. Terminating executer tracker...")
+        cleanup.kill_machine(api_url, machine_group_id, api_key)
+        reason = ExecuterTerminationReason.IDLE_TIMEOUT
+        cleanup.log_executer_termination(request_handler, redis_hostname,
+                                         redis_port, executer_uuid, reason)
+    except Exception as e:  # pylint: disable=broad-except
+        logging.exception("Caught exception: %s", str(e))
+        logging.info("Terminating executer tracker...")
+        reason = ExecuterTerminationReason.ERROR
+        detail = repr(e)
+        cleanup.log_executer_termination(request_handler, redis_hostname,
+                                         redis_port, executer_uuid, reason,
+                                         detail)
 
 
 if __name__ == "__main__":
