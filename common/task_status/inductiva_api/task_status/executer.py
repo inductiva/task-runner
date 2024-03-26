@@ -6,3 +6,4 @@ class ExecuterTerminationReason(Enum):
     INTERRUPTED = "interrupted"
     VM_PREEMPTED = "preempted"
     ERROR = "error"
+    IDLE_TIMEOUT = "idle_timeout"
