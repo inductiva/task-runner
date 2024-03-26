@@ -52,11 +52,10 @@ currently active executer trackers.
 Usage (note the required environment variables):
   python executer_tracker.py
 """
+import fsspec
 import os
 import sys
-
 from absl import app, logging
-from pyarrow import fs
 
 from inductiva_api.task_status import ExecuterTerminationReason
 
@@ -68,9 +67,10 @@ from executer_tracker.register_executer import register_executer
 
 def main(_):
     api_url = os.getenv("API_URL", "http://web")
+    api_key = os.getenv("EXECUTER_API_KEY", "")
     redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
     redis_port = os.getenv("REDIS_PORT", "6379")
-    artifact_store_uri = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
+    artifact_store_root = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
     workdir = os.getenv("WORKDIR", "/workdir")
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
     if not executer_images_dir:
@@ -112,6 +112,7 @@ def main(_):
     logging.info("  > extra args: %s", mpi_extra_args)
     logging.info("  > num hosts: %d", num_mpi_hosts)
 
+    max_timeout = None
     if config.gcloud.is_running_on_gcloud_vm():
         # Check if there are any metadata values that override the provided
         # environment variables.
@@ -122,13 +123,15 @@ def main(_):
 
         metadata_api_url = config.gcloud.get_vm_metadata_value(
             "attributes/api-url")
+        metadata_max_timeout = config.gcloud.get_vm_metadata_value(
+            "attributes/idle_timeout")
         if metadata_api_url:
             api_url = metadata_api_url
+        max_timeout = int(
+            metadata_max_timeout) if metadata_max_timeout else None
 
-    artifact_filesystem_root, base_path = fs.FileSystem.from_uri(
-        artifact_store_uri)
-    artifact_filesystem_root = fs.SubTreeFileSystem(base_path,
-                                                    artifact_filesystem_root)
+    protocol = "gs" if artifact_store_root == "gs://" else "file"
+    filesystem = fsspec.filesystem(protocol)
 
     machine_group_id = config.get_machine_group_id()
     if not machine_group_id:
@@ -156,7 +159,8 @@ def main(_):
     request_handler = TaskRequestHandler(
         redis_connection=redis_conn,
         executers_config=executers_config,
-        artifact_filesystem=artifact_filesystem_root,
+        filesystem=filesystem,
+        artifact_store_root=artifact_store_root,
         executer_uuid=executer_uuid,
         workdir=workdir,
         mpi_config=mpi_config,
@@ -166,22 +170,44 @@ def main(_):
                                    redis_streams, redis_consumer_name,
                                    redis_consumer_group, request_handler)
 
-    try:
-        redis_utils.monitor_redis_stream(
-            redis_connection=redis_conn,
-            stream_names=redis_streams,
-            consumer_group=redis_consumer_group,
-            consumer_name=redis_consumer_name,
-            request_handler=request_handler,
-        )
-    except Exception as e:  # pylint: disable=broad-except
-        logging.exception("Caught exception: %s", str(e))
-        logging.info("Terminating executer tracker...")
-        reason = ExecuterTerminationReason.ERROR
-        detail = repr(e)
-        cleanup.log_executer_termination(request_handler, redis_hostname,
-                                         redis_port, executer_uuid, reason,
-                                         detail)
+    monitoring_flag = True
+    while monitoring_flag:
+        try:
+            redis_utils.monitor_redis_stream(
+                redis_connection=redis_conn,
+                stream_names=redis_streams,
+                consumer_group=redis_consumer_group,
+                consumer_name=redis_consumer_name,
+                request_handler=request_handler,
+                max_timeout=max_timeout,
+            )
+            monitoring_flag = False
+        except TimeoutError:
+            logging.info(
+                "Max idle time reached. Terminating executer tracker...")
+
+            status_code = cleanup.kill_machine(api_url, machine_group_id,
+                                               api_key)
+            if status_code == 422:
+                logging.warn(
+                    "Received 422 status code, cannot terminate due to minimum"
+                    " VM constraint. Restarting monitoring process.")
+                monitoring_flag = True
+            else:
+                reason = ExecuterTerminationReason.IDLE_TIMEOUT
+                cleanup.log_executer_termination(request_handler,
+                                                 redis_hostname, redis_port,
+                                                 executer_uuid, reason)
+                monitoring_flag = False
+        except Exception as e:  # pylint: disable=broad-except
+            logging.exception("Caught exception: %s", str(e))
+            logging.info("Terminating executer tracker...")
+            reason = ExecuterTerminationReason.ERROR
+            detail = repr(e)
+            cleanup.log_executer_termination(request_handler, redis_hostname,
+                                             redis_port, executer_uuid, reason,
+                                             detail)
+            monitoring_flag = False
 
 
 if __name__ == "__main__":
