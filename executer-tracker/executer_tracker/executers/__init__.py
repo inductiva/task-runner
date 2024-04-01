@@ -13,6 +13,7 @@ from . import security
 from . import utils
 from . import gromacs
 from . import openfoam
+from . import openfast
 from . import splishplash
 from . import dualsphysics
 from . import swash

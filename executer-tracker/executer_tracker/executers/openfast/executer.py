@@ -1,4 +1,4 @@
-"""Generic OpenFOAM executer."""
+"""Generic Openfast executer."""
 import os
 import shlex
 import shutil
@@ -47,7 +47,7 @@ class OpenfastCommand(executers.Command):
 
 
 class OpenfastExecuter(executers.BaseExecuter):
-    """OpenFOAM executer."""
+    """Openfast executer."""
 
     def execute(self):
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
