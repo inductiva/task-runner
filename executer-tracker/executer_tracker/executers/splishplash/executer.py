@@ -26,5 +26,5 @@ class SPlisHSPlasHExecuter(executers.BaseExecuter):
         cmd = executers.Command(f"{binary_path} {input_json_path} "
                                 f"--output-dir {self.artifacts_dir} "
                                 f"--no-gui")
-    
+
         self.run_subprocess(cmd)

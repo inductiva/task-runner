@@ -1,10 +1,9 @@
 """Generic Openfast executer."""
 import os
-import shlex
 import shutil
-from typing import Tuple
 
 from executer_tracker import executers
+
 
 class OpenfastCommand(executers.Command):
     """Openfast command."""
@@ -14,36 +13,11 @@ class OpenfastCommand(executers.Command):
         "servodyn_driver", "subdyn_driver", "turbsim", "unsteadyaero_driver"
     ]
 
-    def __init__(self, cmd, prompts):
-        cmd = self.process_openfast_command(cmd)
-
-        super().__init__(cmd, prompts, is_mpi=False)
-
-    @staticmethod
-    def process_openfast_command(cmd) -> Tuple[str, bool]:
-        """Set the appropriate command for Openfast.
-
-        Checks if the command sent is allowed.
-
-        Returns:
-            Command to be executed in the executer."""
-
-        tokens = shlex.split(cmd)
-        # Adding single quotes to args with whitespaces in them,
-        # which shlex removes.
-        sane_tokens = list(map(lambda x: f"'{x}'" if " " in x else x, tokens))
-        command_instruction = sane_tokens[0].lower()
-        openfast_command = sane_tokens[1]
-        flags = sane_tokens[2:]
-
-        command = f"{openfast_command} {' '.join(flags)}"
-
-        if command_instruction not in OpenfastCommand.ALLOWED_COMMANDS:
-            raise ValueError("Invalid instruction for Openfast. "
-                             "Valid instructions are: "
-                             f"{OpenfastCommand.ALLOWED_COMMANDS}.")
-
-        return command
+    def _check_security(self, tokens, prompts):
+        super()._check_security(tokens, prompts)
+        if self.args[0] not in OpenfastCommand.ALLOWED_COMMANDS:
+            raise ValueError("Command not allowed. Valid commands are: "
+                             f"{OpenfastCommand.ALLOWED_COMMANDS}")
 
 
 class OpenfastExecuter(executers.BaseExecuter):
@@ -59,4 +33,5 @@ class OpenfastExecuter(executers.BaseExecuter):
 
         for command in commands:
             command = OpenfastCommand(command["cmd"], command["prompts"])
+
             self.run_subprocess(command, self.artifacts_dir)
