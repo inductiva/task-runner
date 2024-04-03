@@ -10,7 +10,8 @@ class OpenFASTCommand(executers.Command):
     ALLOWED_COMMANDS = [
         "aerodyn_driver", "beamdyn_driver", "feam_driver", "hydrodyn_driver",
         "inflowwind_driver", "moordyn_driver", "openfast", "orca_driver",
-        "servodyn_driver", "subdyn_driver", "turbsim", "unsteadyaero_driver"
+        "servodyn_driver", "subdyn_driver", "turbsim", "unsteadyaero_driver",
+        "FAST.Farm"
     ]
 
     def _check_security(self, tokens, prompts):
