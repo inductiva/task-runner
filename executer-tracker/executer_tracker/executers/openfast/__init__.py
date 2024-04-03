@@ -1,2 +1,2 @@
-"""Openfast executers."""
-from .executer import OpenfastExecuter
+"""OpenFAST executers."""
+from .executer import OpenFASTExecuter

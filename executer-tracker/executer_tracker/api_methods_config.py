@@ -15,7 +15,7 @@ api_method_to_script = {
     "fvm.openfoam_esi.run_simulation":
         executers.openfoam.OpenFOAMExecuter,
     "openfast.openfast.run_simulation":
-        executers.openfast.OpenfastExecuter,
+        executers.openfast.OpenFASTExecuter,
     "md.gromacs.run_simulation":
         executers.gromacs.GROMACS,
     "stellarators.simsopt.run_simulation":
