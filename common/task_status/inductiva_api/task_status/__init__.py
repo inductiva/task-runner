@@ -1,4 +1,4 @@
-#pylint: disable=missing-module-docstring
+# noqa: D104
 from .task_status import TaskStatusCode
 from .executer import ExecuterTerminationReason
 
