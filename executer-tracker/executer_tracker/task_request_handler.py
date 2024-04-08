@@ -279,7 +279,7 @@ class TaskRequestHandler:
         exit_code = 0
         try:
             executer.run()
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             logging.error("Exception while running executer: %s", str(e))
             exit_code = 1
 

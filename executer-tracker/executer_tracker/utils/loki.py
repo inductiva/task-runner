@@ -88,7 +88,7 @@ class LokiLogger:
             stream.buffer = []
             stream.last_send_time = time.time()
 
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             logging.error("Exception caught: %s", str(e))
 
     def _get_current_timestamp(self) -> str:

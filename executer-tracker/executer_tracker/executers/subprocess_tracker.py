@@ -100,7 +100,7 @@ class SubprocessTracker:
 
             # pylint: enable=consider-using-with
 
-        except Exception as exception:  # pylint: disable=broad-except
+        except Exception as exception:  # noqa: BLE001
             logging.warning("Caught exception \"%s\". Exiting gracefully",
                             exception)
             self.exit_gracefully()
@@ -135,7 +135,7 @@ class SubprocessTracker:
 
                 time.sleep(period_secs)
 
-        except Exception as exception:  # pylint: disable=broad-except
+        except Exception as exception:  # noqa: BLE001
             logging.warning("Caught exception \"%s\". Exiting gracefully",
                             exception)
             self.exit_gracefully()

@@ -199,7 +199,7 @@ def main(_):
                                                  redis_hostname, redis_port,
                                                  executer_uuid, reason)
                 monitoring_flag = False
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating executer tracker...")
             reason = ExecuterTerminationReason.ERROR
