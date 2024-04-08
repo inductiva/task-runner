@@ -108,8 +108,8 @@ def is_vm_preempted() -> bool:
 
     Uses the internal metadata server to check if the VM was preempted.
     Details:
-    https://cloud.google.com/compute/docs/instances/create-use-preemptible#determine_if_a_vm_was_preempted # pylint: disable=line-too-long
-    """
+    https://cloud.google.com/compute/docs/instances/create-use-preemptible#determine_if_a_vm_was_preempted
+    """  # noqa: E501
     preempted = get_vm_metadata_value(key="preempted")
     if preempted is None:
         return False
