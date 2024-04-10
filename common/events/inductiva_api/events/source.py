@@ -2,9 +2,10 @@
 from typing import Iterator, Optional, Tuple
 
 from absl import logging
+from redis import Redis
+
 from inductiva_api.events import parse
 from inductiva_api.events.schemas import Event
-from redis import Redis
 
 
 class RedisStreamEventSource:

@@ -1,9 +1,10 @@
 """Schemas of events issued by the executer-tracker."""
-from typing import List, Literal, Union, Optional
-from typing_extensions import Annotated
-import uuid
 import datetime
+import uuid
+from typing import List, Literal, Optional, Union
+
 import pydantic
+from typing_extensions import Annotated
 
 import inductiva_api.events.schemas as event_schemas
 from inductiva_api import task_status
