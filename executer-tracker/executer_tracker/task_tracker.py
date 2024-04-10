@@ -1,14 +1,12 @@
 """Class for running and tracking a task in a Docker container."""
 import os
-
 from typing import Optional
+
 import docker
 import docker.types
-from docker.models.containers import Container
-
-from utils import config
-
 from absl import logging
+from docker.models.containers import Container
+from utils import config
 
 
 class TaskTracker:

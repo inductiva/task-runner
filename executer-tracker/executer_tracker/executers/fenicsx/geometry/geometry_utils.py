@@ -1,12 +1,11 @@
 """Utils to create the geometric case."""
 
+import json
 from typing import List, Optional, Tuple
 
 import gmsh
-import json
 
-from . import plate_utils
-from . import holes_utils
+from . import holes_utils, plate_utils
 
 
 def get_boundary_ids(entity_gmsh: int) -> List[int]:

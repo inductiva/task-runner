@@ -1,12 +1,13 @@
 """Module for registering an executer with the API."""
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import os
 from typing import Dict, List, Optional, Sequence
 from uuid import UUID
 
 import requests
 from absl import logging
+
 from executer_tracker.utils import gcloud, host
 
 REGISTER_EXECUTER_ENDPOINT = "/executer-tracker/register"
