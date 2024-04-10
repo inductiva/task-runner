@@ -1,10 +1,11 @@
 """Logger for Loki server."""
 import json
 import os
-import requests
+import threading
 import time
 from enum import Enum
 
+import requests
 from absl import logging
 
 STREAM_BUFFER_MAX_LENGTH = 10
@@ -44,7 +45,8 @@ class LokiLogger:
     """
 
     def __init__(self, task_id: str, project_id: str = "0000-0000-0000-0000"):
-        self._enabled = False
+        self._enabled = threading.Event()
+        self._enabled.set()
         self.task_id = task_id
         self.project_id = project_id
         self.server_url = (f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}"
@@ -98,11 +100,15 @@ class LokiLogger:
 
     def enable(self) -> None:
         """Enables the logger."""
-        self._enabled = True
+        self._enabled.set()
 
     def disable(self) -> None:
         """Disables the logger."""
-        self._enabled = False
+        self._enabled.clear()
+
+    def is_enabled(self) -> bool:
+        """Returns True if the logger is enabled, False otherwise."""
+        return self._enabled.is_set()
 
     def log_text(self,
                  log_message: str,
@@ -110,7 +116,7 @@ class LokiLogger:
                  io_type: IOTypes = None) -> None:
         """Appends log messages to each stream buffer and triggers the push to
         Loki server if the buffer is full or if the flush period has elapsed."""
-        if not self._enabled:
+        if not self.is_enabled():
             return
 
         if not io_type:
@@ -134,7 +140,7 @@ class LokiLogger:
     def flush(self, io_type: IOTypes) -> None:
         """Sends the log stream of the specified IO type to Loki server, 
         regarless of whether the buffer is full or not."""
-        if not self._enabled:
+        if not self.is_enabled():
             return
 
         stream: LogStream = self.streams_dict.get(io_type)
