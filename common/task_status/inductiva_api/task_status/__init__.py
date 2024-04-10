@@ -1,6 +1,6 @@
 # noqa: D104
-from .task_status import TaskStatusCode
 from .executer import ExecuterTerminationReason
+from .task_status import TaskStatusCode
 
 ExecuterTerminationReasonToTaskStatus = {
     ExecuterTerminationReason.INTERRUPTED:
