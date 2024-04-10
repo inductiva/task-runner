@@ -2,14 +2,15 @@
 import atexit
 import signal
 import sys
-from absl import logging
-import requests
 
 import redis_utils
+import requests
+from absl import logging
+from utils import gcloud
+
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import ExecuterTerminationReason
-from utils import gcloud
 
 KILL_MACHINE_ENDPOINT = "/compute/group/machine"
 

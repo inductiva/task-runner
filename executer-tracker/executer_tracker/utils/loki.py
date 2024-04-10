@@ -1,10 +1,10 @@
 """Logger for Loki server."""
 import json
 import os
-import requests
 import time
 from enum import Enum
 
+import requests
 from absl import logging
 
 STREAM_BUFFER_MAX_LENGTH = 10

@@ -52,17 +52,17 @@ currently active executer trackers.
 Usage (note the required environment variables):
   python executer_tracker.py
 """
-import fsspec
 import os
 import sys
+
+import fsspec
 from absl import app, logging
 
-from inductiva_api.task_status import ExecuterTerminationReason
-
-from executer_tracker import executers, redis_utils, cleanup
-from executer_tracker.utils import config
-from executer_tracker.task_request_handler import TaskRequestHandler
+from executer_tracker import cleanup, executers, redis_utils
 from executer_tracker.register_executer import register_executer
+from executer_tracker.task_request_handler import TaskRequestHandler
+from executer_tracker.utils import config
+from inductiva_api.task_status import ExecuterTerminationReason
 
 
 def main(_):

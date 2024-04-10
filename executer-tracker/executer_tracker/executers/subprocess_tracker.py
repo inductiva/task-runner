@@ -1,12 +1,12 @@
 """Module that defines the SubprocessTracker class."""
-from typing import IO, List
 import os
 import signal
 import subprocess
-import psutil
 import threading
 import time
+from typing import IO, List
 
+import psutil
 from absl import logging
 
 from executer_tracker.utils import loki

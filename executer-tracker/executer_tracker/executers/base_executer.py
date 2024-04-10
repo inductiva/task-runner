@@ -3,11 +3,12 @@
 Check the `BaseExecuter` docstring for more information on the class and
 its usage.
 """
-from abc import ABC, abstractmethod
-import os
 import json
-import psutil
+import os
+from abc import ABC, abstractmethod
 from collections import namedtuple
+
+import psutil
 from absl import logging
 
 from executer_tracker import executers

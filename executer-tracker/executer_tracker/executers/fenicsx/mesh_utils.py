@@ -1,9 +1,9 @@
 """"Mesh utilities for the deformable plate scenario."""
+import json
+import time
 from typing import Optional
 
 import gmsh
-import time
-import json
 import numpy as np
 
 from executer_tracker.executers.fenicsx import gmsh_utils

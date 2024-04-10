@@ -1,9 +1,9 @@
 """Methods to interact with Redis server."""
-from redis import Redis
-from absl import logging
-from typing import Optional, Sequence
 import time
+from typing import Optional, Sequence
 
+from absl import logging
+from redis import Redis
 from task_request_handler import TaskRequestHandler
 
 DELIVER_NEW_MESSAGES = ">"

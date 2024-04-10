@@ -1,6 +1,6 @@
 """Dataclass for MPI configuration."""
-from typing import List, Optional
 import shlex
+from typing import List, Optional
 
 
 class MPIConfiguration():
