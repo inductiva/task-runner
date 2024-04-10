@@ -81,8 +81,8 @@ class TaskTracker:
 
         for s in self.container.stats(decode=True):
             # Reference:
-            # - https://docs.docker.com/engine/reference/commandline/stats/#description # pylint: disable=line-too-long
-            # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats # pylint: disable=line-too-long
+            # - https://docs.docker.com/engine/reference/commandline/stats/#description # noqa: E501
+            # - https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerStats # noqa: E501
             self.container.reload()
             if self.container.status in ("exited", "dead"):
                 break
@@ -128,7 +128,7 @@ class TaskTracker:
             if resource_file_remote is not None:
                 with artifact_filesystem.open_output_stream(
                         path=resource_file_remote) as r_file:
-                    current_usage = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"
+                    current_usage = f"{timestamp}, {memory_usage_percent}, {cpu_usage_percent} \n"  # noqa: E501
                     r_file.write(current_usage.encode("utf-8"))
 
         status = self.container.wait()

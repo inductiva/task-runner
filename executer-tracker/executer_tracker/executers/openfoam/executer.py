@@ -33,7 +33,8 @@ class OpenFOAMCommand(executers.Command):
         # which shlex removes.
         # Example: "runApplication transformPoints -scale '(1e-3 1e-3 1e-3)'"
 
-        sane_tokens = list(map(lambda x: f"'{x}'" if " " in x else x, tokens))
+        sane_tokens = list(  # noqa: C417
+            map(lambda x: f"'{x}'" if " " in x else x, tokens))
         command_instruction = sane_tokens[0].lower()
         openfoam_command = sane_tokens[1]
         flags = sane_tokens[2:]
