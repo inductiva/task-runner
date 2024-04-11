@@ -67,7 +67,7 @@ class ApptainerImagesManager:
 
     def _apptainer_pull(self, image_uri: str, sif_local_path: str):
         """Pulls the image from Docker Hub and converts it to a SIF image."""
-        logging.info("Pulling image from Docker Hub...")
+        logging.info("Pulling image ...")
 
         try:
             subprocess.run(

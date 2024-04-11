@@ -50,8 +50,6 @@ class BaseExecuter(ABC):
         This method creates the directories to be used for storing files
         that are sent to the client.
         """
-        self.container_runner = None
-
         self.mpi_config = mpi_config
         self.container_image = container_image
         self.working_dir = working_dir
