@@ -1,11 +1,11 @@
 """Logger for Loki server."""
+import gzip
 import json
 import os
 import threading
 import time
 from enum import Enum
 
-import requests
 import requests
 from absl import logging
 
@@ -76,8 +76,11 @@ class LokiLogger:
 
             response = requests.post(
                 self.server_url,
-                data=json.dumps(log_entry),
-                headers={"Content-Type": "application/json"},
+                data=gzip.compress(json.dumps(log_entry).encode('utf-8')),
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Encoding": "gzip",
+                },
                 timeout=5,
             )
 
