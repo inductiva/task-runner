@@ -1,8 +1,9 @@
 """Util functions to get info about the GCloud VM the executer is on."""
 from dataclasses import dataclass
 from typing import Dict, Optional
-from utils import bool_string_to_bool
+
 import requests
+from utils import bool_string_to_bool
 
 METADATA_SERVER_URL = "http://metadata.google.internal"
 METADATA_URL = \

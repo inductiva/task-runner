@@ -1,9 +1,10 @@
 """File related utility functions"""
-import fsspec
 import os
 import shutil
 import tempfile
 import zipfile
+
+import fsspec
 from absl import logging
 
 

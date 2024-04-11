@@ -6,6 +6,7 @@ import time
 from enum import Enum
 
 import requests
+import requests
 from absl import logging
 
 STREAM_BUFFER_MAX_LENGTH = 10

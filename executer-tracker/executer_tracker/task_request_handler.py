@@ -5,26 +5,25 @@ handles the logic related to setting up the working directory of an executer,
 launching said executer, and providing the outputs to the Web API.
 Note that, currently, request consumption is blocking.
 """
-import fsspec
-import os
 import copy
+import os
 import shutil
 import tempfile
 import threading
 from typing import Dict, Tuple
-import redis
 from uuid import UUID
 
+import api_methods_config
+import fsspec
+import redis
 import utils
 from absl import logging
+from utils import config, files, loki, make_task_key
+
+from executer_tracker import executers
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
-from utils import make_task_key
-from utils import files, config, loki
-from executer_tracker import executers
-
-import api_methods_config
 
 TASK_COMMANDS_QUEUE = "commands"
 KILL_MESSAGE = "kill"

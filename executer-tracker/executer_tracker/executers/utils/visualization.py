@@ -1,5 +1,6 @@
 """Visualization utils to run inside containers."""
 from typing import List
+
 import moviepy.video.io.ImageSequenceClip
 
 

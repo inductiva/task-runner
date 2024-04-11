@@ -3,8 +3,8 @@
 This script uses DualSPHysics to perform a simulation.
 """
 import os
-import shutil
 import shlex
+import shutil
 
 from executer_tracker import executers
 
