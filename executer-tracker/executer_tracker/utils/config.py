@@ -6,7 +6,8 @@ import uuid
 from typing import Dict, Optional
 
 from absl import logging
-from utils import gcloud
+
+from executer_tracker.utils import gcloud
 
 
 def get_machine_group_id() -> Optional[uuid.UUID]:
@@ -37,23 +38,19 @@ class ExecuterConfig:
     image: str
 
 
-def load_executers_config(executer_images_dir) -> Dict[str, ExecuterConfig]:
+def load_executers_config() -> Dict[str, ExecuterConfig]:
     """Load supported executer types from config file.
 
-    Config file is specified by the EXECUTERS_CONFIG environment
-    variable. It should be a JSON file with the following format:
+    This is a mapping of executer types to their respective Docker image names.
+    The Docker image names are used to fetch Apptainer images from the
+    Apptainer image storage.
+    It should be a JSON file with the following format:
         {
-            "executer_type_1": {
-                "image": "docker_image_1",
-                "gpu": true
-            },
             "gromacs": {
-                "image": "gromacs-img",
-                "gpu": true
+                "image": "inductiva/kutu:gromacs_2022.2_dev"
             },
-            "openfoam": {
-                "image": "openfoam-img",
-                "gpu": false
+            "openfoam-foundation": {
+                "image": "inductiva/kutu:openfoam-foundation_v8_dev"
             }
         }
     """
@@ -86,19 +83,9 @@ def load_executers_config(executer_images_dir) -> Dict[str, ExecuterConfig]:
             raise ValueError(
                 f"Apptainer image name must be a string: {executer_image}")
 
-        executer_image_full_path = os.path.join(executer_images_dir,
-                                                executer_image)
-
         logging.info(" > Executer type: %s", exec_type)
-        logging.info("   Apptainer image: %s", executer_image_full_path)
+        logging.info("   Apptainer image: %s", executer_image)
 
-        if not os.path.exists(executer_image_full_path):
-            logging.error("Apptainer image not found: %s",
-                          executer_image_full_path)
-            raise RuntimeError(
-                f"Apptainer image not found: {executer_image_full_path}")
-
-        executers_config[exec_type] = ExecuterConfig(
-            image=executer_image_full_path)
+        executers_config[exec_type] = ExecuterConfig(image=executer_image)
 
     return executers_config

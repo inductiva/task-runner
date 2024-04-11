@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 import requests
-from utils import bool_string_to_bool
+
+from executer_tracker.utils import bool_string_to_bool
 
 METADATA_SERVER_URL = "http://metadata.google.internal"
 METADATA_URL = \
