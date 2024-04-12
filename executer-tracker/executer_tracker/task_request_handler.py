@@ -19,7 +19,7 @@ import utils
 from absl import logging
 
 from executer_tracker import api_methods_config, apptainer_utils, executers
-from executer_tracker.utils import config, files, loki, make_task_key
+from executer_tracker.utils import files, loki, make_task_key
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
@@ -85,8 +85,6 @@ class TaskRequestHandler:
     Attributes:
         redis: Connection to Redis.
         docker_client: Docker client.
-        docker_images: Mapping from executer_type to Docker image to use
-            for executing the task.
         artifact_filesystem: Shared location with the Web API.
         executer_uuid: UUID of the executer that handles the requests.
             Used for event logging purposes.
@@ -104,7 +102,6 @@ class TaskRequestHandler:
     def __init__(
         self,
         redis_connection: redis.Redis,
-        executers_config: Dict[str, config.ExecuterConfig],
         filesystem: fsspec.spec.AbstractFileSystem,
         artifact_store_root: str,
         executer_uuid: UUID,
@@ -117,7 +114,6 @@ class TaskRequestHandler:
         self.artifact_store_root = artifact_store_root
         self.executer_uuid = executer_uuid
         self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
-        self.executers_config = executers_config
         self.task_id = None
         self.workdir = workdir
         self.loki_logger = None
@@ -349,13 +345,10 @@ class TaskRequestHandler:
             Python command to execute received request.
         """
         method = request["method"]
-        executer_type = request["executer_type"]
-        container_image = request.get("image", None)
-
-        if container_image is None:
-            container_image = self.executers_config[executer_type].image
+        container_image = request["container_image"]
 
         executer_class = api_methods_config.api_method_to_script[method]
+
         try:
             apptainer_image_path = self.apptainer_images_manager.get(
                 container_image)
