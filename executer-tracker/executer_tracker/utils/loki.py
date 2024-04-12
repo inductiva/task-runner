@@ -1,6 +1,8 @@
 """Logger for Loki server."""
+import gzip
 import json
 import os
+import threading
 import time
 from enum import Enum
 
@@ -44,6 +46,8 @@ class LokiLogger:
     """
 
     def __init__(self, task_id: str, project_id: str = "0000-0000-0000-0000"):
+        self._enabled = threading.Event()
+        self._enabled.set()
         self.task_id = task_id
         self.project_id = project_id
         self.server_url = (f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}"
@@ -72,8 +76,11 @@ class LokiLogger:
 
             response = requests.post(
                 self.server_url,
-                data=json.dumps(log_entry),
-                headers={"Content-Type": "application/json"},
+                data=gzip.compress(json.dumps(log_entry).encode('utf-8')),
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Encoding": "gzip",
+                },
                 timeout=5,
             )
 
@@ -95,12 +102,27 @@ class LokiLogger:
         """Returns the current time in nanoseconds since the epoch."""
         return str(time.time_ns())
 
+    def enable(self) -> None:
+        """Enables the logger."""
+        self._enabled.set()
+
+    def disable(self) -> None:
+        """Disables the logger."""
+        self._enabled.clear()
+
+    def is_enabled(self) -> bool:
+        """Returns True if the logger is enabled, False otherwise."""
+        return self._enabled.is_set()
+
     def log_text(self,
                  log_message: str,
                  timestamp: str = None,
                  io_type: IOTypes = None) -> None:
         """Appends log messages to each stream buffer and triggers the push to
         Loki server if the buffer is full or if the flush period has elapsed."""
+        if not self.is_enabled():
+            return
+
         if not io_type:
             logging.error("Stream IO type not specified. Log not sent!")
             return
@@ -122,6 +144,9 @@ class LokiLogger:
     def flush(self, io_type: IOTypes) -> None:
         """Sends the log stream of the specified IO type to Loki server, 
         regarless of whether the buffer is full or not."""
+        if not self.is_enabled():
+            return
+
         stream: LogStream = self.streams_dict.get(io_type)
         if not stream:
             message = f"Stream {str(io_type)} not found. Nothing to flush."
