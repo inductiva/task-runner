@@ -13,14 +13,13 @@ import threading
 from typing import Dict, Tuple
 from uuid import UUID
 
-import api_methods_config
 import fsspec
 import redis
 import utils
 from absl import logging
-from utils import config, files, loki, make_task_key
 
-from executer_tracker import executers
+from executer_tracker import api_methods_config, apptainer_utils, executers
+from executer_tracker.utils import config, files, loki, make_task_key
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
@@ -110,6 +109,8 @@ class TaskRequestHandler:
             executer-tracker container inside the container.
         task_id: ID of the task that is currently being executed. If
             no task is being executed, this attribute is None.
+        apptainer_images_manager: ApptainerImagesManager instance. Used
+            to download and cache Apptainer images locally.
     """
 
     def __init__(
@@ -121,6 +122,7 @@ class TaskRequestHandler:
         executer_uuid: UUID,
         workdir: str,
         mpi_config: executers.MPIConfiguration,
+        apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
     ):
         self.redis = redis_connection
         self.filesystem = filesystem
@@ -132,6 +134,7 @@ class TaskRequestHandler:
         self.workdir = workdir
         self.loki_logger = None
         self.mpi_config = mpi_config
+        self.apptainer_images_manager = apptainer_images_manager
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -174,8 +177,6 @@ class TaskRequestHandler:
         self.project_id = request["project_id"]
         self.task_dir_remote = os.path.join(self.artifact_store_root,
                                             request["task_dir"])
-        self.current_task_executer_config = self.executers_config[
-            request["executer_type"]]
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -360,13 +361,22 @@ class TaskRequestHandler:
             Python command to execute received request.
         """
         method = request["method"]
-        executer_class = api_methods_config.api_method_to_script[method]
+        executer_type = request["executer_type"]
+        container_image = request.get("image", None)
 
-        container_image = self.current_task_executer_config.image
+        if container_image is None:
+            container_image = self.executers_config[executer_type].image
+
+        executer_class = api_methods_config.api_method_to_script[method]
+        try:
+            apptainer_image_path = self.apptainer_images_manager.get(
+                container_image)
+        except apptainer_utils.ApptainerImageNotFoundError as e:
+            raise ValueError(f"Image not available: {container_image}") from e
 
         return executer_class(
             self.task_workdir,
-            container_image,
+            apptainer_image_path,
             copy.deepcopy(self.mpi_config),
             self.loki_logger,
         )
