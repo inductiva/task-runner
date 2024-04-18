@@ -13,4 +13,4 @@ meshio
 
 # FDS utils
 glob2
-moviepy
+moviepy==1.0.3
