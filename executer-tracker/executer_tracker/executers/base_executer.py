@@ -212,7 +212,7 @@ class BaseExecuter(ABC):
         with open(self.stdout_logs_path, "a", encoding="UTF-8") as stdout, \
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
-            log_message = f"# COMMAND: {cmd.args}\n"
+            log_message = f"# COMMAND: {cmd.args}"
             self.loki_logger.log_text(log_message, io_type=loki.IOTypes.COMMAND)
             log_message += "\n"
             stdout.write(log_message)
