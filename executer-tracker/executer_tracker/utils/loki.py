@@ -47,7 +47,6 @@ class LokiLogger:
 
     def __init__(self, task_id: str, project_id: str = "0000-0000-0000-0000"):
         self._enabled = threading.Event()
-        self._enabled.set()
         self.task_id = task_id
         self.project_id = project_id
         self.server_url = (f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}"
