@@ -2,7 +2,7 @@
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Optional
 from uuid import UUID
 
 import requests
@@ -50,14 +50,13 @@ def _get_executer_info() -> Dict:
 @dataclass
 class ExecuterAccessInfo:
     id: UUID
-    redis_streams: List[str]
+    redis_stream: str
     redis_consumer_group: str
     redis_consumer_name: str
 
 
 def register_executer(
     api_url: str,
-    supported_executer_types: Sequence[str],
     machine_group_id: Optional[UUID],
     num_mpi_hosts: int,
     mpi_cluster: bool = False,
@@ -73,7 +72,6 @@ def register_executer(
     url = f"{api_url}{REGISTER_EXECUTER_ENDPOINT}"
 
     executer_info = _get_executer_info()
-    executer_info["supported_executer_types"] = supported_executer_types
     if machine_group_id:
         executer_info["machine_group_id"] = str(machine_group_id)
 
@@ -98,7 +96,7 @@ def register_executer(
 
     return ExecuterAccessInfo(
         id=executer_id,
-        redis_streams=data["redis_streams"],
+        redis_stream=data["redis_stream"],
         redis_consumer_group=data["redis_consumer_group"],
         redis_consumer_name=data["redis_consumer_name"],
     )

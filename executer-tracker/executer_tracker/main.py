@@ -147,18 +147,15 @@ def main(_):
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
 
-    executers_config = config.load_executers_config()
-
     executer_access_info = register_executer(
         api_url,
-        list(executers_config.keys()),
         machine_group_id=machine_group_id,
         mpi_cluster=mpi_cluster,
         num_mpi_hosts=num_mpi_hosts,
     )
     executer_uuid = executer_access_info.id
 
-    redis_streams = executer_access_info.redis_streams
+    redis_stream = executer_access_info.redis_stream
     redis_consumer_name = executer_access_info.redis_consumer_name
     redis_consumer_group = executer_access_info.redis_consumer_group
 
@@ -174,7 +171,6 @@ def main(_):
 
     request_handler = TaskRequestHandler(
         redis_connection=redis_conn,
-        executers_config=executers_config,
         filesystem=filesystem,
         artifact_store_root=artifact_store_root,
         executer_uuid=executer_uuid,
@@ -184,7 +180,7 @@ def main(_):
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
-                                   redis_streams, redis_consumer_name,
+                                   redis_stream, redis_consumer_name,
                                    redis_consumer_group, request_handler)
 
     monitoring_flag = True
@@ -192,7 +188,7 @@ def main(_):
         try:
             redis_utils.monitor_redis_stream(
                 redis_connection=redis_conn,
-                stream_names=redis_streams,
+                stream_name=redis_stream,
                 consumer_group=redis_consumer_group,
                 consumer_name=redis_consumer_name,
                 request_handler=request_handler,

@@ -34,4 +34,6 @@ api_method_to_script = {
         executers.dummy.MPIHelloWorldExecuter,
     "schism.schism.run_simulation":
         executers.schism.SCHISMExecuter,
+    "arbitrary.arbitrary.run_simulation":
+        executers.arbitrary_commands_executer.ArbitraryCommandsExecuter,
 }
