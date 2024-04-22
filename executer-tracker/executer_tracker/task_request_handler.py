@@ -25,9 +25,12 @@ from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
 
 TASK_COMMANDS_QUEUE = "commands"
+KILL_MESSAGE = "kill"
+ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
+DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 
 
-def redis_kill_msg_catcher(
+def redis_command_msg_catcher(
     redis_conn: redis.Redis,
     task_id: str,
     executer: executers.BaseExecuter,
@@ -48,7 +51,7 @@ def redis_kill_msg_catcher(
     queue = make_task_key(task_id, TASK_COMMANDS_QUEUE)
 
     while True:
-        logging.info("Waiting for kill message on queue: %s", queue)
+        logging.info("Waiting for messages on queue: %s", queue)
         element = redis_conn.brpop(queue)
         logging.info("Received message: %s", element)
 
@@ -60,7 +63,8 @@ def redis_kill_msg_catcher(
             return
 
         content = element[1]
-        if content == "kill":
+
+        if content == KILL_MESSAGE:
             logging.info("Received kill message. Killing task.")
             executer.terminate()
             logging.info("Task killed.")
@@ -68,6 +72,14 @@ def redis_kill_msg_catcher(
             # set flag so that the main thread knows the task was killed
             killed_flag.set()
             return
+
+        elif content == ENABLE_LOGGING_STREAM_MESSAGE:
+            executer.loki_logger.enable()
+            logging.info("Logging stream enabled.")
+
+        elif content == DISABLE_LOGGING_STREAM_MESSAGE:
+            executer.loki_logger.disable()
+            logging.info("Logging stream disabled.")
 
 
 class TaskRequestHandler:
@@ -266,7 +278,7 @@ class TaskRequestHandler:
 
         task_killed_flag = threading.Event()
         thread = threading.Thread(
-            target=redis_kill_msg_catcher,
+            target=redis_command_msg_catcher,
             args=(self.redis, self.task_id, executer, task_killed_flag),
             daemon=True,
         )
