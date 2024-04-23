@@ -1,46 +1,62 @@
 """Functions to perform cleanup when the executer tracker is terminated."""
-import atexit
 import signal
 import sys
 
-import redis_utils
+import requests
 from absl import logging
-from utils import gcloud
 
+import executer_tracker
+from executer_tracker import redis_utils
+from executer_tracker.utils import gcloud
 from inductiva_api import events
-from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import ExecuterTerminationReason
 
 KILL_MACHINE_ENDPOINT = "/compute/group/machine"
 
 
-def log_executer_termination(request_handler,
-                             redis_hostname,
-                             redis_port,
-                             executer_uuid,
-                             reason,
-                             detail=None):
-    stopped_tasks = []
-    if request_handler.is_task_running():
-        logging.info("A task was being executed.")
-        stopped_tasks.append(request_handler.task_id)
+class TerminationHandler:
 
-    redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
-    event_logger = RedisStreamEventLoggerSync(redis_conn)
+    def __init__(
+        self,
+        executer_id,
+        local_mode,
+        redis_hostname,
+        redis_port,
+        request_handler,
+    ):
+        self.executer_id = executer_id
+        self.request_handler = request_handler
 
-    event_logger.log(
-        events.ExecuterTrackerTerminated(
-            uuid=executer_uuid,
-            reason=reason,
-            stopped_tasks=stopped_tasks,
-            detail=detail,
-        ))
+        if local_mode:
+            api_client = executer_tracker.ApiClient.from_env()
+            self.event_logger = executer_tracker.WebApiLogger(
+                api_client=api_client,
+                executer_tracker_id=executer_id,
+            )
+        else:
+            self.event_logger = executer_tracker.RedisEventLogger(
+                connection=redis_utils.create_redis_connection(
+                    redis_hostname, redis_port))
 
-    logging.info("Successfully logged executer tracker termination.")
+    def log_termination(self, reason, detail=None):
+
+        stopped_tasks = []
+        if self.request_handler.is_task_running():
+            logging.info("A task was being executed.")
+            stopped_tasks.append(self.request_handler.task_id)
+
+        self.event_logger.log(
+            events.ExecuterTrackerTerminated(
+                uuid=self.executer_id,
+                reason=reason,
+                stopped_tasks=stopped_tasks,
+                detail=detail,
+            ))
+
+        logging.info("Successfully logged executer tracker termination.")
 
 
-def get_signal_handler(executer_uuid, redis_hostname, redis_port,
-                       request_handler):
+def get_signal_handler(termination_handler):
 
     def handler(signum, _):
         logging.info("Caught signal %s.", signal.Signals(signum).name)
@@ -50,28 +66,35 @@ def get_signal_handler(executer_uuid, redis_hostname, redis_port,
         else:
             reason = ExecuterTerminationReason.INTERRUPTED
 
-        log_executer_termination(request_handler, redis_hostname, redis_port,
-                                 executer_uuid, reason)
+        termination_handler.log_termination(reason)
+
         sys.exit()
 
     return handler
 
 
-def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
-                           redis_stream, redis_consumer_name,
-                           redis_consumer_group, request_handler):
+def setup_cleanup_handlers(termination_handler):
 
-    signal_handler = get_signal_handler(executer_uuid, redis_hostname,
-                                        redis_port, request_handler)
+    signal_handler = get_signal_handler(termination_handler)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    atexit.register(
-        redis_utils.delete_redis_consumer,
-        redis_hostname,
-        redis_port,
-        redis_stream,
-        redis_consumer_group,
-        redis_consumer_name,
-    )
+
+def kill_machine(api_url, machine_group_id, api_key) -> int:
+
+    vm_name = gcloud.get_vm_metadata_value("name")
+    url = f"{api_url}{KILL_MACHINE_ENDPOINT}?vm_group_id=" \
+          f"{machine_group_id}&vm_name={vm_name}"
+
+    r = requests.delete(url=url,
+                        timeout=5,
+                        headers={
+                            "X-API-Key": api_key,
+                            "Content-Type": "application/json"
+                        })
+
+    if r.status_code != 202:
+        logging.error("Failed to kill machine. Status code: %s", r.status_code)
+
+    return r.status_code

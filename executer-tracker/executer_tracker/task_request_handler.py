@@ -15,29 +15,29 @@ import time
 from typing import Dict, Tuple
 from uuid import UUID
 
-import fsspec
-import redis
 from absl import logging
 
+import executer_tracker
 from executer_tracker import (
     api_methods_config,
     apptainer_utils,
     executers,
+    task_message_listener,
     utils,
 )
-from executer_tracker.utils import files, loki, make_task_key
+from executer_tracker.utils import files, loki
 from inductiva_api import events
-from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
 
 TASK_COMMANDS_QUEUE = "commands"
 KILL_MESSAGE = "kill"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
+TASK_DONE_MESSAGE = "done"
 
 
-def redis_command_msg_catcher(
-    redis_conn: redis.Redis,
+def task_message_listener_loop(
+    listener: task_message_listener.BaseTaskMessageListener,
     task_id: str,
     executer: executers.BaseExecuter,
     killed_flag: threading.Event,
@@ -49,28 +49,19 @@ def redis_command_msg_catcher(
     is received, the task is killed.
 
     Args:
-        redis_conn: Redis connection.
         task_id: ID of the running task.
-        task_tracker: TaskTracker instance that wraps the running task.
         killed_flag: Flag to signal that the task was killed.
     """
-    queue = make_task_key(task_id, TASK_COMMANDS_QUEUE)
-
     while True:
-        logging.info("Waiting for messages on queue: %s", queue)
-        element = redis_conn.brpop(queue)
-        logging.info("Received message: %s", element)
 
-        # If no kill message is received and the client is unblocked because
-        # it is no longer required to wait for a message on the queue,
-        # brpop returns None. Handle that case by returning from the function
-        # without doing anything.
-        if element is None:
+        logging.info("Waiting for task related messages ...")
+        message = listener.receive(task_id)
+        logging.info("Received message: %s", message)
+
+        if message == TASK_DONE_MESSAGE:
             return
 
-        content = element[1]
-
-        if content == KILL_MESSAGE:
+        if message == KILL_MESSAGE:
             logging.info("Received kill message. Killing task.")
             executer.terminate()
             logging.info("Task killed.")
@@ -79,11 +70,11 @@ def redis_command_msg_catcher(
             killed_flag.set()
             return
 
-        elif content == ENABLE_LOGGING_STREAM_MESSAGE:
+        elif message == ENABLE_LOGGING_STREAM_MESSAGE:
             executer.loki_logger.enable()
             logging.info("Logging stream enabled.")
 
-        elif content == DISABLE_LOGGING_STREAM_MESSAGE:
+        elif message == DISABLE_LOGGING_STREAM_MESSAGE:
             executer.loki_logger.disable()
             logging.info("Logging stream disabled.")
 
@@ -101,12 +92,9 @@ class TaskRequestHandler:
     the request for consumption.
 
     Attributes:
-        redis: Connection to Redis.
-        docker_client: Docker client.
         artifact_filesystem: Shared location with the Web API.
         executer_uuid: UUID of the executer that handles the requests.
             Used for event logging purposes.
-        event_logger: Object to log events to a Redis stream.
         shared_dir_host: Path to the directory shared with the executer-tracker
             container on the host machine.
         shared_dir_local: Path to the directory shared with the
@@ -119,25 +107,24 @@ class TaskRequestHandler:
 
     def __init__(
         self,
-        redis_connection: redis.Redis,
-        filesystem: fsspec.spec.AbstractFileSystem,
-        artifact_store_root: str,
         executer_uuid: UUID,
         workdir: str,
         mpi_config: executers.MPIConfiguration,
         apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
+        event_logger: executer_tracker.BaseEventLogger,
+        message_listener: task_message_listener.BaseTaskMessageListener,
+        file_manager: executer_tracker.BaseFileManager,
     ):
-        self.redis = redis_connection
-        self.filesystem = filesystem
-        self.artifact_store_root = artifact_store_root
+        self.file_manager = file_manager
         self.executer_uuid = executer_uuid
-        self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
+        self.event_logger = event_logger
         self.task_id = None
         self.workdir = workdir
         self.loki_logger = None
         self.mpi_config = mpi_config
         self.apptainer_images_manager = apptainer_images_manager
         self.task_workdir = None
+        self.message_listener = message_listener
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -191,8 +178,7 @@ class TaskRequestHandler:
         """
         self.task_id = request["id"]
         self.project_id = request["project_id"]
-        self.task_dir_remote = os.path.join(self.artifact_store_root,
-                                            request["task_dir"])
+        self.task_dir_remote = request["task_dir"]
         self.submitted_timestamp = request.get("submitted_timestamp")
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
@@ -258,27 +244,25 @@ class TaskRequestHandler:
 
         os.makedirs(task_workdir)
 
-        input_zip_path_remote = os.path.join(task_dir_remote,
-                                             utils.INPUT_ZIP_FILENAME)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_zip_path = os.path.join(tmp_dir, "file.zip")
 
-        files.download_and_extract_zip_archive(
-            self.filesystem,
-            input_zip_path_remote,
-            task_workdir,
-        )
+            self.file_manager.download_input(
+                self.task_id,
+                task_dir_remote,
+                tmp_zip_path,
+            )
+
+            logging.info("Downloaded zip to: %s", tmp_zip_path)
+
+            files.extract_zip_archive(
+                zip_path=tmp_zip_path,
+                dest_dir=task_workdir,
+            )
+
+            logging.info("Extracted zip to: %s", task_workdir)
 
         return task_workdir
-
-    def _log_stdout(self):
-        stdout_path_local = os.path.join(self.task_workdir, utils.OUTPUT_DIR,
-                                         "artifacts/stdout.txt")
-        stdout_path_remote = os.path.join(self.task_dir_remote,
-                                          "stdout_live.txt")
-        if stdout_path_local is not None and stdout_path_remote is not None:
-            if os.path.exists(stdout_path_local):
-                with self.filesystem.open(stdout_path_remote, "wb") as std_file:
-                    with open(stdout_path_local, "rb") as f_src:
-                        std_file.write(f_src.read())
 
     def _execute_request(
         self,
@@ -297,12 +281,16 @@ class TaskRequestHandler:
             "'_execute_request' called without a task ID.")
 
         executer = self._build_executer(request)
-        redis_client_id = self.redis.client_id()
 
         task_killed_flag = threading.Event()
         thread = threading.Thread(
-            target=redis_command_msg_catcher,
-            args=(self.redis, self.task_id, executer, task_killed_flag),
+            target=task_message_listener_loop,
+            args=(
+                self.message_listener,
+                self.task_id,
+                executer,
+                task_killed_flag,
+            ),
             daemon=True,
         )
 
@@ -310,9 +298,10 @@ class TaskRequestHandler:
         exit_code = executer.run()
 
         logging.info("Executer finished running.")
-        self.redis.client_unblock(redis_client_id)
+        self.message_listener.unblock(self.task_id)
+
         thread.join()
-        logging.info("Message catcher thread stopped.")
+        logging.info("Message listener thread stopped.")
 
         return exit_code, task_killed_flag.is_set()
 
@@ -328,6 +317,8 @@ class TaskRequestHandler:
         Returns:
             Path to the zip file.
         """
+        assert self.task_id is not None
+
         # Compress outputs, storing them in the shared drive
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
@@ -343,8 +334,11 @@ class TaskRequestHandler:
             output_zip_path_remote = os.path.join(self.task_dir_remote,
                                                   utils.OUTPUT_ZIP_FILENAME)
 
-            files.upload_file(self.filesystem, output_zip_path_local,
-                              output_zip_path_remote)
+            self.file_manager.upload_output(
+                self.task_id,
+                self.task_dir_remote,
+                output_zip_path_local,
+            )
 
             logging.info("Uploaded output zip to: %s", output_zip_path_remote)
 
