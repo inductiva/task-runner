@@ -45,7 +45,7 @@ def download_and_extract_zip_archive(filesystem: fsspec.AbstractFileSystem,
 
         with filesystem.open(remote_path, "rb") as f:
             with open(tmp_zip_path, "wb") as local_file:
-                local_file.write(f.read())
+                shutil.copyfileobj(f, local_file)
 
         logging.info("Downloaded zip to: %s", tmp_zip_path)
 
