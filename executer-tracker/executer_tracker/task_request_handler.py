@@ -10,6 +10,7 @@ import os
 import shutil
 import tempfile
 import threading
+import time
 from typing import Dict, Tuple
 from uuid import UUID
 
@@ -28,6 +29,7 @@ TASK_COMMANDS_QUEUE = "commands"
 KILL_MESSAGE = "kill"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
+UPLOAD_OUTPUT_SYNC_TIMEOUT_SECONDS = 10
 
 
 def redis_command_msg_catcher(
@@ -171,8 +173,14 @@ class TaskRequestHandler:
         """
         self.task_id = request["id"]
         self.project_id = request["project_id"]
-        self.task_dir_remote = os.path.join(self.artifact_store_root,
-                                            request["task_dir"])
+        self.task_dir_remote = os.path.join(
+            self.artifact_store_root,
+            request["task_dir"],
+        )
+        self.output_zip_path_remote = os.path.join(
+            self.task_dir_remote,
+            utils.OUTPUT_ZIP_FILENAME,
+        )
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -199,8 +207,10 @@ class TaskRequestHandler:
 
         output_size_b = self._pack_output()
 
+        output_sync = self._wait_for_output_sync()
+
         new_status = task_status.TaskStatusCode.SUCCESS.value
-        if exit_code != 0:
+        if exit_code != 0 or not output_sync:
             new_status = task_status.TaskStatusCode.FAILED.value
         if task_killed:
             new_status = task_status.TaskStatusCode.KILLED.value
@@ -323,15 +333,34 @@ class TaskRequestHandler:
 
             output_archive_size_b = os.path.getsize(output_zip_path_local)
 
-            output_zip_path_remote = os.path.join(self.task_dir_remote,
-                                                  utils.OUTPUT_ZIP_FILENAME)
-
             files.upload_file(self.filesystem, output_zip_path_local,
-                              output_zip_path_remote)
+                              self.output_zip_path_remote)
 
-            logging.info("Uploaded output zip to: %s", output_zip_path_remote)
+            logging.info("Uploaded output zip to: %s",
+                         self.output_zip_path_remote)
 
         return output_archive_size_b
+
+    def _wait_for_output_sync(self):
+        """Wait for the output to be synchronized with the shared drive."""
+        logging.info("Waiting for output to be synchronized...")
+
+        sync = False
+        start = time.time()
+
+        while time.time() - start < UPLOAD_OUTPUT_SYNC_TIMEOUT_SECONDS:
+            if files.file_exists(self.filesystem, self.output_zip_path_remote):
+                logging.info("Output synchronized. File exists: %s",
+                             self.output_zip_path_remote)
+                sync = True
+                break
+            time.sleep(1)
+
+        if not sync:
+            logging.error("Output not synchronized after %s seconds.",
+                          UPLOAD_OUTPUT_SYNC_TIMEOUT_SECONDS)
+
+        return sync
 
     def _cleanup(self):
         """Cleanup after task execution.
