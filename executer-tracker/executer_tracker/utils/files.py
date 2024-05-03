@@ -62,7 +62,3 @@ def upload_file(filesystem: fsspec.AbstractFileSystem, file_path,
     with open(file_path, "rb") as f_src:
         with filesystem.open(file_path_remote, "wb") as f_dest:
             shutil.copyfileobj(f_src, f_dest)
-
-
-def file_exists(filesystem: fsspec.AbstractFileSystem, file_path):
-    return filesystem.exists(file_path)
