@@ -19,6 +19,7 @@ from . import (
     fenicsx,
     gromacs,
     simsopt,
+    amrWind,
     reef3d,
     schism,
     xbeach,

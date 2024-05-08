@@ -18,6 +18,8 @@ api_method_to_script = {
         executers.openfast.OpenFASTExecuter,
     "cans.cans.run_simulation":
         executers.cans.CaNSExecuter,
+    "amrWind.amrWind.run_simulation":
+        executers.amrWind.AmrWindExecuter,
     "md.gromacs.run_simulation":
         executers.gromacs.GROMACS,
     "stellarators.simsopt.run_simulation":
