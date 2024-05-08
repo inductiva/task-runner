@@ -63,7 +63,9 @@ class MPIExecuter(executers.BaseExecuter):
             for file in files
         ])
 
-        cmd = executers.Command(self.sim_binary, is_mpi=True)
+        cmd = executers.Command(self.sim_binary + " " +
+                                self.sim_specific_input_filename,
+                                is_mpi=True)
         self.run_subprocess(cmd, working_dir=sim_dir)
 
         # Searches for all_files recursively

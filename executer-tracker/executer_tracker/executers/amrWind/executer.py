@@ -20,4 +20,3 @@ class AmrWindExecuter(executers.MPIExecuter):
                          sim_binary="amr_wind",
                          file_type="inp",
                          sim_specific_input_filename="input.inp")
-        
