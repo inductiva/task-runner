@@ -1,4 +1,4 @@
-# pylint: disable=missing-module-docstring
+# noqa: D104
 from setuptools import find_namespace_packages, setup
 
 setup(

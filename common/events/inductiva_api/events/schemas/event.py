@@ -1,6 +1,7 @@
 """Event base class."""
-from pydantic import BaseModel, Field
 from datetime import datetime, timezone
+
+from pydantic import BaseModel, Field
 
 
 class Event(BaseModel):

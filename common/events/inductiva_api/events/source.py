@@ -2,9 +2,10 @@
 from typing import Iterator, Optional, Tuple
 
 from absl import logging
+from redis import Redis
+
 from inductiva_api.events import parse
 from inductiva_api.events.schemas import Event
-from redis import Redis
 
 
 class RedisStreamEventSource:
@@ -48,7 +49,7 @@ class RedisStreamEventSource:
         More info here:
          - https://redis.io/docs/data-types/streams-tutorial/#consumer-groups
         """
-        UNDELIVERED_EVENTS_SPECIAL_ID = ">"  # pylint: disable=invalid-name
+        UNDELIVERED_EVENTS_SPECIAL_ID = ">"  # noqa: N806
         checking_backlog = start_id != UNDELIVERED_EVENTS_SPECIAL_ID
         last_id = start_id
 
@@ -69,7 +70,7 @@ class RedisStreamEventSource:
                 )
 
                 if resp:
-                    _stream_name, messages = resp[0]  # pylint: disable=unused-variable
+                    _stream_name, messages = resp[0]  # noqa: F841
 
                     # This means that there are no more unacknowledged events,
                     # so we can start reading new events using the special ">"
@@ -102,7 +103,7 @@ class RedisStreamEventSource:
 
                 if resp:
                     # Get contents from the first (and only) stream read.
-                    _stream_name, messages = resp[0]  # pylint: disable=unused-variable
+                    _stream_name, messages = resp[0]  # noqa: F841
 
                     # Get only message from messages list (there's only one
                     # because we're reading with count=1).

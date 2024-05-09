@@ -1,6 +1,6 @@
 """Logging events to Redis."""
-from redis.asyncio import Redis as AsyncRedis
 from redis import Redis
+from redis.asyncio import Redis as AsyncRedis
 
 from inductiva_api.events import parse
 from inductiva_api.events.schemas import Event

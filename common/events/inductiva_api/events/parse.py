@@ -2,6 +2,7 @@
 
 """
 import importlib
+
 from .schemas import Event
 
 EVENT_TYPE_KEY = "type"

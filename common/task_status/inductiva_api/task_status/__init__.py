@@ -1,6 +1,6 @@
-#pylint: disable=missing-module-docstring
-from .task_status import TaskStatusCode
+# noqa: D104
 from .executer import ExecuterTerminationReason
+from .task_status import TaskStatusCode
 
 ExecuterTerminationReasonToTaskStatus = {
     ExecuterTerminationReason.INTERRUPTED:
