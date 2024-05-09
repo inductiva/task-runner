@@ -3,11 +3,12 @@
 Check the `BaseExecuter` docstring for more information on the class and
 its usage.
 """
-from abc import ABC, abstractmethod
-import os
 import json
-import psutil
+import os
+from abc import ABC, abstractmethod
 from collections import namedtuple
+
+import psutil
 from absl import logging
 
 from executer_tracker import executers
@@ -213,6 +214,7 @@ class BaseExecuter(ABC):
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
             log_message = f"# COMMAND: {cmd.args}"
             self.loki_logger.log_text(log_message, io_type=loki.IOTypes.COMMAND)
+            log_message += "\n"
             stdout.write(log_message)
             stderr.write(log_message)
             stdout.flush()

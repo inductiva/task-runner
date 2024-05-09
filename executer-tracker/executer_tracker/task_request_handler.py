@@ -5,31 +5,32 @@ handles the logic related to setting up the working directory of an executer,
 launching said executer, and providing the outputs to the Web API.
 Note that, currently, request consumption is blocking.
 """
-import fsspec
-import os
 import copy
+import os
 import shutil
 import tempfile
 import threading
 from typing import Dict, Tuple
-import redis
 from uuid import UUID
 
+import fsspec
+import redis
 import utils
 from absl import logging
+
+from executer_tracker import api_methods_config, apptainer_utils, executers
+from executer_tracker.utils import files, loki, make_task_key
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
-from utils import make_task_key
-from utils import files, config, loki
-from executer_tracker import executers
-
-import api_methods_config
 
 TASK_COMMANDS_QUEUE = "commands"
+KILL_MESSAGE = "kill"
+ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
+DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 
 
-def redis_kill_msg_catcher(
+def redis_command_msg_catcher(
     redis_conn: redis.Redis,
     task_id: str,
     executer: executers.BaseExecuter,
@@ -50,7 +51,7 @@ def redis_kill_msg_catcher(
     queue = make_task_key(task_id, TASK_COMMANDS_QUEUE)
 
     while True:
-        logging.info("Waiting for kill message on queue: %s", queue)
+        logging.info("Waiting for messages on queue: %s", queue)
         element = redis_conn.brpop(queue)
         logging.info("Received message: %s", element)
 
@@ -62,7 +63,8 @@ def redis_kill_msg_catcher(
             return
 
         content = element[1]
-        if content == "kill":
+
+        if content == KILL_MESSAGE:
             logging.info("Received kill message. Killing task.")
             executer.terminate()
             logging.info("Task killed.")
@@ -70,6 +72,14 @@ def redis_kill_msg_catcher(
             # set flag so that the main thread knows the task was killed
             killed_flag.set()
             return
+
+        elif content == ENABLE_LOGGING_STREAM_MESSAGE:
+            executer.loki_logger.enable()
+            logging.info("Logging stream enabled.")
+
+        elif content == DISABLE_LOGGING_STREAM_MESSAGE:
+            executer.loki_logger.disable()
+            logging.info("Logging stream disabled.")
 
 
 class TaskRequestHandler:
@@ -87,8 +97,6 @@ class TaskRequestHandler:
     Attributes:
         redis: Connection to Redis.
         docker_client: Docker client.
-        docker_images: Mapping from executer_type to Docker image to use
-            for executing the task.
         artifact_filesystem: Shared location with the Web API.
         executer_uuid: UUID of the executer that handles the requests.
             Used for event logging purposes.
@@ -99,28 +107,30 @@ class TaskRequestHandler:
             executer-tracker container inside the container.
         task_id: ID of the task that is currently being executed. If
             no task is being executed, this attribute is None.
+        apptainer_images_manager: ApptainerImagesManager instance. Used
+            to download and cache Apptainer images locally.
     """
 
     def __init__(
         self,
         redis_connection: redis.Redis,
-        executers_config: Dict[str, config.ExecuterConfig],
         filesystem: fsspec.spec.AbstractFileSystem,
         artifact_store_root: str,
         executer_uuid: UUID,
         workdir: str,
         mpi_config: executers.MPIConfiguration,
+        apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
     ):
         self.redis = redis_connection
         self.filesystem = filesystem
         self.artifact_store_root = artifact_store_root
         self.executer_uuid = executer_uuid
         self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
-        self.executers_config = executers_config
         self.task_id = None
         self.workdir = workdir
         self.loki_logger = None
         self.mpi_config = mpi_config
+        self.apptainer_images_manager = apptainer_images_manager
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -163,8 +173,6 @@ class TaskRequestHandler:
         self.project_id = request["project_id"]
         self.task_dir_remote = os.path.join(self.artifact_store_root,
                                             request["task_dir"])
-        self.current_task_executer_config = self.executers_config[
-            request["executer_type"]]
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -270,7 +278,7 @@ class TaskRequestHandler:
 
         task_killed_flag = threading.Event()
         thread = threading.Thread(
-            target=redis_kill_msg_catcher,
+            target=redis_command_msg_catcher,
             args=(self.redis, self.task_id, executer, task_killed_flag),
             daemon=True,
         )
@@ -279,7 +287,7 @@ class TaskRequestHandler:
         exit_code = 0
         try:
             executer.run()
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             logging.error("Exception while running executer: %s", str(e))
             exit_code = 1
 
@@ -349,13 +357,19 @@ class TaskRequestHandler:
             Python command to execute received request.
         """
         method = request["method"]
+        container_image = request["container_image"]
+
         executer_class = api_methods_config.api_method_to_script[method]
 
-        container_image = self.current_task_executer_config.image
+        try:
+            apptainer_image_path = self.apptainer_images_manager.get(
+                container_image)
+        except apptainer_utils.ApptainerImageNotFoundError as e:
+            raise ValueError(f"Image not available: {container_image}") from e
 
         return executer_class(
             self.task_workdir,
-            container_image,
+            apptainer_image_path,
             copy.deepcopy(self.mpi_config),
             self.loki_logger,
         )

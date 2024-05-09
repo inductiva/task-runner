@@ -1,8 +1,9 @@
 """Test the subprocess tracker."""
-import pytest
-import time
 import threading
+import time
 from unittest import mock
+
+import pytest
 from executer_tracker import executers
 
 

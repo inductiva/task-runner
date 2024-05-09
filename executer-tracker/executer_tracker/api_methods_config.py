@@ -14,6 +14,12 @@ api_method_to_script = {
         executers.openfoam.OpenFOAMExecuter,
     "fvm.openfoam_esi.run_simulation":
         executers.openfoam.OpenFOAMExecuter,
+    "openfast.openfast.run_simulation":
+        executers.openfast.OpenFASTExecuter,
+    "cans.cans.run_simulation":
+        executers.cans.CaNSExecuter,
+    "amrWind.amrWind.run_simulation":
+        executers.amrWind.AmrWindExecuter,
     "md.gromacs.run_simulation":
         executers.gromacs.GROMACS,
     "stellarators.simsopt.run_simulation":
@@ -32,4 +38,6 @@ api_method_to_script = {
         executers.dummy.MPIHelloWorldExecuter,
     "schism.schism.run_simulation":
         executers.schism.SCHISMExecuter,
+    "arbitrary.arbitrary.run_simulation":
+        executers.arbitrary_commands_executer.ArbitraryCommandsExecuter,
 }

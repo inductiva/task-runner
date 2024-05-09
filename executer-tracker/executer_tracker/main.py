@@ -52,17 +52,17 @@ currently active executer trackers.
 Usage (note the required environment variables):
   python executer_tracker.py
 """
-import fsspec
 import os
 import sys
+
+import fsspec
 from absl import app, logging
 
-from inductiva_api.task_status import ExecuterTerminationReason
-
-from executer_tracker import executers, redis_utils, cleanup
-from executer_tracker.utils import config
-from executer_tracker.task_request_handler import TaskRequestHandler
+from executer_tracker import apptainer_utils, cleanup, executers, redis_utils
 from executer_tracker.register_executer import register_executer
+from executer_tracker.task_request_handler import TaskRequestHandler
+from executer_tracker.utils import config
+from inductiva_api.task_status import ExecuterTerminationReason
 
 
 def main(_):
@@ -75,6 +75,12 @@ def main(_):
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
     if not executer_images_dir:
         logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
+        sys.exit(1)
+
+    executer_images_remote_storage = os.getenv("EXECUTER_IMAGES_REMOTE_STORAGE")
+    if not executer_images_remote_storage:
+        logging.error(
+            "EXECUTER_IMAGES_REMOTE_STORAGE environment variable not set.")
         sys.exit(1)
 
     mpi_cluster_str = os.getenv("MPI_CLUSTER", "false")
@@ -141,33 +147,40 @@ def main(_):
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
 
-    executers_config = config.load_executers_config(executer_images_dir)
-
     executer_access_info = register_executer(
         api_url,
-        list(executers_config.keys()),
         machine_group_id=machine_group_id,
         mpi_cluster=mpi_cluster,
         num_mpi_hosts=num_mpi_hosts,
     )
     executer_uuid = executer_access_info.id
 
-    redis_streams = executer_access_info.redis_streams
+    redis_stream = executer_access_info.redis_stream
     redis_consumer_name = executer_access_info.redis_consumer_name
     redis_consumer_group = executer_access_info.redis_consumer_group
 
+    images_remote_storage_spec, images_remote_storage_dir = (
+        executer_images_remote_storage.split("://"))
+    images_remote_storage_fs = fsspec.filesystem(images_remote_storage_spec)
+
+    apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
+        local_cache_dir=executer_images_dir,
+        remote_storage_filesystem=images_remote_storage_fs,
+        remote_storage_dir=images_remote_storage_dir,
+    )
+
     request_handler = TaskRequestHandler(
         redis_connection=redis_conn,
-        executers_config=executers_config,
         filesystem=filesystem,
         artifact_store_root=artifact_store_root,
         executer_uuid=executer_uuid,
         workdir=workdir,
         mpi_config=mpi_config,
+        apptainer_images_manager=apptainer_images_manager,
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
-                                   redis_streams, redis_consumer_name,
+                                   redis_stream, redis_consumer_name,
                                    redis_consumer_group, request_handler)
 
     monitoring_flag = True
@@ -175,7 +188,7 @@ def main(_):
         try:
             redis_utils.monitor_redis_stream(
                 redis_connection=redis_conn,
-                stream_names=redis_streams,
+                stream_name=redis_stream,
                 consumer_group=redis_consumer_group,
                 consumer_name=redis_consumer_name,
                 request_handler=request_handler,
@@ -199,7 +212,7 @@ def main(_):
                                                  redis_hostname, redis_port,
                                                  executer_uuid, reason)
                 monitoring_flag = False
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:  # noqa: BLE001
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating executer tracker...")
             reason = ExecuterTerminationReason.ERROR

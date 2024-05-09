@@ -1,10 +1,10 @@
 """Utils to create the holes."""
 
+import math
 from abc import ABC, abstractmethod
 from typing import Tuple
 
 import gmsh
-import math
 
 
 class Hole(ABC):

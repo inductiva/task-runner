@@ -1,12 +1,12 @@
 """Module that defines the SubprocessTracker class."""
-from typing import IO, List
 import os
 import signal
 import subprocess
-import psutil
 import threading
 import time
+from typing import IO, List
 
+import psutil
 from absl import logging
 
 from executer_tracker.utils import loki
@@ -100,7 +100,7 @@ class SubprocessTracker:
 
             # pylint: enable=consider-using-with
 
-        except Exception as exception:  # pylint: disable=broad-except
+        except Exception as exception:  # noqa: BLE001
             logging.warning("Caught exception \"%s\". Exiting gracefully",
                             exception)
             self.exit_gracefully()
@@ -135,7 +135,7 @@ class SubprocessTracker:
 
                 time.sleep(period_secs)
 
-        except Exception as exception:  # pylint: disable=broad-except
+        except Exception as exception:  # noqa: BLE001
             logging.warning("Caught exception \"%s\". Exiting gracefully",
                             exception)
             self.exit_gracefully()

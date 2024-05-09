@@ -1,5 +1,5 @@
-# pylint: disable=missing-module-docstring
-from setuptools import setup, find_packages
+# noqa: D104
+from setuptools import find_packages, setup
 
 setup(
     name="inductiva-api-executer-tracker",

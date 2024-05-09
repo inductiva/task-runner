@@ -2,14 +2,15 @@
 import atexit
 import signal
 import sys
-from absl import logging
-import requests
 
 import redis_utils
+import requests
+from absl import logging
+from utils import gcloud
+
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import ExecuterTerminationReason
-from utils import gcloud
 
 KILL_MACHINE_ENDPOINT = "/compute/group/machine"
 
@@ -58,7 +59,7 @@ def get_signal_handler(executer_uuid, redis_hostname, redis_port,
 
 
 def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
-                           redis_streams, redis_consumer_name,
+                           redis_stream, redis_consumer_name,
                            redis_consumer_group, request_handler):
 
     signal_handler = get_signal_handler(executer_uuid, redis_hostname,
@@ -68,10 +69,10 @@ def setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
     signal.signal(signal.SIGTERM, signal_handler)
 
     atexit.register(
-        redis_utils.delete_redis_consumer_multiple_streams,
+        redis_utils.delete_redis_consumer,
         redis_hostname,
         redis_port,
-        redis_streams,
+        redis_stream,
         redis_consumer_group,
         redis_consumer_name,
     )
