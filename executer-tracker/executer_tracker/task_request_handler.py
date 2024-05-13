@@ -131,6 +131,7 @@ class TaskRequestHandler:
         self.loki_logger = None
         self.mpi_config = mpi_config
         self.apptainer_images_manager = apptainer_images_manager
+        self.task_workdir = None
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -157,6 +158,25 @@ class TaskRequestHandler:
                 machine_id=self.executer_uuid,
             ))
 
+    def _log_error(self, exception, detail_prefix):
+        assert self.task_id is not None
+
+        msg = None
+        if isinstance(exception, OSError) and exception.errno == 28:
+            msg = "not enough disk space."
+
+        if msg is not None:
+            detail = f"{detail_prefix}: {msg}"
+        else:
+            detail = f"{detail_prefix}."
+
+        self.event_logger.log(
+            events.TaskError(
+                id=self.task_id,
+                detail=detail,
+                machine_id=self.executer_uuid,
+            ))
+
     def __call__(self, request: Dict[str, str]) -> None:
         """Execute the task described by the request.
 
@@ -180,41 +200,42 @@ class TaskRequestHandler:
 
         self._log_task_picked_up()
 
-        self.task_workdir = self._setup_working_dir(self.task_dir_remote)
+        try:
+            self.task_workdir = self._setup_working_dir(self.task_dir_remote)
 
-        self.event_logger.log(
-            events.TaskWorkStarted(
+            self.event_logger.log(
+                events.TaskWorkStarted(
+                    id=self.task_id,
+                    machine_id=self.executer_uuid,
+                ))
+            exit_code, task_killed = self._execute_request(request,)
+            logging.info("Task killed: %s", str(task_killed))
+
+            event = events.TaskWorkFinished(
                 id=self.task_id,
                 machine_id=self.executer_uuid,
-            ))
-        exit_code, task_killed = self._execute_request(request,)
-        logging.info("Task killed: %s", str(task_killed))
+            )
 
-        event = events.TaskWorkFinished(
-            id=self.task_id,
-            machine_id=self.executer_uuid,
-        )
+            self.event_logger.log(event)
 
-        self.event_logger.log(event)
+            output_size_b = self._pack_output()
 
-        output_size_b = self._pack_output()
+            new_status = task_status.TaskStatusCode.SUCCESS.value
+            if exit_code != 0:
+                new_status = task_status.TaskStatusCode.FAILED.value
+            if task_killed:
+                new_status = task_status.TaskStatusCode.KILLED.value
 
-        new_status = task_status.TaskStatusCode.SUCCESS.value
-        if exit_code != 0:
-            new_status = task_status.TaskStatusCode.FAILED.value
-        if task_killed:
-            new_status = task_status.TaskStatusCode.KILLED.value
-
-        self.event_logger.log(
-            events.TaskOutputUploaded(
-                id=self.task_id,
-                machine_id=self.executer_uuid,
-                output_size_b=output_size_b,
-                new_status=new_status,
-            ))
-
-        self._cleanup()
-        self.task_id = None
+            self.event_logger.log(
+                events.TaskOutputUploaded(
+                    id=self.task_id,
+                    machine_id=self.executer_uuid,
+                    output_size_b=output_size_b,
+                    new_status=new_status,
+                ))
+        finally:
+            self._cleanup()
+            self.task_id = None
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
@@ -226,23 +247,29 @@ class TaskRequestHandler:
         assert self.task_id is not None, (
             "'_setup_working_dir' called without a task ID.")
 
-        task_workdir = os.path.join(self.workdir, self.task_id)
+        try:
+            task_workdir = os.path.join(self.workdir, self.task_id)
 
-        if os.path.exists(task_workdir):
-            logging.info("Working directory already existed: %s", task_workdir)
-            logging.info("Removing directory: %s", task_workdir)
-            shutil.rmtree(task_workdir)
+            if os.path.exists(task_workdir):
+                logging.info("Working directory already existed: %s",
+                             task_workdir)
+                logging.info("Removing directory: %s", task_workdir)
+                shutil.rmtree(task_workdir)
 
-        os.makedirs(task_workdir)
+            os.makedirs(task_workdir)
 
-        input_zip_path_remote = os.path.join(task_dir_remote,
-                                             utils.INPUT_ZIP_FILENAME)
+            input_zip_path_remote = os.path.join(task_dir_remote,
+                                                 utils.INPUT_ZIP_FILENAME)
 
-        files.download_and_extract_zip_archive(
-            self.filesystem,
-            input_zip_path_remote,
-            task_workdir,
-        )
+            files.download_and_extract_zip_archive(
+                self.filesystem,
+                input_zip_path_remote,
+                task_workdir,
+            )
+        except Exception as e:
+            self._log_error(
+                e, "An error occured while setting up the working directory")
+            raise e
 
         return task_workdir
 
@@ -284,14 +311,13 @@ class TaskRequestHandler:
         )
 
         thread.start()
-        exit_code = 0
         try:
-            executer.run()
+            exit_code = executer.run()
         except Exception as e:  # noqa: BLE001
-            logging.error("Exception while running executer: %s", str(e))
-            exit_code = 1
+            self._log_error(e, "An error occured while running the task")
+            raise e
 
-        logging.info("Tracker finished with exit code: %s", str(exit_code))
+        logging.info("Executer finished running.")
         self.redis.client_unblock(redis_client_id)
         thread.join()
         logging.info("Message catcher thread stopped.")
@@ -310,26 +336,33 @@ class TaskRequestHandler:
         Returns:
             Path to the zip file.
         """
-        # Compress outputs, storing them in the shared drive
-        output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
-        if not os.path.exists(output_dir):
-            return 0
+        try:
+            # Compress outputs, storing them in the shared drive
+            output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
+            if not os.path.exists(output_dir):
+                return 0
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            output_zip_path_local = os.path.join(tmp_dir,
-                                                 utils.OUTPUT_ZIP_FILENAME)
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                output_zip_path_local = os.path.join(tmp_dir,
+                                                     utils.OUTPUT_ZIP_FILENAME)
 
-            files.make_zip_archive(output_zip_path_local, output_dir)
+                files.make_zip_archive(output_zip_path_local, output_dir)
 
-            output_archive_size_b = os.path.getsize(output_zip_path_local)
+                output_archive_size_b = os.path.getsize(output_zip_path_local)
 
-            output_zip_path_remote = os.path.join(self.task_dir_remote,
-                                                  utils.OUTPUT_ZIP_FILENAME)
+                output_zip_path_remote = os.path.join(self.task_dir_remote,
+                                                      utils.OUTPUT_ZIP_FILENAME)
 
-            files.upload_file(self.filesystem, output_zip_path_local,
-                              output_zip_path_remote)
+                files.upload_file(self.filesystem, output_zip_path_local,
+                                  output_zip_path_remote)
 
-            logging.info("Uploaded output zip to: %s", output_zip_path_remote)
+                logging.info("Uploaded output zip to: %s",
+                             output_zip_path_remote)
+
+        except Exception as e:
+            self._log_error(
+                e, "An error occured while archiving and uploading the output")
+            raise e
 
         return output_archive_size_b
 
@@ -342,8 +375,10 @@ class TaskRequestHandler:
             working_dir_local: Working directory of the executer that performed
                 the task.
         """
-        logging.info("Cleaning up working directory: %s", self.task_workdir)
-        shutil.rmtree(self.task_workdir)
+        if self.task_workdir is not None:
+            logging.info("Cleaning up working directory: %s", self.task_workdir)
+            shutil.rmtree(self.task_workdir, ignore_errors=True)
+        self.task_workdir = None
 
     def _build_executer(self, request) -> executers.BaseExecuter:
         """Build Python command to run a requested task.
