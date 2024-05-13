@@ -40,7 +40,12 @@ class TaskWorkFinished(TaskEvent):
 class TaskOutputUploaded(TaskEvent):
     new_status: str
     machine_id: uuid.UUID
-    output_size_b: int
+    output_size_b: int = 0
+
+
+class TaskError(TaskEvent):
+    detail: str
+    machine_id: uuid.UUID
 
 
 class TaskKillRequested(TaskEvent):
