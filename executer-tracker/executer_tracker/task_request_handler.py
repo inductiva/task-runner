@@ -158,25 +158,6 @@ class TaskRequestHandler:
                 machine_id=self.executer_uuid,
             ))
 
-    def _log_error(self, exception, detail_prefix):
-        assert self.task_id is not None
-
-        msg = None
-        if isinstance(exception, OSError) and exception.errno == 28:
-            msg = "not enough disk space."
-
-        if msg is not None:
-            detail = f"{detail_prefix}: {msg}"
-        else:
-            detail = f"{detail_prefix}."
-
-        self.event_logger.log(
-            events.TaskError(
-                id=self.task_id,
-                detail=detail,
-                machine_id=self.executer_uuid,
-            ))
-
     def __call__(self, request: Dict[str, str]) -> None:
         """Execute the task described by the request.
 
@@ -235,7 +216,6 @@ class TaskRequestHandler:
                 ))
         finally:
             self._cleanup()
-            self.task_id = None
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
@@ -247,29 +227,23 @@ class TaskRequestHandler:
         assert self.task_id is not None, (
             "'_setup_working_dir' called without a task ID.")
 
-        try:
-            task_workdir = os.path.join(self.workdir, self.task_id)
+        task_workdir = os.path.join(self.workdir, self.task_id)
 
-            if os.path.exists(task_workdir):
-                logging.info("Working directory already existed: %s",
-                             task_workdir)
-                logging.info("Removing directory: %s", task_workdir)
-                shutil.rmtree(task_workdir)
+        if os.path.exists(task_workdir):
+            logging.info("Working directory already existed: %s", task_workdir)
+            logging.info("Removing directory: %s", task_workdir)
+            shutil.rmtree(task_workdir)
 
-            os.makedirs(task_workdir)
+        os.makedirs(task_workdir)
 
-            input_zip_path_remote = os.path.join(task_dir_remote,
-                                                 utils.INPUT_ZIP_FILENAME)
+        input_zip_path_remote = os.path.join(task_dir_remote,
+                                             utils.INPUT_ZIP_FILENAME)
 
-            files.download_and_extract_zip_archive(
-                self.filesystem,
-                input_zip_path_remote,
-                task_workdir,
-            )
-        except Exception as e:
-            self._log_error(
-                e, "An error occured while setting up the working directory")
-            raise e
+        files.download_and_extract_zip_archive(
+            self.filesystem,
+            input_zip_path_remote,
+            task_workdir,
+        )
 
         return task_workdir
 
@@ -336,33 +310,26 @@ class TaskRequestHandler:
         Returns:
             Path to the zip file.
         """
-        try:
-            # Compress outputs, storing them in the shared drive
-            output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
-            if not os.path.exists(output_dir):
-                return 0
+        # Compress outputs, storing them in the shared drive
+        output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
+        if not os.path.exists(output_dir):
+            return 0
 
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                output_zip_path_local = os.path.join(tmp_dir,
-                                                     utils.OUTPUT_ZIP_FILENAME)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            output_zip_path_local = os.path.join(tmp_dir,
+                                                 utils.OUTPUT_ZIP_FILENAME)
 
-                files.make_zip_archive(output_zip_path_local, output_dir)
+            files.make_zip_archive(output_zip_path_local, output_dir)
 
-                output_archive_size_b = os.path.getsize(output_zip_path_local)
+            output_archive_size_b = os.path.getsize(output_zip_path_local)
 
-                output_zip_path_remote = os.path.join(self.task_dir_remote,
-                                                      utils.OUTPUT_ZIP_FILENAME)
+            output_zip_path_remote = os.path.join(self.task_dir_remote,
+                                                  utils.OUTPUT_ZIP_FILENAME)
 
-                files.upload_file(self.filesystem, output_zip_path_local,
-                                  output_zip_path_remote)
+            files.upload_file(self.filesystem, output_zip_path_local,
+                              output_zip_path_remote)
 
-                logging.info("Uploaded output zip to: %s",
-                             output_zip_path_remote)
-
-        except Exception as e:
-            self._log_error(
-                e, "An error occured while archiving and uploading the output")
-            raise e
+            logging.info("Uploaded output zip to: %s", output_zip_path_remote)
 
         return output_archive_size_b
 
