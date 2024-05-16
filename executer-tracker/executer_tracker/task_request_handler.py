@@ -30,6 +30,10 @@ ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 
 
+class ExecuterTrackerError(Exception):
+    """Base class for exceptions raised by the ExecuterTracker."""
+
+
 def redis_command_msg_catcher(
     redis_conn: redis.Redis,
     task_id: str,
@@ -131,6 +135,7 @@ class TaskRequestHandler:
         self.loki_logger = None
         self.mpi_config = mpi_config
         self.apptainer_images_manager = apptainer_images_manager
+        self.task_workdir = None
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -180,41 +185,49 @@ class TaskRequestHandler:
 
         self._log_task_picked_up()
 
-        self.task_workdir = self._setup_working_dir(self.task_dir_remote)
+        try:
+            self.task_workdir = self._setup_working_dir(self.task_dir_remote)
 
-        self.event_logger.log(
-            events.TaskWorkStarted(
+            self.event_logger.log(
+                events.TaskWorkStarted(
+                    id=self.task_id,
+                    machine_id=self.executer_uuid,
+                ))
+            exit_code, task_killed = self._execute_request(request,)
+            logging.info("Task killed: %s", str(task_killed))
+
+            event = events.TaskWorkFinished(
                 id=self.task_id,
                 machine_id=self.executer_uuid,
-            ))
-        exit_code, task_killed = self._execute_request(request,)
-        logging.info("Task killed: %s", str(task_killed))
+            )
 
-        event = events.TaskWorkFinished(
-            id=self.task_id,
-            machine_id=self.executer_uuid,
-        )
+            self.event_logger.log(event)
 
-        self.event_logger.log(event)
+            output_size_b = self._pack_output()
 
-        output_size_b = self._pack_output()
+            new_status = task_status.TaskStatusCode.SUCCESS.value
+            if exit_code != 0:
+                new_status = task_status.TaskStatusCode.FAILED.value
+            if task_killed:
+                new_status = task_status.TaskStatusCode.KILLED.value
 
-        new_status = task_status.TaskStatusCode.SUCCESS.value
-        if exit_code != 0:
-            new_status = task_status.TaskStatusCode.FAILED.value
-        if task_killed:
-            new_status = task_status.TaskStatusCode.KILLED.value
+            self.event_logger.log(
+                events.TaskOutputUploaded(
+                    id=self.task_id,
+                    machine_id=self.executer_uuid,
+                    output_size_b=output_size_b,
+                    new_status=new_status,
+                ))
+        finally:
+            self._cleanup()
 
-        self.event_logger.log(
-            events.TaskOutputUploaded(
-                id=self.task_id,
-                machine_id=self.executer_uuid,
-                output_size_b=output_size_b,
-                new_status=new_status,
-            ))
-
-        self._cleanup()
         self.task_id = None
+
+    def _handle_exception(self, e, message):
+        if isinstance(e, OSError) and e.errno == 28:
+            raise ExecuterTrackerError(f"{message}: not enough disk space.")
+
+        raise e
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
@@ -235,14 +248,20 @@ class TaskRequestHandler:
 
         os.makedirs(task_workdir)
 
-        input_zip_path_remote = os.path.join(task_dir_remote,
-                                             utils.INPUT_ZIP_FILENAME)
+        try:
+            input_zip_path_remote = os.path.join(task_dir_remote,
+                                                 utils.INPUT_ZIP_FILENAME)
 
-        files.download_and_extract_zip_archive(
-            self.filesystem,
-            input_zip_path_remote,
-            task_workdir,
-        )
+            files.download_and_extract_zip_archive(
+                self.filesystem,
+                input_zip_path_remote,
+                task_workdir,
+            )
+        except Exception as e:  # noqa: BLE001
+            self._handle_exception(
+                e,
+                "Error while setting up working directory",
+            )
 
         return task_workdir
 
@@ -284,14 +303,9 @@ class TaskRequestHandler:
         )
 
         thread.start()
-        exit_code = 0
-        try:
-            executer.run()
-        except Exception as e:  # noqa: BLE001
-            logging.error("Exception while running executer: %s", str(e))
-            exit_code = 1
+        exit_code = executer.run()
 
-        logging.info("Tracker finished with exit code: %s", str(exit_code))
+        logging.info("Executer finished running.")
         self.redis.client_unblock(redis_client_id)
         thread.join()
         logging.info("Message catcher thread stopped.")
@@ -316,18 +330,30 @@ class TaskRequestHandler:
             return 0
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            output_zip_path_local = os.path.join(tmp_dir,
-                                                 utils.OUTPUT_ZIP_FILENAME)
+            try:
+                output_zip_path_local = os.path.join(tmp_dir,
+                                                     utils.OUTPUT_ZIP_FILENAME)
+                files.make_zip_archive(output_zip_path_local, output_dir)
 
-            files.make_zip_archive(output_zip_path_local, output_dir)
-
-            output_archive_size_b = os.path.getsize(output_zip_path_local)
+                output_archive_size_b = os.path.getsize(output_zip_path_local)
+            except Exception as e:  # noqa: BLE001
+                self._handle_exception(
+                    e,
+                    "Error while zipping output",
+                )
 
             output_zip_path_remote = os.path.join(self.task_dir_remote,
                                                   utils.OUTPUT_ZIP_FILENAME)
 
-            files.upload_file(self.filesystem, output_zip_path_local,
-                              output_zip_path_remote)
+            try:
+
+                files.upload_file(self.filesystem, output_zip_path_local,
+                                  output_zip_path_remote)
+            except Exception as e:  # noqa: BLE001
+                self._handle_exception(
+                    e,
+                    "Error while uploading output",
+                )
 
             logging.info("Uploaded output zip to: %s", output_zip_path_remote)
 
@@ -342,8 +368,10 @@ class TaskRequestHandler:
             working_dir_local: Working directory of the executer that performed
                 the task.
         """
-        logging.info("Cleaning up working directory: %s", self.task_workdir)
-        shutil.rmtree(self.task_workdir)
+        if self.task_workdir is not None:
+            logging.info("Cleaning up working directory: %s", self.task_workdir)
+            shutil.rmtree(self.task_workdir, ignore_errors=True)
+        self.task_workdir = None
 
     def _build_executer(self, request) -> executers.BaseExecuter:
         """Build Python command to run a requested task.
@@ -365,7 +393,9 @@ class TaskRequestHandler:
             apptainer_image_path = self.apptainer_images_manager.get(
                 container_image)
         except apptainer_utils.ApptainerImageNotFoundError as e:
-            raise ValueError(f"Image not available: {container_image}") from e
+            raise ExecuterTrackerError(
+                f"Error while pulling container image: {container_image}"
+            ) from e
 
         return executer_class(
             self.task_workdir,

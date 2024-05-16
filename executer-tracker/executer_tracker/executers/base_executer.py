@@ -16,6 +16,21 @@ from executer_tracker.executers import command, mpi_configuration
 from executer_tracker.utils import loki
 
 
+class ExecuterKilledError(Exception):
+    """Exception raised when the executer is killed."""
+
+    def __init__(self) -> None:
+        super().__init__("Executer was killed")
+
+
+class ExecuterSubProcessError(Exception):
+    """Exception raised when a subprocess ends with non-zero exit code."""
+
+    def __init__(self, exit_code) -> None:
+        super().__init__(f"Subprocess ended with exit code: {exit_code}")
+        self.exit_code = exit_code
+
+
 class BaseExecuter(ABC):
     """Base class to implement concrete executers.
 
@@ -198,11 +213,11 @@ class BaseExecuter(ABC):
                 to run as a subprocess and user prompts if applicable.
             working_dir: Path to the working directory of the subprocess.
         """
+        if self.terminated:
+            raise ExecuterKilledError()
+
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
-
-        if self.terminated:
-            raise RuntimeError("Executer terminated. Not running subprocess.")
 
         with open(stdin_path, "w", encoding="UTF-8") as f:
             f.write(stdin_contents)
@@ -262,22 +277,31 @@ class BaseExecuter(ABC):
             self.subprocess.run()
             exit_code = self.subprocess.wait()
             if exit_code != 0:
-                raise RuntimeError(
-                    f"Command failed with exit code: {exit_code}")
+                raise ExecuterSubProcessError(exit_code)
 
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")
 
     def run(self):
         """Method used to run the executer."""
+        exit_code = 0
+
         try:
             self.load_input_configuration()
             self.pre_process()
             self.execute()
             self.post_process()
             self.pack_output()
+        except ExecuterSubProcessError as e:
+            exit_code = e.exit_code
+        except ExecuterKilledError:
+            # The executer was killed, so we don't need to do anything;
+            # the exception was raised to stop the execution.
+            pass
         finally:
             self.close_streams()
+
+        return exit_code
 
     def terminate(self):
         self.terminated = True
