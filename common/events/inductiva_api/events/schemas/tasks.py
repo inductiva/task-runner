@@ -20,7 +20,7 @@ class TaskCreated(TaskEvent):
 
 
 class TaskInputUploaded(TaskEvent):
-    input_size_b: int
+    input_size_b: int = 0
 
 
 class TaskPickedUp(TaskEvent):
