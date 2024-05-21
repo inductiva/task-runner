@@ -6,19 +6,25 @@ launching said executer, and providing the outputs to the Web API.
 Note that, currently, request consumption is blocking.
 """
 import copy
+import datetime
 import os
 import shutil
 import tempfile
 import threading
+import time
 from typing import Dict, Tuple
 from uuid import UUID
 
 import fsspec
 import redis
-import utils
 from absl import logging
 
-from executer_tracker import api_methods_config, apptainer_utils, executers
+from executer_tracker import (
+    api_methods_config,
+    apptainer_utils,
+    executers,
+    utils,
+)
 from executer_tracker.utils import files, loki, make_task_key
 from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
@@ -148,8 +154,21 @@ class TaskRequestHandler:
     def _log_task_picked_up(self):
         """Log that a task was picked up by the executer."""
         assert self.task_id is not None
+        picked_up_timestamp = datetime.datetime.now(datetime.timezone.utc)
+
+        if self.submitted_timestamp is not None:
+            submitted_timestamp = datetime.datetime.fromisoformat(
+                self.submitted_timestamp)
+            logging.info("Task submitted at: %s", self.submitted_timestamp)
+            while picked_up_timestamp <= submitted_timestamp:
+                time.sleep(0.01)
+                picked_up_timestamp = datetime.datetime.now(
+                    datetime.timezone.utc)
+        logging.info("Task picked up at: %s", picked_up_timestamp)
+
         self.event_logger.log(
             events.TaskPickedUp(
+                timestamp=picked_up_timestamp,
                 id=self.task_id,
                 machine_id=self.executer_uuid,
             ))
@@ -178,6 +197,7 @@ class TaskRequestHandler:
         self.project_id = request["project_id"]
         self.task_dir_remote = os.path.join(self.artifact_store_root,
                                             request["task_dir"])
+        self.submitted_timestamp = request.get("submitted_timestamp")
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
