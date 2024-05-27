@@ -31,11 +31,10 @@ def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
                        stderr) used by the logger for categorizing messages.
     """
     for line in stream:
-        log_message = line.decode("utf-8").strip()
+        log_message = line.decode("utf-8")
         loki_logger.log_text(log_message, io_type=io_type)
         output.write(log_message)
         output.flush()
-        output.write("\n")
     loki_logger.flush(io_type)
 
 
