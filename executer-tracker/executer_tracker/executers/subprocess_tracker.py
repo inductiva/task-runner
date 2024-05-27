@@ -35,7 +35,6 @@ def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
         loki_logger.log_text(log_message, io_type=io_type)
         output.write(log_message)
         output.flush()
-        output.write("\n")
     loki_logger.flush(io_type)
 
 
