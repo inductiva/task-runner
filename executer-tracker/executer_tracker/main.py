@@ -58,6 +58,7 @@ import sys
 import fsspec
 from absl import app, logging
 
+import executer_tracker
 from executer_tracker import apptainer_utils, cleanup, executers, redis_utils
 from executer_tracker.register_executer import register_executer
 from executer_tracker.task_request_handler import TaskRequestHandler
@@ -147,8 +148,10 @@ def main(_):
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
 
+    api_client = executer_tracker.ApiClient.from_env()
+
     executer_access_info = register_executer(
-        api_url,
+        api_client,
         machine_group_id=machine_group_id,
         mpi_cluster=mpi_cluster,
         num_mpi_hosts=num_mpi_hosts,
