@@ -67,8 +67,6 @@ from inductiva_api.task_status import ExecuterTerminationReason
 
 
 def main(_):
-    api_url = os.getenv("API_URL", "http://web")
-    api_key = os.getenv("EXECUTER_API_KEY", "")
     redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
     redis_port = os.getenv("REDIS_PORT", "6379")
     artifact_store_root = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
@@ -128,12 +126,8 @@ def main(_):
         if metadata_redis_hostname:
             redis_hostname = metadata_redis_hostname
 
-        metadata_api_url = config.gcloud.get_vm_metadata_value(
-            "attributes/api-url")
         metadata_max_timeout = config.gcloud.get_vm_metadata_value(
             "attributes/idle_timeout")
-        if metadata_api_url:
-            api_url = metadata_api_url
         max_timeout = int(
             metadata_max_timeout) if metadata_max_timeout else None
 
@@ -201,9 +195,8 @@ def main(_):
         except TimeoutError:
             logging.info(
                 "Max idle time reached. Terminating executer tracker...")
+            status_code = api_client.kill_machine(executer_uuid)
 
-            status_code = cleanup.kill_machine(api_url, machine_group_id,
-                                               api_key)
             if status_code == 422:
                 logging.warn(
                     "Received 422 status code, cannot terminate due to minimum"
