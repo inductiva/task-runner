@@ -94,7 +94,7 @@ class ApiClient:
 
     def kill_machine(self, executer_tracker_id: uuid.UUID) -> int:
         resp = self._request(
-            "POST",
-            f"/{executer_tracker_id}/terminate_machine",
+            "DELETE",
+            f"/{executer_tracker_id}",
         )
         return resp.status_code
