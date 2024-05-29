@@ -79,11 +79,12 @@ class ApptainerImagesManager:
                 ],
                 check=True,
             )
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             raise ApptainerImageNotFoundError(
-                f"Failed to pull image: {image_uri}") from e
-        except FileNotFoundError as e:
-            raise ApptainerImageNotFoundError("Apptainer not available.") from e
+                f"Failed to pull image: {image_uri}")
+        except FileNotFoundError:
+            raise ApptainerImageNotFoundError(
+                "Apptainer command not available.")
 
     def get(self, image: str) -> str:
         """Makes the requested Apptainer image available locally.
