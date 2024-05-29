@@ -11,8 +11,6 @@ from inductiva_api import events
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import ExecuterTerminationReason
 
-KILL_MACHINE_ENDPOINT = "/compute/group/machine"
-
 
 def log_executer_termination(request_handler,
                              redis_hostname,

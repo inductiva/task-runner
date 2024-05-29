@@ -197,7 +197,7 @@ def main(_):
         except TimeoutError:
             logging.info(
                 "Max idle time reached. Terminating executer tracker...")
-            status_code = api_client.kill_machine(executer_uuid)
+            status_code = api_client.kill_machine()
 
             if status_code == 422:
                 logging.warn(

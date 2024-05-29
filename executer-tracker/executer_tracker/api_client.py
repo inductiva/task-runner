@@ -104,10 +104,10 @@ class ApiClient:
             machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
         )
 
-    def kill_machine(self, executer_tracker_id: uuid.UUID) -> int:
+    def kill_machine(self) -> int:
         resp = self._request(
             "DELETE",
-            f"/{executer_tracker_id}",
+            f"/{self._executer_uuid}",
         )
         return resp.status_code
 
@@ -126,5 +126,5 @@ class ApiClient:
             f"{self._executer_uuid}/task/{task_id}/metrics",
             json=data,
         )
-        if resp.status_code != 202:
-            raise RuntimeError(f"Failed to post metrics: {resp.text}")
+
+        return resp.status_code
