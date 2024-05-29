@@ -36,10 +36,6 @@ ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 
 
-class ExecuterTrackerError(Exception):
-    """Base class for exceptions raised by the ExecuterTracker."""
-
-
 def redis_command_msg_catcher(
     redis_conn: redis.Redis,
     task_id: str,
@@ -243,12 +239,6 @@ class TaskRequestHandler:
 
         self.task_id = None
 
-    def _handle_exception(self, e, message):
-        if isinstance(e, OSError) and e.errno == 28:
-            raise ExecuterTrackerError(f"{message}: not enough disk space.")
-
-        raise e
-
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
 
@@ -268,20 +258,14 @@ class TaskRequestHandler:
 
         os.makedirs(task_workdir)
 
-        try:
-            input_zip_path_remote = os.path.join(task_dir_remote,
-                                                 utils.INPUT_ZIP_FILENAME)
+        input_zip_path_remote = os.path.join(task_dir_remote,
+                                             utils.INPUT_ZIP_FILENAME)
 
-            files.download_and_extract_zip_archive(
-                self.filesystem,
-                input_zip_path_remote,
-                task_workdir,
-            )
-        except Exception as e:  # noqa: BLE001
-            self._handle_exception(
-                e,
-                "Error while setting up working directory",
-            )
+        files.download_and_extract_zip_archive(
+            self.filesystem,
+            input_zip_path_remote,
+            task_workdir,
+        )
 
         return task_workdir
 
@@ -350,30 +334,17 @@ class TaskRequestHandler:
             return 0
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            try:
-                output_zip_path_local = os.path.join(tmp_dir,
-                                                     utils.OUTPUT_ZIP_FILENAME)
-                files.make_zip_archive(output_zip_path_local, output_dir)
+            output_zip_path_local = os.path.join(tmp_dir,
+                                                 utils.OUTPUT_ZIP_FILENAME)
+            files.make_zip_archive(output_zip_path_local, output_dir)
 
-                output_archive_size_b = os.path.getsize(output_zip_path_local)
-            except Exception as e:  # noqa: BLE001
-                self._handle_exception(
-                    e,
-                    "Error while zipping output",
-                )
+            output_archive_size_b = os.path.getsize(output_zip_path_local)
 
             output_zip_path_remote = os.path.join(self.task_dir_remote,
                                                   utils.OUTPUT_ZIP_FILENAME)
 
-            try:
-
-                files.upload_file(self.filesystem, output_zip_path_local,
-                                  output_zip_path_remote)
-            except Exception as e:  # noqa: BLE001
-                self._handle_exception(
-                    e,
-                    "Error while uploading output",
-                )
+            files.upload_file(self.filesystem, output_zip_path_local,
+                              output_zip_path_remote)
 
             logging.info("Uploaded output zip to: %s", output_zip_path_remote)
 
@@ -409,13 +380,8 @@ class TaskRequestHandler:
 
         executer_class = api_methods_config.api_method_to_script[method]
 
-        try:
-            apptainer_image_path = self.apptainer_images_manager.get(
-                container_image)
-        except apptainer_utils.ApptainerImageNotFoundError as e:
-            raise ExecuterTrackerError(
-                f"Error while pulling container image: {container_image}"
-            ) from e
+        apptainer_image_path = self.apptainer_images_manager.get(
+            container_image)
 
         return executer_class(
             self.task_workdir,

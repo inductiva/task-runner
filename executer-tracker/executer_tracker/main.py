@@ -219,7 +219,14 @@ def main(_):
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating executer tracker...")
             reason = ExecuterTerminationReason.ERROR
-            detail = repr(e)
+
+            # Get the original exception
+            root_cause = e
+            while root_cause.__cause__:
+                root_cause = root_cause.__cause__
+
+            detail = str(root_cause)
+
             cleanup.log_executer_termination(request_handler, redis_hostname,
                                              redis_port, executer_uuid, reason,
                                              detail)
