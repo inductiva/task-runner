@@ -1,11 +1,20 @@
 """Client for the Inductiva API."""
 import dataclasses
+import datetime
+import enum
 import os
 import uuid
 from typing import Optional
 
 import requests
 from absl import logging
+
+
+class HTTPMethod(enum.Enum):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    DELETE = "DELETE"
 
 
 @dataclasses.dataclass
@@ -45,6 +54,7 @@ class ApiClient:
             self._headers["X-API-Key"] = user_api_key
         if executer_tracker_token is not None:
             self._headers["X-Executer-Tracker-Token"] = executer_tracker_token
+        self._executer_uuid = None
 
     @classmethod
     def from_env(cls):
@@ -72,9 +82,9 @@ class ApiClient:
 
         return resp
 
-    def register_executer_tracker(self, data) -> ExecuterAccessInfo:
+    def register_executer_tracker(self, data: dict) -> ExecuterAccessInfo:
         resp = self._request(
-            "POST",
+            HTTPMethod.POST.value,
             "/register",
             json=data,
         )
@@ -84,10 +94,30 @@ class ApiClient:
 
         resp_body = resp.json()
 
+        self._executer_uuid = uuid.UUID(resp_body["executer_tracker_id"])
+
         return ExecuterAccessInfo(
-            id=uuid.UUID(resp_body["executer_tracker_id"]),
+            id=self._executer_uuid,
             redis_stream=resp_body["redis_stream"],
             redis_consumer_group=resp_body["redis_consumer_group"],
             redis_consumer_name=resp_body["redis_consumer_name"],
             machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
         )
+
+    def post_task_metric(self, task_id: str, metric: str, value: float):
+        data = {
+            "timestamp":
+                datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "metric":
+                metric,
+            "value":
+                value,
+        }
+
+        resp = self._request(
+            HTTPMethod.POST.value,
+            f"{self._executer_uuid}/task/{task_id}/metrics",
+            json=data,
+        )
+        if resp.status_code != 202:
+            raise RuntimeError(f"Failed to post metrics: {resp.text}")

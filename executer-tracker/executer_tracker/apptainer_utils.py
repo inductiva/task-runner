@@ -6,6 +6,7 @@ images from a remote storage and cache them locally.
 import os
 import re
 import subprocess
+import time
 
 import fsspec
 from absl import logging
@@ -119,26 +120,41 @@ class ApptainerImagesManager:
         sif_local_path = os.path.join(self._local_cache_dir, sif_image_name)
         sif_remote_path = os.path.join(self._remote_storage_dir, sif_image_name)
 
+        start = time.time()
+        image_download = False
+
         if os.path.exists(sif_local_path):
             logging.info("SIF image found locally: %s", sif_image_name)
-            return sif_local_path
 
-        logging.info("SIF image not found locally: %s", sif_image_name)
-
-        if self._remote_storage_filesystem.exists(sif_remote_path):
-            logging.info("SIF image found in remote storage: %s",
-                         sif_image_name)
+        elif self._remote_storage_filesystem.exists(sif_remote_path):
+            logging.info("SIF image not found locally: %s", sif_image_name)
+            logging.info(
+                "SIF image found in remote storage: %s",
+                sif_image_name,
+            )
             logging.info("Downloading from remote remote storage...")
+
             self._remote_storage_filesystem.download(
                 sif_remote_path,
                 sif_local_path,
             )
+
             logging.info("Downloaded SIF image to: %s", sif_local_path)
-            return sif_local_path
+            image_download = True
 
-        logging.info("SIF image not found in remote storage: %s",
-                     sif_image_name)
+        else:
+            logging.info("SIF image not found in remote storage: %s",
+                         sif_image_name)
+            self._apptainer_pull(image_uri, sif_local_path)
+            logging.info(
+                "Pulled SIF image from registry to: %s",
+                sif_local_path,
+            )
+            image_download = True
 
-        self._apptainer_pull(image_uri, sif_local_path)
+        download_time = time.time() - start
 
-        return sif_local_path
+        if image_download:
+            logging.info("SIF image downloaded in %s seconds", download_time)
+
+        return sif_local_path, download_time

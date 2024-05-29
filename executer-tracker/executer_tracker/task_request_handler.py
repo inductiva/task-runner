@@ -257,14 +257,48 @@ class TaskRequestHandler:
 
         os.makedirs(task_workdir)
 
-        input_zip_path_remote = os.path.join(task_dir_remote,
-                                             utils.INPUT_ZIP_FILENAME)
-
-        files.download_and_extract_zip_archive(
-            self.filesystem,
-            input_zip_path_remote,
-            task_workdir,
+        input_zip_path_remote = os.path.join(
+            task_dir_remote,
+            utils.INPUT_ZIP_FILENAME,
         )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_zip_path = os.path.join(tmp_dir, "file.zip")
+
+            download_duration = files.download_file(
+                filesystem=self.filesystem,
+                remote_path=input_zip_path_remote,
+                local_path=tmp_zip_path,
+            )
+
+            self.api_client.post_task_metric(
+                self.task_id,
+                utils.DOWNLOAD_INPUT,
+                download_duration,
+            )
+
+            logging.info(
+                "Downloaded zip to: %s, in %s seconds.",
+                tmp_zip_path,
+                download_duration,
+            )
+
+            unzip_duration = files.extract_zip_archive(
+                zip_path=tmp_zip_path,
+                dest_dir=task_workdir,
+            )
+
+            self.api_client.post_task_metric(
+                self.task_id,
+                utils.UNZIP_INPUT,
+                unzip_duration,
+            )
+
+            logging.info(
+                "Extracted zip to: %s, in %s seconds",
+                task_workdir,
+                unzip_duration,
+            )
 
         return task_workdir
 
@@ -333,19 +367,52 @@ class TaskRequestHandler:
             return 0
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            output_zip_path_local = os.path.join(tmp_dir,
-                                                 utils.OUTPUT_ZIP_FILENAME)
-            files.make_zip_archive(output_zip_path_local, output_dir)
+            output_zip_path_local = os.path.join(
+                tmp_dir,
+                utils.OUTPUT_ZIP_FILENAME,
+            )
+
+            zip_duration = files.make_zip_archive(
+                output_zip_path_local,
+                output_dir,
+            )
+
+            self.api_client.post_task_metric(
+                self.task_id,
+                utils.ZIP_OUTPUT,
+                zip_duration,
+            )
+
+            logging.info(
+                "Created output zip archive: %s, in %s seconds",
+                output_zip_path_local,
+                zip_duration,
+            )
 
             output_archive_size_b = os.path.getsize(output_zip_path_local)
 
-            output_zip_path_remote = os.path.join(self.task_dir_remote,
-                                                  utils.OUTPUT_ZIP_FILENAME)
+            output_zip_path_remote = os.path.join(
+                self.task_dir_remote,
+                utils.OUTPUT_ZIP_FILENAME,
+            )
 
-            files.upload_file(self.filesystem, output_zip_path_local,
-                              output_zip_path_remote)
+            upload_duration = files.upload_file(
+                self.filesystem,
+                output_zip_path_local,
+                output_zip_path_remote,
+            )
 
-            logging.info("Uploaded output zip to: %s", output_zip_path_remote)
+            self.api_client.post_task_metric(
+                self.task_id,
+                utils.UPLOAD_OUTPUT,
+                upload_duration,
+            )
+
+            logging.info(
+                "Uploaded output zip to: %s, in %s seconds",
+                output_zip_path_remote,
+                upload_duration,
+            )
 
         return output_archive_size_b
 
@@ -379,8 +446,14 @@ class TaskRequestHandler:
 
         executer_class = api_methods_config.api_method_to_script[method]
 
-        apptainer_image_path = self.apptainer_images_manager.get(
+        apptainer_image_path, download_time = self.apptainer_images_manager.get(
             container_image)
+
+        self.api_client.post_task_metric(
+            self.task_id,
+            utils.DOWNLOAD_EXECUTER_IMAGE,
+            download_time,
+        )
 
         return executer_class(
             self.task_workdir,
