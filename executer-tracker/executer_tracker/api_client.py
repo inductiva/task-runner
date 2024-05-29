@@ -123,7 +123,7 @@ class ApiClient:
 
         resp = self._request(
             HTTPMethod.POST.value,
-            f"{self._executer_uuid}/task/{task_id}/metrics",
+            f"{self._executer_uuid}/task/{task_id}/metric",
             json=data,
         )
 

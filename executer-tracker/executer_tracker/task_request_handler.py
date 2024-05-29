@@ -199,6 +199,8 @@ class TaskRequestHandler:
         )
 
         self._log_task_picked_up()
+        # TODO: add try catch to post metrics
+        time.sleep(1)
 
         try:
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
