@@ -180,6 +180,7 @@ def main(_):
         workdir=workdir,
         mpi_config=mpi_config,
         apptainer_images_manager=apptainer_images_manager,
+        api_client=api_client,
     )
 
     cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,

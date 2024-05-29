@@ -20,6 +20,7 @@ import redis
 from absl import logging
 
 from executer_tracker import (
+    ApiClient,
     api_methods_config,
     apptainer_utils,
     executers,
@@ -105,20 +106,16 @@ class TaskRequestHandler:
     the request for consumption.
 
     Attributes:
-        redis: Connection to Redis.
-        docker_client: Docker client.
-        artifact_filesystem: Shared location with the Web API.
+        redis_connection: Redis connection handler.
+        filesystem: fsspec filesystem handler.
+        artifact_store_root: Root directory for storing artifacts.
         executer_uuid: UUID of the executer that handles the requests.
             Used for event logging purposes.
-        event_logger: Object to log events to a Redis stream.
-        shared_dir_host: Path to the directory shared with the executer-tracker
-            container on the host machine.
-        shared_dir_local: Path to the directory shared with the
-            executer-tracker container inside the container.
-        task_id: ID of the task that is currently being executed. If
-            no task is being executed, this attribute is None.
+        workdir: Working directory.
+        mpi_config: MPI configuration.
         apptainer_images_manager: ApptainerImagesManager instance. Used
             to download and cache Apptainer images locally.
+        api_client: ApiClient instance. Used to communicate with the API.
     """
 
     def __init__(
@@ -130,17 +127,19 @@ class TaskRequestHandler:
         workdir: str,
         mpi_config: executers.MPIConfiguration,
         apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
+        api_client: ApiClient,
     ):
         self.redis = redis_connection
         self.filesystem = filesystem
         self.artifact_store_root = artifact_store_root
         self.executer_uuid = executer_uuid
-        self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
-        self.task_id = None
         self.workdir = workdir
-        self.loki_logger = None
         self.mpi_config = mpi_config
         self.apptainer_images_manager = apptainer_images_manager
+        self.api_client = api_client
+        self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
+        self.task_id = None
+        self.loki_logger = None
         self.task_workdir = None
 
         # If a share path for MPI is set, use it as the working directory.
