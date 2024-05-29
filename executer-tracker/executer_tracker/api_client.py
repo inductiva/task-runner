@@ -91,3 +91,10 @@ class ApiClient:
             redis_consumer_name=resp_body["redis_consumer_name"],
             machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
         )
+
+    def kill_machine(self, executer_tracker_id: uuid.UUID) -> int:
+        resp = self._request(
+            "POST",
+            f"/{executer_tracker_id}/terminate_machine",
+        )
+        return resp.status_code
