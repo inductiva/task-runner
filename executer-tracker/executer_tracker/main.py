@@ -158,7 +158,6 @@ def main(_):
 
     images_remote_storage_spec, images_remote_storage_dir = (
         executer_images_remote_storage.split("://"))
-    # TODO: review
     images_remote_storage_fs = fsspec.filesystem(images_remote_storage_spec)
 
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(

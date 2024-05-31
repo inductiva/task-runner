@@ -64,7 +64,13 @@ class ApiClient:
             executer_tracker_token=os.getenv("EXECUTER_TRACKER_TOKEN"),
         )
 
-    def _request(self, method: str, path: str, **kwargs):
+    def _request(
+        self,
+        method: str,
+        path: str,
+        raise_exception: bool = False,
+        **kwargs,
+    ):
         path = path.lstrip("/")
         url = f"{self._url}/{path}"
         logging.debug("Request: %s %s", method, url)
@@ -78,7 +84,9 @@ class ApiClient:
         logging.debug("Response:")
         logging.debug(" > status code: %s", resp.status_code)
         logging.debug(" > body: %s", resp.text)
-        resp.raise_for_status()
+
+        if raise_exception:
+            resp.raise_for_status()
 
         return resp
 
@@ -127,4 +135,8 @@ class ApiClient:
             json=data,
         )
 
-        return resp.status_code
+        if resp.status_code != 202:
+            logging.error("Failed to post task metric: %s", metric)
+            logging.info("Response:")
+            logging.info(" > status code: %s", resp.status_code)
+            logging.info(" > body: %s", resp.text)
