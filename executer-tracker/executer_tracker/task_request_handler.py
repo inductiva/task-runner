@@ -133,6 +133,7 @@ class TaskRequestHandler:
         self.mpi_config = mpi_config
         self.apptainer_images_manager = apptainer_images_manager
         self.api_client = api_client
+        self.threads = []
         self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
         self.task_id = None
         self.loki_logger = None
@@ -175,6 +176,23 @@ class TaskRequestHandler:
                 id=self.task_id,
                 machine_id=self.executer_uuid,
             ))
+
+    def _post_task_metric(self, metric: str, value: float):
+        """Post a metric for the currently running task.
+
+        The post request is done in a separate thread to allow retries
+        without blocking the task execution.
+        When the first metric (donwload input) is posted, the DB updater
+        may not have updated the task status yet. In this case the task won't
+        be assigned to the machine and the request will be rejected.
+        """
+        thread = threading.Thread(
+            target=self.api_client.post_task_metric,
+            args=(self.task_id, metric, value),
+            daemon=True,
+        )
+        thread.start()
+        self.threads.append(thread)
 
     def __call__(self, request: Dict[str, str]) -> None:
         """Execute the task described by the request.
@@ -271,11 +289,7 @@ class TaskRequestHandler:
                 local_path=tmp_zip_path,
             )
 
-            self.api_client.post_task_metric(
-                self.task_id,
-                utils.DOWNLOAD_INPUT,
-                download_duration,
-            )
+            self._post_task_metric(utils.DOWNLOAD_INPUT, download_duration)
 
             logging.info(
                 "Downloaded zip to: %s, in %s seconds.",
@@ -288,11 +302,7 @@ class TaskRequestHandler:
                 dest_dir=task_workdir,
             )
 
-            self.api_client.post_task_metric(
-                self.task_id,
-                utils.UNZIP_INPUT,
-                unzip_duration,
-            )
+            self._post_task_metric(utils.UNZIP_INPUT, unzip_duration)
 
             logging.info(
                 "Extracted zip to: %s, in %s seconds",
@@ -377,11 +387,7 @@ class TaskRequestHandler:
                 output_dir,
             )
 
-            self.api_client.post_task_metric(
-                self.task_id,
-                utils.ZIP_OUTPUT,
-                zip_duration,
-            )
+            self._post_task_metric(utils.ZIP_OUTPUT, zip_duration)
 
             logging.info(
                 "Created output zip archive: %s, in %s seconds",
@@ -402,11 +408,7 @@ class TaskRequestHandler:
                 output_zip_path_remote,
             )
 
-            self.api_client.post_task_metric(
-                self.task_id,
-                utils.UPLOAD_OUTPUT,
-                upload_duration,
-            )
+            self._post_task_metric(utils.UPLOAD_OUTPUT, upload_duration)
 
             logging.info(
                 "Uploaded output zip to: %s, in %s seconds",
@@ -420,6 +422,7 @@ class TaskRequestHandler:
         """Cleanup after task execution.
 
         Deletes the working directory of the task.
+        Waits for all threads to finish.
 
         Args:
             working_dir_local: Working directory of the executer that performed
@@ -429,6 +432,9 @@ class TaskRequestHandler:
             logging.info("Cleaning up working directory: %s", self.task_workdir)
             shutil.rmtree(self.task_workdir, ignore_errors=True)
         self.task_workdir = None
+
+        for thread in self.threads:
+            thread.join()
 
     def _build_executer(self, request) -> executers.BaseExecuter:
         """Build Python command to run a requested task.
@@ -449,11 +455,7 @@ class TaskRequestHandler:
         apptainer_image_path, download_time = self.apptainer_images_manager.get(
             container_image)
 
-        self.api_client.post_task_metric(
-            self.task_id,
-            utils.DOWNLOAD_EXECUTER_IMAGE,
-            download_time,
-        )
+        self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE, download_time)
 
         return executer_class(
             self.task_workdir,
