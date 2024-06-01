@@ -15,11 +15,13 @@ INPUT_ZIP_FILENAME = "input.zip"
 OUTPUT_ZIP_FILENAME = "output.zip"
 OUTPUT_DIR = "output"
 
-DOWNLOAD_EXECUTER_IMAGE = "download_executer_image"
-DOWNLOAD_INPUT = "download_input"
-UNZIP_INPUT = "unzip_input"
-ZIP_OUTPUT = "zip_output"
-UPLOAD_OUTPUT = "upload_output"
+DOWNLOAD_INPUT = "input_download_seconds"
+UNZIP_INPUT = "input_decompression_seconds"
+DOWNLOAD_EXECUTER_IMAGE = "container_image_download_seconds"
+ZIP_OUTPUT = "output_compression_seconds"
+UPLOAD_OUTPUT = "output_upload_seconds"
+INPUT_SIZE = "input_size_bytes"
+OUTPUT_SIZE = "output_size_bytes"
 
 
 def make_task_key(task_id: str, attribute: str) -> str:
