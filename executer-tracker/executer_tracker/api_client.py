@@ -4,10 +4,12 @@ import enum
 import os
 import time
 import uuid
-from typing import Optional
+from typing import Dict, Optional
 
 import requests
 from absl import logging
+
+from inductiva_api import events
 
 
 class HTTPMethod(enum.Enum):
@@ -47,7 +49,7 @@ class ApiClient:
                 "Exactly one of USER_API_KEY and EXECUTER_TRACKER_TOKEN "
                 "should be set.")
 
-        self._url = f"{api_url}/executer-tracker"
+        self._url = api_url
         self._request_timeout_s = request_timeout_s
         self._headers = {}
         if user_api_key is not None:
@@ -76,8 +78,7 @@ class ApiClient:
         raise_exception: bool = False,
         **kwargs,
     ):
-        path = path.lstrip("/")
-        url = f"{self._url}/{path}"
+        url = f"{self._url}/{path.lstrip('/')}"
         logging.debug("Request: %s %s", method, url)
         resp = requests.request(
             method,
@@ -93,8 +94,13 @@ class ApiClient:
 
         return resp
 
+    def _request_executer_tracker_api(self, method: str, path: str, **kwargs):
+        full_path = f"/executer-tracker/{path.lstrip('/')}"
+
+        return self._request(method, full_path, **kwargs)
+
     def register_executer_tracker(self, data: dict) -> ExecuterAccessInfo:
-        resp = self._request(
+        resp = self._request_executer_tracker_api(
             HTTPMethod.POST.value,
             "/register",
             json=data,
@@ -116,11 +122,110 @@ class ApiClient:
         )
 
     def kill_machine(self) -> int:
-        resp = self._request(
+        resp = self._request_executer_tracker_api(
             "DELETE",
             f"/{self._executer_uuid}",
         )
         return resp.status_code
+
+    def get_task(
+        self,
+        executer_tracker_id: uuid.UUID,
+        block_s: int,
+    ) -> Optional[Dict]:
+        resp = self._request_executer_tracker_api(
+            "GET",
+            f"/{executer_tracker_id}/task?block_s={block_s}",
+        )
+        if resp.status_code == 204:
+            return None
+
+        return resp.json()
+
+    def acknowledge_task(
+        self,
+        executer_tracker_id: uuid.UUID,
+        task_id: str,
+    ):
+        return self._request_executer_tracker_api(
+            "POST",
+            f"/{executer_tracker_id}/task/{task_id}/ack",
+        )
+
+    def log_event(
+        self,
+        executer_tracker_id: uuid.UUID,
+        event: events.Event,
+    ):
+        return self._request_executer_tracker_api(
+            "POST",
+            f"/{executer_tracker_id}/event",
+            json=events.parse.to_dict(event),
+        )
+
+    def receive_task_message(
+        self,
+        executer_tracker_id: uuid.UUID,
+        task_id: str,
+        block_s: int = 30,
+    ) -> Optional[str]:
+        resp = self._request_executer_tracker_api(
+            "GET",
+            f"/{executer_tracker_id}/task/{task_id}/message?block_s={block_s}",
+        )
+        if resp.status_code == 204:
+            return None
+
+        return resp.json()
+
+    def unblock_task_message_listeners(
+        self,
+        executer_tracker_id: uuid.UUID,
+        task_id: str,
+    ):
+        return self._request_executer_tracker_api(
+            "POST",
+            f"/{executer_tracker_id}/task/{task_id}/message/unblock",
+        )
+
+    def get_download_input_url(
+        self,
+        executer_tracker_id: uuid.UUID,
+        task_id: str,
+    ) -> str:
+        resp = self._request_executer_tracker_api(
+            "GET",
+            f"/{executer_tracker_id}/task/{task_id}/download_input_url",
+        )
+
+        return resp.json()["url"]
+
+    def get_upload_output_url(
+        self,
+        executer_tracker_id: uuid.UUID,
+        task_id: str,
+    ) -> UploadUrlInfo:
+        resp = self._request_executer_tracker_api(
+            "GET",
+            f"/{executer_tracker_id}/task/{task_id}/upload_output_url",
+        )
+
+        resp_body = resp.json()
+
+        return UploadUrlInfo(
+            url=resp_body["url"],
+            method=resp_body["method"],
+        )
+
+    def create_local_machine_group(self) -> uuid.UUID:
+        resp = self._request(
+            "POST",
+            "/compute/group",
+            json={
+                "provider_id": "LOCAL",
+            },
+        )
+        return resp.json()["id"]
 
     def post_task_metric(self, task_id: str, metric: str, value: float):
         data = {"metric": metric, "value": value}
