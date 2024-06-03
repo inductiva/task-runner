@@ -72,8 +72,8 @@ from inductiva_api.task_status import ExecuterTerminationReason
 
 
 def main(_):
-    redis_hostname = os.getenv("REDIS_HOSTNAME")
-    redis_port = os.getenv("REDIS_PORT")
+    redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
+    redis_port = os.getenv("REDIS_PORT", "6379")
     workdir = os.getenv("WORKDIR", "/workdir")
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
     if not executer_images_dir:

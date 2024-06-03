@@ -236,7 +236,7 @@ class ApiClient:
         sent = False
 
         while max_retries > 0 and sent is False:
-            resp = self._request(
+            resp = self._request_executer_tracker_api(
                 HTTPMethod.POST.value,
                 f"{self._executer_uuid}/task/{task_id}/metric",
                 json=data,

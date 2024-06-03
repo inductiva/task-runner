@@ -226,6 +226,11 @@ class TaskRequestHandler:
 
             computation_seconds = (computation_end_time -
                                    computation_start_time).total_seconds()
+            logging.info(
+                "Task computation time: %s seconds",
+                computation_seconds,
+            )
+
             self._post_task_metric(
                 utils.COMPUTATION_SECONDS,
                 computation_seconds,
@@ -272,20 +277,35 @@ class TaskRequestHandler:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_zip_path = os.path.join(tmp_dir, "file.zip")
 
-            self.file_manager.download_input(
+            download_duration = self.file_manager.download_input(
                 self.task_id,
                 task_dir_remote,
                 tmp_zip_path,
             )
 
-            logging.info("Downloaded zip to: %s", tmp_zip_path)
+            logging.info(
+                "Downloaded zip to: %s, in %s seconds.",
+                tmp_zip_path,
+                download_duration,
+            )
 
-            files.extract_zip_archive(
+            self._post_task_metric(utils.DOWNLOAD_INPUT, download_duration)
+
+            input_size_bytes = os.path.getsize(tmp_zip_path)
+            self._post_task_metric(utils.INPUT_SIZE, input_size_bytes)
+
+            unzip_duration = files.extract_zip_archive(
                 zip_path=tmp_zip_path,
                 dest_dir=task_workdir,
             )
 
-            logging.info("Extracted zip to: %s", task_workdir)
+            logging.info(
+                "Extracted zip to: %s, in %s seconds",
+                task_workdir,
+                unzip_duration,
+            )
+
+            self._post_task_metric(utils.UNZIP_INPUT, unzip_duration)
 
         return task_workdir
 
@@ -348,13 +368,13 @@ class TaskRequestHandler:
                 output_dir,
             )
 
-            self._post_task_metric(utils.ZIP_OUTPUT, zip_duration)
-
             logging.info(
                 "Created output zip archive: %s, in %s seconds",
                 output_zip_path_local,
                 zip_duration,
             )
+
+            self._post_task_metric(utils.ZIP_OUTPUT, zip_duration)
 
             output_size_bytes = os.path.getsize(output_zip_path_local)
             self._post_task_metric(utils.OUTPUT_SIZE, output_size_bytes)
@@ -364,7 +384,7 @@ class TaskRequestHandler:
                 utils.OUTPUT_ZIP_FILENAME,
             )
 
-            self.file_manager.upload_output(
+            upload_duration = self.file_manager.upload_output(
                 self.task_id,
                 self.task_dir_remote,
                 output_zip_path_local,
@@ -373,8 +393,10 @@ class TaskRequestHandler:
             logging.info(
                 "Uploaded output zip to: %s, in %s seconds",
                 output_zip_path_remote,
-                # upload_duration,
+                upload_duration,
             )
+
+            self._post_task_metric(utils.UPLOAD_OUTPUT, upload_duration)
 
     def _cleanup(self):
         """Cleanup after task execution.
@@ -413,7 +435,8 @@ class TaskRequestHandler:
         apptainer_image_path, download_time = self.apptainer_images_manager.get(
             container_image)
 
-        self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE, download_time)
+        if download_time is not None:
+            self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE, download_time)
 
         return executer_class(
             self.task_workdir,

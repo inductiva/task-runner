@@ -157,43 +157,24 @@ class ApptainerImagesManager:
             sif_image_name = self._image_uri_to_sif_name(image_uri)
 
         sif_local_path = os.path.join(self._local_cache_dir, sif_image_name)
-        sif_remote_path = os.path.join(self._remote_storage_dir, sif_image_name)
-
-        start = time.time()
-        image_download = False
 
         if os.path.exists(sif_local_path):
             logging.info("SIF image found locally: %s", sif_image_name)
+            return sif_local_path, None
 
-        elif self._remote_storage_filesystem.exists(sif_remote_path):
-            logging.info("SIF image not found locally: %s", sif_image_name)
-            logging.info(
-                "SIF image found in remote storage: %s",
-                sif_image_name,
-            )
-            logging.info("Downloading from remote remote storage...")
+        logging.info("SIF image not found locally: %s", sif_image_name)
 
-            self._remote_storage_filesystem.download(
-                sif_remote_path,
-                sif_local_path,
-            )
+        donwload_start = time.time()
 
-            logging.info("Downloaded SIF image to: %s", sif_local_path)
-            image_download = True
+        local_path = self._get_from_remote_storage(
+            sif_image_name,
+            sif_local_path,
+        )
 
-        else:
-            logging.info("SIF image not found in remote storage: %s",
-                         sif_image_name)
+        if local_path is None:
             self._apptainer_pull(image_uri, sif_local_path)
-            logging.info(
-                "Pulled SIF image from registry to: %s",
-                sif_local_path,
-            )
-            image_download = True
 
-        download_time = time.time() - start
-
-        if image_download:
-            logging.info("SIF image downloaded in %s seconds", download_time)
+        download_time = time.time() - donwload_start
+        logging.info("Apptainer image downloaded in %s seconds", download_time)
 
         return sif_local_path, download_time
