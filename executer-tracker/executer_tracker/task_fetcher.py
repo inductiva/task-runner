@@ -62,6 +62,9 @@ class RedisTaskFetcher(BaseTaskFetcher):
             stream_entry_id,
         )
 
+        for key in self._conn.scan_iter(match=f"task:{task_id}:*"):
+            self._conn.delete(key)
+
 
 class WebApiTaskFetcher(BaseTaskFetcher):
     """Implementation of the task execution long polling the Web API."""
