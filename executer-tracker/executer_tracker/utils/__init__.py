@@ -7,6 +7,7 @@ NOTE: this file/module contains code that is present, similarly,
 in the Web API codebase.
 """
 
+import datetime
 import time
 from functools import wraps
 
@@ -15,6 +16,8 @@ INPUT_ZIP_FILENAME = "input.zip"
 OUTPUT_ZIP_FILENAME = "output.zip"
 OUTPUT_DIR = "output"
 
+QUEUE_TIME_SECONDS = "queue_time_seconds"
+COMPUTATION_SECONDS = "computation_seconds"
 DOWNLOAD_INPUT = "input_download_seconds"
 UNZIP_INPUT = "input_decompression_seconds"
 DOWNLOAD_EXECUTER_IMAGE = "container_image_download_seconds"
@@ -56,3 +59,7 @@ def execution_time(func):
         return time.time() - start
 
     return wrapper
+
+
+def now_utc() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)

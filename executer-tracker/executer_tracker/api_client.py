@@ -1,6 +1,5 @@
 """Client for the Inductiva API."""
 import dataclasses
-import datetime
 import enum
 import os
 import time
@@ -124,14 +123,7 @@ class ApiClient:
         return resp.status_code
 
     def post_task_metric(self, task_id: str, metric: str, value: float):
-        data = {
-            "timestamp":
-                datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "metric":
-                metric,
-            "value":
-                value,
-        }
+        data = {"metric": metric, "value": value}
         logging.info("Posting task metric: %s", data)
 
         max_retries = 5

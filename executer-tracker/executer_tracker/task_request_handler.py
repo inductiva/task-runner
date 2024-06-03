@@ -147,36 +147,6 @@ class TaskRequestHandler:
         """Checks if a task is currently running."""
         return self.task_id is not None
 
-    def _log_task_picked_up(self):
-        """Log that a task was picked up by the executer."""
-        assert self.task_id is not None
-        picked_up_timestamp = datetime.datetime.now(datetime.timezone.utc)
-
-        if self.submitted_timestamp is not None:
-            submitted_timestamp = datetime.datetime.fromisoformat(
-                self.submitted_timestamp)
-            logging.info("Task submitted at: %s", self.submitted_timestamp)
-            while picked_up_timestamp <= submitted_timestamp:
-                time.sleep(0.01)
-                picked_up_timestamp = datetime.datetime.now(
-                    datetime.timezone.utc)
-        logging.info("Task picked up at: %s", picked_up_timestamp)
-
-        self.event_logger.log(
-            events.TaskPickedUp(
-                timestamp=picked_up_timestamp,
-                id=self.task_id,
-                machine_id=self.executer_uuid,
-            ))
-
-    def _log_task_work_started(self):
-        assert self.task_id is not None
-        self.event_logger.log(
-            events.TaskWorkStarted(
-                id=self.task_id,
-                machine_id=self.executer_uuid,
-            ))
-
     def _post_task_metric(self, metric: str, value: float):
         """Post a metric for the currently running task.
 
@@ -193,6 +163,32 @@ class TaskRequestHandler:
         )
         thread.start()
         self.threads.append(thread)
+
+    def _log_task_picked_up(self):
+        """Log that a task was picked up by the executer."""
+        assert self.task_id is not None
+        picked_up_timestamp = utils.now_utc()
+
+        if self.submitted_timestamp is not None:
+            submitted_timestamp = datetime.datetime.fromisoformat(
+                self.submitted_timestamp)
+            logging.info("Task submitted at: %s", self.submitted_timestamp)
+            while picked_up_timestamp <= submitted_timestamp:
+                time.sleep(0.01)
+                picked_up_timestamp = utils.now_utc()
+
+            queue_time = (picked_up_timestamp -
+                          submitted_timestamp).total_seconds()
+            self._post_task_metric(utils.QUEUE_TIME_SECONDS, queue_time)
+
+        logging.info("Task picked up at: %s", picked_up_timestamp)
+
+        self.event_logger.log(
+            events.TaskPickedUp(
+                timestamp=picked_up_timestamp,
+                id=self.task_id,
+                machine_id=self.executer_uuid,
+            ))
 
     def __call__(self, request: Dict[str, str]) -> None:
         """Execute the task described by the request.
@@ -221,22 +217,32 @@ class TaskRequestHandler:
         try:
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
 
+            computation_start_time = utils.now_utc()
             self.event_logger.log(
                 events.TaskWorkStarted(
+                    timestamp=computation_start_time,
                     id=self.task_id,
                     machine_id=self.executer_uuid,
                 ))
             exit_code, task_killed = self._execute_request(request,)
             logging.info("Task killed: %s", str(task_killed))
 
-            event = events.TaskWorkFinished(
-                id=self.task_id,
-                machine_id=self.executer_uuid,
+            computation_end_time = utils.now_utc()
+            self.event_logger.log(
+                events.TaskWorkFinished(
+                    timestamp=computation_end_time,
+                    id=self.task_id,
+                    machine_id=self.executer_uuid,
+                ))
+
+            computation_seconds = (computation_end_time -
+                                   computation_start_time).total_seconds()
+            self._post_task_metric(
+                utils.COMPUTATION_SECONDS,
+                computation_seconds,
             )
 
-            self.event_logger.log(event)
-
-            output_size_b = self._pack_output()
+            self._pack_output()
 
             new_status = task_status.TaskStatusCode.SUCCESS.value
             if exit_code != 0:
@@ -248,7 +254,6 @@ class TaskRequestHandler:
                 events.TaskOutputUploaded(
                     id=self.task_id,
                     machine_id=self.executer_uuid,
-                    output_size_b=output_size_b,
                     new_status=new_status,
                 ))
         finally:
@@ -296,6 +301,9 @@ class TaskRequestHandler:
                 tmp_zip_path,
                 download_duration,
             )
+
+            input_size_bytes = os.path.getsize(tmp_zip_path)
+            self._post_task_metric(utils.INPUT_SIZE, input_size_bytes)
 
             unzip_duration = files.extract_zip_archive(
                 zip_path=tmp_zip_path,
@@ -359,22 +367,12 @@ class TaskRequestHandler:
 
         return exit_code, task_killed_flag.is_set()
 
-    def _pack_output(self) -> int:
-        """Compress outputs and store them in the shared drive.
-
-        Args:
-            task_dir_remote: Path to the directory with the task's files. Path
-                is relative to "artifact_filesystem".
-            working_dir_local: Working directory of the executer that performed
-                the task.
-
-        Returns:
-            Path to the zip file.
-        """
+    def _pack_output(self):
+        """Compress outputs and store them in the shared drive."""
         # Compress outputs, storing them in the shared drive
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
-            return 0
+            return
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_zip_path_local = os.path.join(
@@ -395,7 +393,8 @@ class TaskRequestHandler:
                 zip_duration,
             )
 
-            output_archive_size_b = os.path.getsize(output_zip_path_local)
+            output_size_bytes = os.path.getsize(output_zip_path_local)
+            self._post_task_metric(utils.OUTPUT_SIZE, output_size_bytes)
 
             output_zip_path_remote = os.path.join(
                 self.task_dir_remote,
@@ -415,8 +414,6 @@ class TaskRequestHandler:
                 output_zip_path_remote,
                 upload_duration,
             )
-
-        return output_archive_size_b
 
     def _cleanup(self):
         """Cleanup after task execution.
