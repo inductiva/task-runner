@@ -134,18 +134,22 @@ def main(_):
         max_timeout = int(
             metadata_max_timeout) if metadata_max_timeout else None
 
-    machine_group_id = config.get_machine_group_id()
-    if not machine_group_id:
-        logging.info("No machine group specified. Using default.")
-    else:
-        logging.info("Using machine group: %s", machine_group_id)
-
-    redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
-
-    api_client = executer_tracker.ApiClient.from_env()
-
     local_mode = os.getenv("LOCAL_MODE",
                            "true").lower() in ("true", "t", "yes", "y", 1)
+    api_client = executer_tracker.ApiClient.from_env()
+
+    machine_group_id = config.get_machine_group_id()
+    if not machine_group_id:
+        if not local_mode:
+            raise ValueError("No machine group specified.")
+
+        logging.info(
+            "No machine group specified. Creating a new local machine group...")
+        machine_group_id = api_client.create_local_machine_group()
+
+    logging.info("Using machine group: %s", machine_group_id)
+
+    redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
 
     executer_access_info = register_executer(
         api_client,
