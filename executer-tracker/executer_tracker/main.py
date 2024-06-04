@@ -136,6 +136,8 @@ def main(_):
 
     local_mode = os.getenv("LOCAL_MODE",
                            "true").lower() in ("true", "t", "yes", "y", 1)
+    logging.info("Running in local mode: %s", local_mode)
+
     api_client = executer_tracker.ApiClient.from_env()
 
     machine_group_id = config.get_machine_group_id()
