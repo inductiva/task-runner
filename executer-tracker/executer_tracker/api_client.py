@@ -61,7 +61,7 @@ class ApiClient:
     @classmethod
     def from_env(cls):
         return cls(
-            api_url=os.getenv("API_URL", "http://web"),
+            api_url=os.getenv("API_URL", "https://api.inductiva.ai"),
             user_api_key=os.getenv("USER_API_KEY"),
             executer_tracker_token=os.getenv("EXECUTER_TRACKER_TOKEN"),
         )
