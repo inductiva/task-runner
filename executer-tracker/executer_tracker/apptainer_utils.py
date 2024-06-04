@@ -73,7 +73,11 @@ class ApptainerImagesManager:
         return re.sub(r"://|:|/", "_", image_uri) + ".sif"
 
     def _apptainer_pull(self, image_uri: str, sif_local_path: str):
-        """Pulls the image from Docker Hub and converts it to a SIF image."""
+        """Pulls the image from Docker Hub and converts it to a SIF image.
+
+        Raises:
+            ApptainerImageNotFoundError: If pulling the image fails.
+        """
         logging.info("Pulling image ...")
 
         try:
@@ -97,15 +101,19 @@ class ApptainerImagesManager:
         self,
         sif_image_name: str,
         sif_local_path: str,
-    ) -> Optional[str]:
+    ) -> bool:
         """Attempt to download the image from the remote storage.
 
         If a remote storage was not provided on object creation, this method
         won't do anything.
+
+        Returns:
+            True if the image was found in the remote storage and downloaded,
+            False otherwise.
         """
         if (self._remote_storage_dir
                 is None) or (self._remote_storage_filesystem is None):
-            return
+            return False
 
         sif_remote_path = os.path.join(self._remote_storage_dir, sif_image_name)
 
@@ -118,12 +126,12 @@ class ApptainerImagesManager:
                 sif_local_path,
             )
             logging.info("Downloaded SIF image to: %s", sif_local_path)
-            return sif_local_path
+            return True
 
         logging.info("SIF image not found in remote storage: %s",
                      sif_image_name)
 
-        return
+        return False
 
     def get(self, image: str) -> str:
         """Makes the requested Apptainer image available locally.
@@ -163,8 +171,10 @@ class ApptainerImagesManager:
 
         logging.info("SIF image not found locally: %s", sif_image_name)
 
-        self._get_from_remote_storage(sif_image_name, sif_local_path)
+        downloaded = self._get_from_remote_storage(sif_image_name,
+                                                   sif_local_path)
 
-        self._apptainer_pull(image_uri, sif_local_path)
+        if not downloaded:
+            self._apptainer_pull(image_uri, sif_local_path)
 
         return sif_local_path
