@@ -6,7 +6,8 @@ images from a remote storage and cache them locally.
 import os
 import re
 import subprocess
-from typing import Optional
+import time
+from typing import Optional, Tuple
 
 import fsspec
 from absl import logging
@@ -133,7 +134,7 @@ class ApptainerImagesManager:
 
         return False
 
-    def get(self, image: str) -> str:
+    def get(self, image: str) -> Tuple[str, Optional[float]]:
         """Makes the requested Apptainer image available locally.
 
         If the image is not available in the local directory, it is attempted
@@ -167,14 +168,21 @@ class ApptainerImagesManager:
 
         if os.path.exists(sif_local_path):
             logging.info("SIF image found locally: %s", sif_image_name)
-            return sif_local_path
+            return sif_local_path, None
 
         logging.info("SIF image not found locally: %s", sif_image_name)
 
-        downloaded = self._get_from_remote_storage(sif_image_name,
-                                                   sif_local_path)
+        donwload_start = time.time()
+
+        downloaded = self._get_from_remote_storage(
+            sif_image_name,
+            sif_local_path,
+        )
 
         if not downloaded:
             self._apptainer_pull(image_uri, sif_local_path)
 
-        return sif_local_path
+        download_time = time.time() - donwload_start
+        logging.info("Apptainer image downloaded in %s seconds", download_time)
+
+        return sif_local_path, download_time

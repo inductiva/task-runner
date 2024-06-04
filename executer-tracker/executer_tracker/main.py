@@ -204,6 +204,7 @@ def main(_):
         workdir=workdir,
         mpi_config=mpi_config,
         apptainer_images_manager=apptainer_images_manager,
+        api_client=api_client,
         event_logger=event_logger,
         message_listener=message_listener,
         file_manager=file_manager,
@@ -231,7 +232,7 @@ def main(_):
         except TimeoutError:
             logging.info(
                 "Max idle time reached. Terminating executer tracker...")
-            status_code = api_client.kill_machine(executer_uuid)
+            status_code = api_client.kill_machine()
 
             if status_code == 422:
                 logging.warn(

@@ -2,7 +2,6 @@
 import signal
 import sys
 
-import requests
 from absl import logging
 
 import executer_tracker
@@ -10,8 +9,6 @@ from executer_tracker import redis_utils
 from executer_tracker.utils import gcloud
 from inductiva_api import events
 from inductiva_api.task_status import ExecuterTerminationReason
-
-KILL_MACHINE_ENDPOINT = "/compute/group/machine"
 
 
 class TerminationHandler:
@@ -79,22 +76,3 @@ def setup_cleanup_handlers(termination_handler):
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-
-def kill_machine(api_url, machine_group_id, api_key) -> int:
-
-    vm_name = gcloud.get_vm_metadata_value("name")
-    url = f"{api_url}{KILL_MACHINE_ENDPOINT}?vm_group_id=" \
-          f"{machine_group_id}&vm_name={vm_name}"
-
-    r = requests.delete(url=url,
-                        timeout=5,
-                        headers={
-                            "X-API-Key": api_key,
-                            "Content-Type": "application/json"
-                        })
-
-    if r.status_code != 202:
-        logging.error("Failed to kill machine. Status code: %s", r.status_code)
-
-    return r.status_code

@@ -10,6 +10,7 @@ import requests
 from typing_extensions import override
 
 import executer_tracker
+from executer_tracker import utils
 
 
 class BaseFileManager(abc.ABC):
@@ -40,6 +41,7 @@ class FsspecFileManager(BaseFileManager):
         self._filesystem = fsspec.filesystem(protocol)
         self._artifact_store_root = artifact_store_root
 
+    @utils.execution_time
     @override
     def download_input(
         self,
@@ -52,13 +54,14 @@ class FsspecFileManager(BaseFileManager):
         remote_path = os.path.join(
             self._artifact_store_root,
             task_dir_remote,
-            "input.zip",
+            utils.INPUT_ZIP_FILENAME,
         )
 
         with self._filesystem.open(remote_path, "rb") as f:
             with open(dest_path, "wb") as local_file:
                 shutil.copyfileobj(f, local_file)
 
+    @utils.execution_time
     @override
     def upload_output(
         self,
@@ -71,7 +74,7 @@ class FsspecFileManager(BaseFileManager):
         remote_path = os.path.join(
             self._artifact_store_root,
             task_dir_remote,
-            "output.zip",
+            utils.OUTPUT_ZIP_FILENAME,
         )
         with open(local_path, "rb") as f_src:
             with self._filesystem.open(remote_path, "wb") as f_dest:
@@ -89,6 +92,7 @@ class WebApiFileManager(BaseFileManager):
         self._api_client = api_client
         self._executer_tracker_id = executer_tracker_id
 
+    @utils.execution_time
     @override
     def download_input(
         self,
@@ -104,6 +108,7 @@ class WebApiFileManager(BaseFileManager):
         )
         urllib.request.urlretrieve(url, dest_path)
 
+    @utils.execution_time
     @override
     def upload_output(
         self,
