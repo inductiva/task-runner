@@ -75,7 +75,7 @@ def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
     workdir = os.getenv("WORKDIR", "/workdir")
-    executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
+    executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR", "/apptainer")
     if not executer_images_dir:
         logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
         sys.exit(1)
@@ -90,7 +90,7 @@ def main(_):
 
     mpi_share_path = None
     mpi_hostfile_path = None
-    mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "")
+    mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "--allow-run-as-root")
 
     num_mpi_hosts = 1
 
@@ -116,7 +116,7 @@ def main(_):
 
     logging.info("MPI configuration:")
     logging.info("  > hostfile: %s", mpi_hostfile_path)
-    logging.info("  > share path: %s", mpi_share_path)
+    logging.info("  > shared path: %s", mpi_share_path)
     logging.info("  > extra args: %s", mpi_extra_args)
     logging.info("  > num hosts: %d", num_mpi_hosts)
 
