@@ -72,7 +72,7 @@ from inductiva_api.task_status import ExecuterTerminationReason
 
 
 def main(_):
-    redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
+    redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
     workdir = os.getenv("WORKDIR", "/workdir")
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
@@ -136,6 +136,8 @@ def main(_):
 
     local_mode = os.getenv("LOCAL_MODE",
                            "true").lower() in ("true", "t", "yes", "y", 1)
+    logging.info("Running in local mode: %s", local_mode)
+
     api_client = executer_tracker.ApiClient.from_env()
 
     machine_group_id = config.get_machine_group_id()

@@ -16,6 +16,7 @@ start() {
 	export MPI_EXTRA_ARGS="--allow-run-as-root"
 	export EXECUTER_IMAGES_REMOTE_STORAGE="gs://inductiva-apptainer-images"
 	export EXECUTER_TRACKER_TOKEN=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/attributes/executer_tracker_token" -H "Metadata-Flavor: Google")
+	export LOCAL_MODE="false"
 
 
 	if [[ $1 == "mpi" ]]; then
