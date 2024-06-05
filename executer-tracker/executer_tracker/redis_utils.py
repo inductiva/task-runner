@@ -1,12 +1,6 @@
 """Methods to interact with Redis server."""
-import time
-from typing import Optional
-
 from absl import logging
 from redis import Redis
-from task_request_handler import TaskRequestHandler
-
-DELIVER_NEW_MESSAGES = ">"
 
 
 def create_redis_connection(redis_hostname, redis_port):
@@ -18,71 +12,6 @@ def create_redis_connection(redis_hostname, redis_port):
     )
 
     return redis_conn
-
-
-def monitor_redis_stream(redis_connection,
-                         stream_name: str,
-                         consumer_group: str,
-                         consumer_name: str,
-                         request_handler: TaskRequestHandler,
-                         max_timeout: Optional[int] = None):
-    """Monitors Redis stream, calling a callback to handle requests.
-
-    The stream is read from via a consumer group. This requires that
-    each executer reading from the stream has a name that is unique within
-    the consumer group. Only one member of each consumer group receives
-    a message, so this way only one executer handles each request.
-    There's also an Ack response to notify the message as being
-    successfully processed.
-
-    Args:
-        redis_connection: Connection to Redis server
-        stream_name: Name of Redis Stream.
-        consumer_group: Name of the consumer group.
-        consumer_name: Name of the consumer: it should be
-        request_handler: TaskRequestHandler instance that will handle
-            the received request.
-    """
-    sleep_ms = 30000  # 0ms means block forever
-
-    logging.info("Starting monitoring of Redis stream:")
-    logging.info(" > %s", stream_name)
-
-    idle_timestamp = time.time()
-    while True:
-        try:
-            if max_timeout and time.time() - idle_timestamp >= max_timeout:
-                raise TimeoutError("Max idle time reached")
-
-            logging.info("Waiting for requests on: %s", stream_name)
-            resp = redis_connection.xreadgroup(
-                groupname=consumer_group,
-                consumername=consumer_name,
-                # Using the following ID will get messages that haven't
-                # been delivered to any consumer.
-                streams={stream_name: DELIVER_NEW_MESSAGES},
-                count=1,  # reads one item at a time.
-                block=sleep_ms,
-            )
-            if resp:
-                logging.info("Received request:")
-                logging.info("      --> %s", str(resp))
-                stream_name, messages = resp[0]
-                stream_entry_id, request = messages[0]
-                logging.info("REDIS ID: %s", str(stream_entry_id))
-                logging.info("      --> %s", str(request))
-
-                request_handler(request)
-
-                # Acknowledge successful processing of the received message
-                redis_connection.xack(stream_name, consumer_group,
-                                      stream_entry_id)
-
-                # Update the start time to avoid killing the machine
-                idle_timestamp = time.time()
-
-        except ConnectionError as e:
-            logging.info("ERROR REDIS CONNECTION: %s", str(e))
 
 
 def delete_redis_consumer(redis_hostname, redis_port, stream, consumer_group,

@@ -55,11 +55,16 @@ Usage (note the required environment variables):
 import os
 import sys
 
-import fsspec
 from absl import app, logging
 
 import executer_tracker
-from executer_tracker import apptainer_utils, cleanup, executers, redis_utils
+from executer_tracker import (
+    apptainer_utils,
+    cleanup,
+    executers,
+    redis_utils,
+    task_execution_loop,
+)
 from executer_tracker.register_executer import register_executer
 from executer_tracker.task_request_handler import TaskRequestHandler
 from executer_tracker.utils import config
@@ -67,29 +72,25 @@ from inductiva_api.task_status import ExecuterTerminationReason
 
 
 def main(_):
-    api_url = os.getenv("API_URL", "http://web")
-    api_key = os.getenv("EXECUTER_API_KEY", "")
-    redis_hostname = os.getenv("REDIS_HOSTNAME", "redis")
+    redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
-    artifact_store_root = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
     workdir = os.getenv("WORKDIR", "/workdir")
-    executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR")
+    executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR", "/apptainer")
     if not executer_images_dir:
         logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
         sys.exit(1)
 
-    executer_images_remote_storage = os.getenv("EXECUTER_IMAGES_REMOTE_STORAGE")
-    if not executer_images_remote_storage:
-        logging.error(
-            "EXECUTER_IMAGES_REMOTE_STORAGE environment variable not set.")
-        sys.exit(1)
+    executer_images_remote_storage = os.getenv(
+        "EXECUTER_IMAGES_REMOTE_STORAGE",
+        None,
+    )
 
     mpi_cluster_str = os.getenv("MPI_CLUSTER", "false")
     mpi_cluster = mpi_cluster_str.lower() in ("true", "t", "yes", "y", 1)
 
     mpi_share_path = None
     mpi_hostfile_path = None
-    mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "")
+    mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "--allow-run-as-root")
 
     num_mpi_hosts = 1
 
@@ -115,7 +116,7 @@ def main(_):
 
     logging.info("MPI configuration:")
     logging.info("  > hostfile: %s", mpi_hostfile_path)
-    logging.info("  > share path: %s", mpi_share_path)
+    logging.info("  > shared path: %s", mpi_share_path)
     logging.info("  > extra args: %s", mpi_extra_args)
     logging.info("  > num hosts: %d", num_mpi_hosts)
 
@@ -128,33 +129,36 @@ def main(_):
         if metadata_redis_hostname:
             redis_hostname = metadata_redis_hostname
 
-        metadata_api_url = config.gcloud.get_vm_metadata_value(
-            "attributes/api-url")
         metadata_max_timeout = config.gcloud.get_vm_metadata_value(
             "attributes/idle_timeout")
-        if metadata_api_url:
-            api_url = metadata_api_url
         max_timeout = int(
             metadata_max_timeout) if metadata_max_timeout else None
 
-    protocol = "gs" if artifact_store_root == "gs://" else "file"
-    filesystem = fsspec.filesystem(protocol)
+    local_mode = os.getenv("LOCAL_MODE",
+                           "true").lower() in ("true", "t", "yes", "y", 1)
+    logging.info("Running in local mode: %s", local_mode)
+
+    api_client = executer_tracker.ApiClient.from_env()
 
     machine_group_id = config.get_machine_group_id()
     if not machine_group_id:
-        logging.info("No machine group specified. Using default.")
-    else:
-        logging.info("Using machine group: %s", machine_group_id)
+        if not local_mode:
+            raise ValueError("No machine group specified.")
+
+        logging.info(
+            "No machine group specified. Creating a new local machine group...")
+        machine_group_id = api_client.create_local_machine_group()
+
+    logging.info("Using machine group: %s", machine_group_id)
 
     redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
-
-    api_client = executer_tracker.ApiClient.from_env()
 
     executer_access_info = register_executer(
         api_client,
         machine_group_id=machine_group_id,
         mpi_cluster=mpi_cluster,
         num_mpi_hosts=num_mpi_hosts,
+        local_mode=local_mode,
     )
     executer_uuid = executer_access_info.id
 
@@ -162,38 +166,65 @@ def main(_):
     redis_consumer_name = executer_access_info.redis_consumer_name
     redis_consumer_group = executer_access_info.redis_consumer_group
 
-    images_remote_storage_spec, images_remote_storage_dir = (
-        executer_images_remote_storage.split("://"))
-    images_remote_storage_fs = fsspec.filesystem(images_remote_storage_spec)
-
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
         local_cache_dir=executer_images_dir,
-        remote_storage_filesystem=images_remote_storage_fs,
-        remote_storage_dir=images_remote_storage_dir,
+        remote_storage_url=executer_images_remote_storage,
     )
 
+    if local_mode:
+        file_manager = executer_tracker.WebApiFileManager(
+            api_client, executer_tracker_id=executer_uuid)
+        task_fetcher = executer_tracker.WebApiTaskFetcher(
+            api_client=api_client,
+            executer_tracker_id=executer_uuid,
+        )
+        event_logger = executer_tracker.WebApiLogger(
+            api_client=api_client,
+            executer_tracker_id=executer_uuid,
+        )
+        message_listener = executer_tracker.WebApiTaskMessageListener(
+            api_client=api_client,
+            executer_tracker_id=executer_uuid,
+        )
+    else:
+        artifact_store_root = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
+        file_manager = executer_tracker.FsspecFileManager(artifact_store_root)
+        task_fetcher = executer_tracker.RedisTaskFetcher(
+            connection=redis_conn,
+            stream=redis_stream,
+            consumer_group=redis_consumer_group,
+            consumer_name=redis_consumer_name,
+        )
+        event_logger = executer_tracker.RedisEventLogger(connection=redis_conn)
+        message_listener = executer_tracker.RedisTaskMessageListener(
+            connection=redis_conn)
+
     request_handler = TaskRequestHandler(
-        redis_connection=redis_conn,
-        filesystem=filesystem,
-        artifact_store_root=artifact_store_root,
         executer_uuid=executer_uuid,
         workdir=workdir,
         mpi_config=mpi_config,
         apptainer_images_manager=apptainer_images_manager,
+        api_client=api_client,
+        event_logger=event_logger,
+        message_listener=message_listener,
+        file_manager=file_manager,
     )
 
-    cleanup.setup_cleanup_handlers(executer_uuid, redis_hostname, redis_port,
-                                   redis_stream, redis_consumer_name,
-                                   redis_consumer_group, request_handler)
+    termination_handler = cleanup.TerminationHandler(
+        executer_id=executer_uuid,
+        local_mode=local_mode,
+        redis_hostname=redis_hostname,
+        redis_port=redis_port,
+        request_handler=request_handler,
+    )
+
+    cleanup.setup_cleanup_handlers(termination_handler)
 
     monitoring_flag = True
     while monitoring_flag:
         try:
-            redis_utils.monitor_redis_stream(
-                redis_connection=redis_conn,
-                stream_name=redis_stream,
-                consumer_group=redis_consumer_group,
-                consumer_name=redis_consumer_name,
+            task_execution_loop.start_loop(
+                task_fetcher=task_fetcher,
                 request_handler=request_handler,
                 max_timeout=max_timeout,
             )
@@ -201,9 +232,8 @@ def main(_):
         except TimeoutError:
             logging.info(
                 "Max idle time reached. Terminating executer tracker...")
+            status_code = api_client.kill_machine()
 
-            status_code = cleanup.kill_machine(api_url, machine_group_id,
-                                               api_key)
             if status_code == 422:
                 logging.warn(
                     "Received 422 status code, cannot terminate due to minimum"
@@ -211,9 +241,7 @@ def main(_):
                 monitoring_flag = True
             else:
                 reason = ExecuterTerminationReason.IDLE_TIMEOUT
-                cleanup.log_executer_termination(request_handler,
-                                                 redis_hostname, redis_port,
-                                                 executer_uuid, reason)
+                termination_handler.log_termination(reason)
                 monitoring_flag = False
         except Exception as e:  # noqa: BLE001
             logging.exception("Caught exception: %s", str(e))
@@ -226,10 +254,8 @@ def main(_):
                 root_cause = root_cause.__cause__
 
             detail = str(root_cause)
+            termination_handler.log_termination(reason, detail)
 
-            cleanup.log_executer_termination(request_handler, redis_hostname,
-                                             redis_port, executer_uuid, reason,
-                                             detail)
             monitoring_flag = False
 
 

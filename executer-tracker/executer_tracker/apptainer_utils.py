@@ -6,6 +6,8 @@ images from a remote storage and cache them locally.
 import os
 import re
 import subprocess
+import time
+from typing import Optional, Tuple
 
 import fsspec
 from absl import logging
@@ -30,14 +32,20 @@ class ApptainerImagesManager:
     def __init__(
         self,
         local_cache_dir: str,
-        remote_storage_filesystem: fsspec.spec.AbstractFileSystem,
-        remote_storage_dir: str,
+        remote_storage_url: Optional[str] = None,
     ):
         self._local_cache_dir = local_cache_dir
         os.makedirs(self._local_cache_dir, exist_ok=True)
 
-        self._remote_storage_filesystem = remote_storage_filesystem
-        self._remote_storage_dir = remote_storage_dir
+        self._remote_storage_filesystem = None
+        self._remote_storage_dir = None
+
+        if remote_storage_url is not None:
+            remote_storage_spec, remote_storage_dir = (
+                remote_storage_url.split("://"))
+            self._remote_storage_filesystem = fsspec.filesystem(
+                remote_storage_spec)
+            self._remote_storage_dir = remote_storage_dir
 
     def _normalize_image_uri(self, image_uri: str) -> str:
         """Check if the image URI is fully qualified.
@@ -66,7 +74,11 @@ class ApptainerImagesManager:
         return re.sub(r"://|:|/", "_", image_uri) + ".sif"
 
     def _apptainer_pull(self, image_uri: str, sif_local_path: str):
-        """Pulls the image from Docker Hub and converts it to a SIF image."""
+        """Pulls the image from Docker Hub and converts it to a SIF image.
+
+        Raises:
+            ApptainerImageNotFoundError: If pulling the image fails.
+        """
         logging.info("Pulling image ...")
 
         try:
@@ -86,7 +98,43 @@ class ApptainerImagesManager:
             raise ApptainerImageNotFoundError(
                 "Apptainer command not available.")
 
-    def get(self, image: str) -> str:
+    def _get_from_remote_storage(
+        self,
+        sif_image_name: str,
+        sif_local_path: str,
+    ) -> bool:
+        """Attempt to download the image from the remote storage.
+
+        If a remote storage was not provided on object creation, this method
+        won't do anything.
+
+        Returns:
+            True if the image was found in the remote storage and downloaded,
+            False otherwise.
+        """
+        if (self._remote_storage_dir
+                is None) or (self._remote_storage_filesystem is None):
+            return False
+
+        sif_remote_path = os.path.join(self._remote_storage_dir, sif_image_name)
+
+        if self._remote_storage_filesystem.exists(sif_remote_path):
+            logging.info("SIF image found in remote storage: %s",
+                         sif_image_name)
+            logging.info("Downloading from remote remote storage...")
+            self._remote_storage_filesystem.download(
+                sif_remote_path,
+                sif_local_path,
+            )
+            logging.info("Downloaded SIF image to: %s", sif_local_path)
+            return True
+
+        logging.info("SIF image not found in remote storage: %s",
+                     sif_image_name)
+
+        return False
+
+    def get(self, image: str) -> Tuple[str, Optional[float]]:
         """Makes the requested Apptainer image available locally.
 
         If the image is not available in the local directory, it is attempted
@@ -117,28 +165,24 @@ class ApptainerImagesManager:
             sif_image_name = self._image_uri_to_sif_name(image_uri)
 
         sif_local_path = os.path.join(self._local_cache_dir, sif_image_name)
-        sif_remote_path = os.path.join(self._remote_storage_dir, sif_image_name)
 
         if os.path.exists(sif_local_path):
             logging.info("SIF image found locally: %s", sif_image_name)
-            return sif_local_path
+            return sif_local_path, None
 
         logging.info("SIF image not found locally: %s", sif_image_name)
 
-        if self._remote_storage_filesystem.exists(sif_remote_path):
-            logging.info("SIF image found in remote storage: %s",
-                         sif_image_name)
-            logging.info("Downloading from remote remote storage...")
-            self._remote_storage_filesystem.download(
-                sif_remote_path,
-                sif_local_path,
-            )
-            logging.info("Downloaded SIF image to: %s", sif_local_path)
-            return sif_local_path
+        donwload_start = time.time()
 
-        logging.info("SIF image not found in remote storage: %s",
-                     sif_image_name)
+        downloaded = self._get_from_remote_storage(
+            sif_image_name,
+            sif_local_path,
+        )
 
-        self._apptainer_pull(image_uri, sif_local_path)
+        if not downloaded:
+            self._apptainer_pull(image_uri, sif_local_path)
 
-        return sif_local_path
+        download_time = time.time() - donwload_start
+        logging.info("Apptainer image downloaded in %s seconds", download_time)
+
+        return sif_local_path, download_time

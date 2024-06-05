@@ -15,29 +15,30 @@ import time
 from typing import Dict, Tuple
 from uuid import UUID
 
-import fsspec
-import redis
 from absl import logging
 
+import executer_tracker
 from executer_tracker import (
+    ApiClient,
     api_methods_config,
     apptainer_utils,
     executers,
+    task_message_listener,
     utils,
 )
-from executer_tracker.utils import files, loki, make_task_key
+from executer_tracker.utils import files, loki
 from inductiva_api import events
-from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.task_status import task_status
 
 TASK_COMMANDS_QUEUE = "commands"
 KILL_MESSAGE = "kill"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
+TASK_DONE_MESSAGE = "done"
 
 
-def redis_command_msg_catcher(
-    redis_conn: redis.Redis,
+def task_message_listener_loop(
+    listener: task_message_listener.BaseTaskMessageListener,
     task_id: str,
     executer: executers.BaseExecuter,
     killed_flag: threading.Event,
@@ -49,28 +50,19 @@ def redis_command_msg_catcher(
     is received, the task is killed.
 
     Args:
-        redis_conn: Redis connection.
         task_id: ID of the running task.
-        task_tracker: TaskTracker instance that wraps the running task.
         killed_flag: Flag to signal that the task was killed.
     """
-    queue = make_task_key(task_id, TASK_COMMANDS_QUEUE)
-
     while True:
-        logging.info("Waiting for messages on queue: %s", queue)
-        element = redis_conn.brpop(queue)
-        logging.info("Received message: %s", element)
 
-        # If no kill message is received and the client is unblocked because
-        # it is no longer required to wait for a message on the queue,
-        # brpop returns None. Handle that case by returning from the function
-        # without doing anything.
-        if element is None:
+        logging.info("Waiting for task related messages ...")
+        message = listener.receive(task_id)
+        logging.info("Received message: %s", message)
+
+        if message == TASK_DONE_MESSAGE:
             return
 
-        content = element[1]
-
-        if content == KILL_MESSAGE:
+        if message == KILL_MESSAGE:
             logging.info("Received kill message. Killing task.")
             executer.terminate()
             logging.info("Task killed.")
@@ -79,11 +71,11 @@ def redis_command_msg_catcher(
             killed_flag.set()
             return
 
-        elif content == ENABLE_LOGGING_STREAM_MESSAGE:
+        elif message == ENABLE_LOGGING_STREAM_MESSAGE:
             executer.loki_logger.enable()
             logging.info("Logging stream enabled.")
 
-        elif content == DISABLE_LOGGING_STREAM_MESSAGE:
+        elif message == DISABLE_LOGGING_STREAM_MESSAGE:
             executer.loki_logger.disable()
             logging.info("Logging stream disabled.")
 
@@ -101,43 +93,41 @@ class TaskRequestHandler:
     the request for consumption.
 
     Attributes:
-        redis: Connection to Redis.
-        docker_client: Docker client.
-        artifact_filesystem: Shared location with the Web API.
+        redis_connection: Redis connection handler.
+        filesystem: fsspec filesystem handler.
+        artifact_store_root: Root directory for storing artifacts.
         executer_uuid: UUID of the executer that handles the requests.
             Used for event logging purposes.
-        event_logger: Object to log events to a Redis stream.
-        shared_dir_host: Path to the directory shared with the executer-tracker
-            container on the host machine.
-        shared_dir_local: Path to the directory shared with the
-            executer-tracker container inside the container.
-        task_id: ID of the task that is currently being executed. If
-            no task is being executed, this attribute is None.
+        workdir: Working directory.
+        mpi_config: MPI configuration.
         apptainer_images_manager: ApptainerImagesManager instance. Used
             to download and cache Apptainer images locally.
+        api_client: ApiClient instance. Used to communicate with the API.
     """
 
     def __init__(
         self,
-        redis_connection: redis.Redis,
-        filesystem: fsspec.spec.AbstractFileSystem,
-        artifact_store_root: str,
         executer_uuid: UUID,
         workdir: str,
         mpi_config: executers.MPIConfiguration,
         apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
+        api_client: ApiClient,
+        event_logger: executer_tracker.BaseEventLogger,
+        message_listener: task_message_listener.BaseTaskMessageListener,
+        file_manager: executer_tracker.BaseFileManager,
     ):
-        self.redis = redis_connection
-        self.filesystem = filesystem
-        self.artifact_store_root = artifact_store_root
         self.executer_uuid = executer_uuid
-        self.event_logger = RedisStreamEventLoggerSync(self.redis, "events")
-        self.task_id = None
         self.workdir = workdir
-        self.loki_logger = None
         self.mpi_config = mpi_config
         self.apptainer_images_manager = apptainer_images_manager
+        self.api_client = api_client
+        self.event_logger = event_logger
+        self.message_listener = message_listener
+        self.file_manager = file_manager
+        self.task_id = None
+        self.loki_logger = None
         self.task_workdir = None
+        self.threads = []
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -147,10 +137,27 @@ class TaskRequestHandler:
         """Checks if a task is currently running."""
         return self.task_id is not None
 
+    def _post_task_metric(self, metric: str, value: float):
+        """Post a metric for the currently running task.
+
+        The post request is done in a separate thread to allow retries
+        without blocking the task execution.
+        When the first metric (donwload input) is posted, the DB updater
+        may not have updated the task status yet. In this case the task won't
+        be assigned to the machine and the request will be rejected.
+        """
+        thread = threading.Thread(
+            target=self.api_client.post_task_metric,
+            args=(self.task_id, metric, value),
+            daemon=True,
+        )
+        thread.start()
+        self.threads.append(thread)
+
     def _log_task_picked_up(self):
         """Log that a task was picked up by the executer."""
         assert self.task_id is not None
-        picked_up_timestamp = datetime.datetime.now(datetime.timezone.utc)
+        picked_up_timestamp = utils.now_utc()
 
         if self.submitted_timestamp is not None:
             submitted_timestamp = datetime.datetime.fromisoformat(
@@ -158,21 +165,17 @@ class TaskRequestHandler:
             logging.info("Task submitted at: %s", self.submitted_timestamp)
             while picked_up_timestamp <= submitted_timestamp:
                 time.sleep(0.01)
-                picked_up_timestamp = datetime.datetime.now(
-                    datetime.timezone.utc)
+                picked_up_timestamp = utils.now_utc()
+
+            queue_time = (picked_up_timestamp -
+                          submitted_timestamp).total_seconds()
+            self._post_task_metric(utils.QUEUE_TIME_SECONDS, queue_time)
+
         logging.info("Task picked up at: %s", picked_up_timestamp)
 
         self.event_logger.log(
             events.TaskPickedUp(
                 timestamp=picked_up_timestamp,
-                id=self.task_id,
-                machine_id=self.executer_uuid,
-            ))
-
-    def _log_task_work_started(self):
-        assert self.task_id is not None
-        self.event_logger.log(
-            events.TaskWorkStarted(
                 id=self.task_id,
                 machine_id=self.executer_uuid,
             ))
@@ -191,8 +194,7 @@ class TaskRequestHandler:
         """
         self.task_id = request["id"]
         self.project_id = request["project_id"]
-        self.task_dir_remote = os.path.join(self.artifact_store_root,
-                                            request["task_dir"])
+        self.task_dir_remote = request["task_dir"]
         self.submitted_timestamp = request.get("submitted_timestamp")
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
@@ -204,22 +206,37 @@ class TaskRequestHandler:
         try:
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
 
+            computation_start_time = utils.now_utc()
             self.event_logger.log(
                 events.TaskWorkStarted(
+                    timestamp=computation_start_time,
                     id=self.task_id,
                     machine_id=self.executer_uuid,
                 ))
             exit_code, task_killed = self._execute_request(request,)
             logging.info("Task killed: %s", str(task_killed))
 
-            event = events.TaskWorkFinished(
-                id=self.task_id,
-                machine_id=self.executer_uuid,
+            computation_end_time = utils.now_utc()
+            self.event_logger.log(
+                events.TaskWorkFinished(
+                    timestamp=computation_end_time,
+                    id=self.task_id,
+                    machine_id=self.executer_uuid,
+                ))
+
+            computation_seconds = (computation_end_time -
+                                   computation_start_time).total_seconds()
+            logging.info(
+                "Task computation time: %s seconds",
+                computation_seconds,
             )
 
-            self.event_logger.log(event)
+            self._post_task_metric(
+                utils.COMPUTATION_SECONDS,
+                computation_seconds,
+            )
 
-            output_size_b = self._pack_output()
+            self._pack_output()
 
             new_status = task_status.TaskStatusCode.SUCCESS.value
             if exit_code != 0:
@@ -231,7 +248,6 @@ class TaskRequestHandler:
                 events.TaskOutputUploaded(
                     id=self.task_id,
                     machine_id=self.executer_uuid,
-                    output_size_b=output_size_b,
                     new_status=new_status,
                 ))
         finally:
@@ -258,27 +274,40 @@ class TaskRequestHandler:
 
         os.makedirs(task_workdir)
 
-        input_zip_path_remote = os.path.join(task_dir_remote,
-                                             utils.INPUT_ZIP_FILENAME)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_zip_path = os.path.join(tmp_dir, "file.zip")
 
-        files.download_and_extract_zip_archive(
-            self.filesystem,
-            input_zip_path_remote,
-            task_workdir,
-        )
+            download_duration = self.file_manager.download_input(
+                self.task_id,
+                task_dir_remote,
+                tmp_zip_path,
+            )
+
+            logging.info(
+                "Downloaded zip to: %s, in %s seconds.",
+                tmp_zip_path,
+                download_duration,
+            )
+
+            self._post_task_metric(utils.DOWNLOAD_INPUT, download_duration)
+
+            input_size_bytes = os.path.getsize(tmp_zip_path)
+            self._post_task_metric(utils.INPUT_SIZE, input_size_bytes)
+
+            unzip_duration = files.extract_zip_archive(
+                zip_path=tmp_zip_path,
+                dest_dir=task_workdir,
+            )
+
+            logging.info(
+                "Extracted zip to: %s, in %s seconds",
+                task_workdir,
+                unzip_duration,
+            )
+
+            self._post_task_metric(utils.UNZIP_INPUT, unzip_duration)
 
         return task_workdir
-
-    def _log_stdout(self):
-        stdout_path_local = os.path.join(self.task_workdir, utils.OUTPUT_DIR,
-                                         "artifacts/stdout.txt")
-        stdout_path_remote = os.path.join(self.task_dir_remote,
-                                          "stdout_live.txt")
-        if stdout_path_local is not None and stdout_path_remote is not None:
-            if os.path.exists(stdout_path_local):
-                with self.filesystem.open(stdout_path_remote, "wb") as std_file:
-                    with open(stdout_path_local, "rb") as f_src:
-                        std_file.write(f_src.read())
 
     def _execute_request(
         self,
@@ -297,12 +326,16 @@ class TaskRequestHandler:
             "'_execute_request' called without a task ID.")
 
         executer = self._build_executer(request)
-        redis_client_id = self.redis.client_id()
 
         task_killed_flag = threading.Event()
         thread = threading.Thread(
-            target=redis_command_msg_catcher,
-            args=(self.redis, self.task_id, executer, task_killed_flag),
+            target=task_message_listener_loop,
+            args=(
+                self.message_listener,
+                self.task_id,
+                executer,
+                task_killed_flag,
+            ),
             daemon=True,
         )
 
@@ -310,50 +343,66 @@ class TaskRequestHandler:
         exit_code = executer.run()
 
         logging.info("Executer finished running.")
-        self.redis.client_unblock(redis_client_id)
+        self.message_listener.unblock(self.task_id)
+
         thread.join()
-        logging.info("Message catcher thread stopped.")
+        logging.info("Message listener thread stopped.")
 
         return exit_code, task_killed_flag.is_set()
 
-    def _pack_output(self) -> int:
-        """Compress outputs and store them in the shared drive.
-
-        Args:
-            task_dir_remote: Path to the directory with the task's files. Path
-                is relative to "artifact_filesystem".
-            working_dir_local: Working directory of the executer that performed
-                the task.
-
-        Returns:
-            Path to the zip file.
-        """
+    def _pack_output(self):
+        """Compress outputs and store them in the shared drive."""
         # Compress outputs, storing them in the shared drive
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
-            return 0
+            return
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            output_zip_path_local = os.path.join(tmp_dir,
-                                                 utils.OUTPUT_ZIP_FILENAME)
-            files.make_zip_archive(output_zip_path_local, output_dir)
+            output_zip_path_local = os.path.join(
+                tmp_dir,
+                utils.OUTPUT_ZIP_FILENAME,
+            )
 
-            output_archive_size_b = os.path.getsize(output_zip_path_local)
+            zip_duration = files.make_zip_archive(
+                output_zip_path_local,
+                output_dir,
+            )
 
-            output_zip_path_remote = os.path.join(self.task_dir_remote,
-                                                  utils.OUTPUT_ZIP_FILENAME)
+            logging.info(
+                "Created output zip archive: %s, in %s seconds",
+                output_zip_path_local,
+                zip_duration,
+            )
 
-            files.upload_file(self.filesystem, output_zip_path_local,
-                              output_zip_path_remote)
+            self._post_task_metric(utils.ZIP_OUTPUT, zip_duration)
 
-            logging.info("Uploaded output zip to: %s", output_zip_path_remote)
+            output_size_bytes = os.path.getsize(output_zip_path_local)
+            self._post_task_metric(utils.OUTPUT_SIZE, output_size_bytes)
 
-        return output_archive_size_b
+            output_zip_path_remote = os.path.join(
+                self.task_dir_remote,
+                utils.OUTPUT_ZIP_FILENAME,
+            )
+
+            upload_duration = self.file_manager.upload_output(
+                self.task_id,
+                self.task_dir_remote,
+                output_zip_path_local,
+            )
+
+            logging.info(
+                "Uploaded output zip to: %s, in %s seconds",
+                output_zip_path_remote,
+                upload_duration,
+            )
+
+            self._post_task_metric(utils.UPLOAD_OUTPUT, upload_duration)
 
     def _cleanup(self):
         """Cleanup after task execution.
 
         Deletes the working directory of the task.
+        Waits for all threads to finish.
 
         Args:
             working_dir_local: Working directory of the executer that performed
@@ -363,6 +412,9 @@ class TaskRequestHandler:
             logging.info("Cleaning up working directory: %s", self.task_workdir)
             shutil.rmtree(self.task_workdir, ignore_errors=True)
         self.task_workdir = None
+
+        for thread in self.threads:
+            thread.join()
 
     def _build_executer(self, request) -> executers.BaseExecuter:
         """Build Python command to run a requested task.
@@ -380,8 +432,11 @@ class TaskRequestHandler:
 
         executer_class = api_methods_config.api_method_to_script[method]
 
-        apptainer_image_path = self.apptainer_images_manager.get(
+        apptainer_image_path, download_time = self.apptainer_images_manager.get(
             container_image)
+
+        if download_time is not None:
+            self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE, download_time)
 
         return executer_class(
             self.task_workdir,
