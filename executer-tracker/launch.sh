@@ -3,6 +3,8 @@
 PYTHON_BIN="/opt/executer-tracker/venv/bin/python3"
 APP_PATH="/opt/executer-tracker/executer_tracker/main.py"
 
+# dummy change
+
 start() {
 	export EXECUTER_API_KEY="$(gcloud secrets versions access latest --secret=executer-tracker-api-key)"
 	export WORKDIR="/opt/executer-tracker/workdir"
