@@ -1,25 +1,22 @@
 """File related utility functions"""
 import os
 import shutil
-import tempfile
 import zipfile
 
 import fsspec
-from absl import logging
+
+from executer_tracker.utils import execution_time
 
 
-def make_zip_archive(zip_path, source_dir):
+@execution_time
+def make_zip_archive(zip_path: str, source_dir: str) -> float:
     # make_archive expects the path without extension
     zip_path_no_ext = os.path.splitext(zip_path)[0]
-
     zip_path = shutil.make_archive(zip_path_no_ext, "zip", source_dir)
 
-    logging.info("Created zip archive: %s", zip_path)
 
-    return zip_path
-
-
-def extract_zip_archive(zip_path, dest_dir):
+@execution_time
+def extract_zip_archive(zip_path: str, dest_dir: str) -> float:
     """Extract ZIP archive.
 
     Args:
@@ -30,35 +27,23 @@ def extract_zip_archive(zip_path, dest_dir):
         zip_fp.extractall(dest_dir)
 
 
-def download_and_extract_zip_archive(filesystem: fsspec.AbstractFileSystem,
-                                     remote_path: str, dest_dir: str):
-    """Download and extract ZIP archive from fsspec filesystem.
-
-    Args:
-        filesystem: fsspec filesystem.
-        remote_path: Path to the ZIP file on the filesystem.
-        dest_dir: Directory where to write the uncompressed files.
-    """
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_zip_path = os.path.join(tmp_dir, "file.zip")
-
-        with filesystem.open(remote_path, "rb") as f:
-            with open(tmp_zip_path, "wb") as local_file:
-                shutil.copyfileobj(f, local_file)
-
-        logging.info("Downloaded zip to: %s", tmp_zip_path)
-
-        extract_zip_archive(
-            zip_path=tmp_zip_path,
-            dest_dir=dest_dir,
-        )
-
-        logging.info("Extracted zip to: %s", dest_dir)
+@execution_time
+def download_file(
+    filesystem: fsspec.AbstractFileSystem,
+    remote_path: str,
+    local_path: str,
+):
+    with filesystem.open(remote_path, "rb") as f:
+        with open(local_path, "wb") as local_file:
+            shutil.copyfileobj(f, local_file)
 
 
-def upload_file(filesystem: fsspec.AbstractFileSystem, file_path,
-                file_path_remote):
-    with open(file_path, "rb") as f_src:
-        with filesystem.open(file_path_remote, "wb") as f_dest:
+@execution_time
+def upload_file(
+    filesystem: fsspec.AbstractFileSystem,
+    local_path: str,
+    remote_path: str,
+):
+    with open(local_path, "rb") as f_src:
+        with filesystem.open(remote_path, "wb") as f_dest:
             shutil.copyfileobj(f_src, f_dest)
