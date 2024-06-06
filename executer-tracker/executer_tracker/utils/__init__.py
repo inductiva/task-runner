@@ -23,8 +23,11 @@ UNZIP_INPUT = "input_decompression_seconds"
 DOWNLOAD_EXECUTER_IMAGE = "container_image_download_seconds"
 ZIP_OUTPUT = "output_compression_seconds"
 UPLOAD_OUTPUT = "output_upload_seconds"
+INPUT_ZIPPED_SIZE = "input_zipped_size_bytes"
 INPUT_SIZE = "input_size_bytes"
 OUTPUT_SIZE = "output_size_bytes"
+OUTPUT_ZIPPED_SIZE = "output_zipped_size_bytes"
+OUTPUT_TOTAL_FILES = "output_total_files"
 
 
 def make_task_key(task_id: str, attribute: str) -> str:

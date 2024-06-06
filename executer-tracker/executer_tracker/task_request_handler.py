@@ -127,6 +127,7 @@ class TaskRequestHandler:
         self.task_id = None
         self.loki_logger = None
         self.task_workdir = None
+        self.apptainer_image_path = None
         self.threads = []
 
         # If a share path for MPI is set, use it as the working directory.
@@ -201,6 +202,13 @@ class TaskRequestHandler:
             project_id=self.project_id,
         )
 
+        image_path, download_time = self.apptainer_images_manager.get(
+            request["container_image"])
+        self.apptainer_image_path = image_path
+
+        if download_time is not None:
+            self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE, download_time)
+
         self._log_task_picked_up()
 
         try:
@@ -213,7 +221,7 @@ class TaskRequestHandler:
                     id=self.task_id,
                     machine_id=self.executer_uuid,
                 ))
-            exit_code, task_killed = self._execute_request(request,)
+            exit_code, task_killed = self._execute_request(request)
             logging.info("Task killed: %s", str(task_killed))
 
             computation_end_time = utils.now_utc()
@@ -291,8 +299,13 @@ class TaskRequestHandler:
 
             self._post_task_metric(utils.DOWNLOAD_INPUT, download_duration)
 
-            input_size_bytes = os.path.getsize(tmp_zip_path)
-            self._post_task_metric(utils.INPUT_SIZE, input_size_bytes)
+            input_zipped_size_bytes = os.path.getsize(tmp_zip_path)
+            logging.info("Input zipped size: %s bytes", input_zipped_size_bytes)
+
+            self._post_task_metric(
+                utils.INPUT_ZIPPED_SIZE,
+                input_zipped_size_bytes,
+            )
 
             unzip_duration = files.extract_zip_archive(
                 zip_path=tmp_zip_path,
@@ -306,6 +319,12 @@ class TaskRequestHandler:
             )
 
             self._post_task_metric(utils.UNZIP_INPUT, unzip_duration)
+
+            input_size_bytes = files.get_dir_size(task_workdir)
+            logging.info("Input size: %s bytes", input_size_bytes)
+
+            if input_size_bytes is not None:
+                self._post_task_metric(utils.INPUT_SIZE, input_size_bytes)
 
         return task_workdir
 
@@ -352,10 +371,22 @@ class TaskRequestHandler:
 
     def _pack_output(self):
         """Compress outputs and store them in the shared drive."""
-        # Compress outputs, storing them in the shared drive
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
+            logging.error("Output directory not found: %s", output_dir)
             return
+
+        output_size_bytes = files.get_dir_size(output_dir)
+        logging.info("Output size: %s bytes", output_size_bytes)
+
+        if output_size_bytes is not None:
+            self._post_task_metric(utils.OUTPUT_SIZE, output_size_bytes)
+
+        output_total_files = files.get_dir_total_files(output_dir)
+        logging.info("Output total files: %s", output_total_files)
+
+        if output_total_files is not None:
+            self._post_task_metric(utils.OUTPUT_TOTAL_FILES, output_total_files)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             output_zip_path_local = os.path.join(
@@ -376,8 +407,14 @@ class TaskRequestHandler:
 
             self._post_task_metric(utils.ZIP_OUTPUT, zip_duration)
 
-            output_size_bytes = os.path.getsize(output_zip_path_local)
-            self._post_task_metric(utils.OUTPUT_SIZE, output_size_bytes)
+            output_zipped_size_bytes = os.path.getsize(output_zip_path_local)
+            logging.info("Output zipped size: %s bytes",
+                         output_zipped_size_bytes)
+
+            self._post_task_metric(
+                utils.OUTPUT_ZIPPED_SIZE,
+                output_zipped_size_bytes,
+            )
 
             output_zip_path_remote = os.path.join(
                 self.task_dir_remote,
@@ -428,19 +465,12 @@ class TaskRequestHandler:
             Python command to execute received request.
         """
         method = request["method"]
-        container_image = request["container_image"]
 
         executer_class = api_methods_config.api_method_to_script[method]
 
-        apptainer_image_path, download_time = self.apptainer_images_manager.get(
-            container_image)
-
-        if download_time is not None:
-            self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE, download_time)
-
         return executer_class(
             self.task_workdir,
-            apptainer_image_path,
+            self.apptainer_image_path,
             copy.deepcopy(self.mpi_config),
             self.loki_logger,
         )
