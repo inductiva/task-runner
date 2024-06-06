@@ -202,14 +202,14 @@ class TaskRequestHandler:
             project_id=self.project_id,
         )
 
+        self._log_task_picked_up()
+
         image_path, download_time = self.apptainer_images_manager.get(
             request["container_image"])
         self.apptainer_image_path = image_path
 
         if download_time is not None:
             self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE, download_time)
-
-        self._log_task_picked_up()
 
         try:
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
