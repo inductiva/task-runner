@@ -41,33 +41,38 @@ class FDSExecuter(executers.BaseExecuter):
 
     def post_process(self):
         """Generate post-processing video with Smokeview."""
-        smokeview_script = "/smokeview.sh"
-        smokeview_file = self.check_smokeview_exec()
+        return
+        ## FDS post-processing with moviepy may block indefinitely, thus it
+        ## is disabled because it is not being used by any user. Leaving it
+        ## here commented for future reference.
 
-        if smokeview_file:
-            cmd = executers.Command(f"{smokeview_script} {smokeview_file}")
+        # smokeview_script = "/smokeview.sh"
+        # smokeview_file = self.check_smokeview_exec()
 
-            # Run Smokeview based on input script
-            self.run_subprocess(cmd, working_dir=self.artifacts_dir)
-            # Get generated frame image files
-            output_files = os.listdir(self.artifacts_dir)
-            frame_files = [
-                file for file in output_files if file.lower().endswith(".png")
-            ]
-            frame_files = [
-                os.path.join(self.artifacts_dir, file) for file in frame_files
-            ]
+        # if smokeview_file:
+        #     cmd = executers.Command(f"{smokeview_script} {smokeview_file}")
 
-            # Generate movie and remove the frame files
-            executers.utils.visualization.create_movie_from_frames(
-                frame_files,
-                os.path.join(self.artifacts_dir, "movie.mp4"),
-                fps=30)
+        #     # Run Smokeview based on input script
+        #     self.run_subprocess(cmd, working_dir=self.artifacts_dir)
+        #     # Get generated frame image files
+        #     output_files = os.listdir(self.artifacts_dir)
+        #     frame_files = [
+        #         file for file in output_files if file.lower().endswith(".png")
+        #     ]
+        #     frame_files = [
+        #         os.path.join(self.artifacts_dir, file) for file in frame_files
+        #     ]
 
-            for filename in frame_files:
-                full_path = os.path.join(self.artifacts_dir, filename)
-                if os.path.isfile(full_path):
-                    os.remove(full_path)
+        #     # Generate movie and remove the frame files
+        #     executers.utils.visualization.create_movie_from_frames(
+        #         frame_files,
+        #         os.path.join(self.artifacts_dir, "movie.mp4"),
+        #         fps=30)
+
+        #     for filename in frame_files:
+        #         full_path = os.path.join(self.artifacts_dir, filename)
+        #         if os.path.isfile(full_path):
+        #             os.remove(full_path)
 
     def execute(self):
         sim_dir = os.path.join(self.working_dir, self.args.sim_dir)
