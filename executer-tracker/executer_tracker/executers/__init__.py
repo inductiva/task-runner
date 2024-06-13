@@ -25,7 +25,6 @@ from . import (
     xbeach,
     dummy,
     swash,
-    utils,
     swan,
     cans,
     fds,
