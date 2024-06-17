@@ -18,6 +18,7 @@ class RedisTaskFetcher(BaseTaskFetcher):
     """Implementation of a task fetcher using Redis streams."""
 
     _DELIVER_NEW_MESSAGES = ">"
+    _TASK_KEYS_SET = "task_keys_suffixes"
 
     def __init__(
         self,
@@ -62,8 +63,9 @@ class RedisTaskFetcher(BaseTaskFetcher):
             stream_entry_id,
         )
 
-        for key in self._conn.scan_iter(match=f"task:{task_id}:*"):
-            self._conn.delete(key)
+        suffixes = self._conn.smembers(self._TASK_KEYS_SET)
+        for suffix in suffixes:
+            self._conn.delete(f"task:{task_id}:{suffix}")
 
 
 class WebApiTaskFetcher(BaseTaskFetcher):

@@ -10,9 +10,3 @@ gcsfs
 # FEniCSx
 gmsh==4.11.1
 meshio==5.3.5
-
-# FDS utils
-glob2
-moviepy==1.0.3
-imageio==2.34.1
-imageio-ffmpeg==0.4.9

@@ -30,7 +30,6 @@ from executer_tracker.utils import files, loki
 from inductiva_api import events
 from inductiva_api.task_status import task_status
 
-TASK_COMMANDS_QUEUE = "commands"
 KILL_MESSAGE = "kill"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
