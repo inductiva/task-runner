@@ -14,6 +14,8 @@ class TaskStatusCode(enum.Enum):
     SPOT_INSTANCE_PREEMPTED = "spot-instance-preempted"
     EXECUTER_TERMINATED = "executer-terminated"
     EXECUTER_TERMINATED_BY_USER = "executer-terminated-by-user"
+    EXECUTER_TERMINATED_IDLE_TIMEOUT = "executer-terminated-idle-timeout"
+    EXECUTER_TERMINATED_TTL_EXCEEDED = "executer-terminated-ttl-exceeded"
     EXECUTER_FAILED = "executer-failed"
     ZOMBIE = "zombie"
     COMPUTATION_STARTED = "computation-started"
