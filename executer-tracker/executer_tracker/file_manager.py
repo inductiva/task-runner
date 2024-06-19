@@ -7,6 +7,7 @@ import uuid
 
 import fsspec
 import requests
+from absl import logging
 from typing_extensions import override
 
 import executer_tracker
@@ -56,6 +57,11 @@ class FsspecFileManager(BaseFileManager):
             task_dir_remote,
             utils.INPUT_ZIP_FILENAME,
         )
+
+        # Get file info
+        file_info = self._filesystem.info(remote_path)
+        logging.info(type(file_info))
+        logging.info("File info: %s", file_info)
 
         with self._filesystem.open(remote_path, "rb") as f:
             with open(dest_path, "wb") as local_file:
