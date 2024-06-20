@@ -244,7 +244,7 @@ class TaskRequestHandler:
                 computation_seconds,
             )
 
-            self._pack_output()
+            output_size = self._pack_output()
 
             new_status = task_status.TaskStatusCode.SUCCESS.value
             if exit_code != 0:
@@ -257,6 +257,7 @@ class TaskRequestHandler:
                     id=self.task_id,
                     machine_id=self.executer_uuid,
                     new_status=new_status,
+                    output_size=output_size,
                 ))
 
         # Catch all exceptions to ensure that we log the error message
@@ -379,8 +380,10 @@ class TaskRequestHandler:
 
         return exit_code, task_killed_flag.is_set()
 
-    def _pack_output(self):
+    def _pack_output(self) -> int:
         """Compress outputs and store them in the shared drive."""
+        output_zipped_size_bytes = None
+
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
             logging.error("Output directory not found: %s", output_dir)
@@ -444,6 +447,8 @@ class TaskRequestHandler:
             )
 
             self._post_task_metric(utils.UPLOAD_OUTPUT, upload_duration)
+
+        return output_zipped_size_bytes
 
     def _cleanup(self):
         """Cleanup after task execution.
