@@ -56,3 +56,8 @@ class TaskKilled(TaskEvent):
     # optional because the task may have been killed before
     # it was assigned to a machine
     machine_id: Optional[uuid.UUID] = None
+
+
+class TaskExecutionFailed(TaskEvent):
+    error_message: str
+    machine_id: uuid.UUID
