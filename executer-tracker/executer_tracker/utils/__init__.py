@@ -66,3 +66,12 @@ def execution_time(func):
 
 def now_utc() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+def get_exception_root_cause_message(exc: Exception) -> str:
+    """Gets the root cause of an exception and returns its message."""
+    root_cause = exc
+    while root_cause.__cause__:
+        root_cause = root_cause.__cause__
+
+    return str(root_cause)
