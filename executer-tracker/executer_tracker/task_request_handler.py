@@ -261,11 +261,12 @@ class TaskRequestHandler:
 
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
+            message = utils.get_exception_root_cause_message(e)
             self.event_logger.log(
                 events.TaskExecutionFailed(
                     id=self.task_id,
                     machine_id=self.executer_uuid,
-                    error_message=str(e),
+                    error_message=message,
                 ))
 
         finally:
