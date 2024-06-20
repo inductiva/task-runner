@@ -203,14 +203,15 @@ class TaskRequestHandler:
 
         self._log_task_picked_up()
 
-        image_path, download_time = self.apptainer_images_manager.get(
-            request["container_image"])
-        self.apptainer_image_path = image_path
-
-        if download_time is not None:
-            self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE, download_time)
-
         try:
+            image_path, download_time = self.apptainer_images_manager.get(
+                request["container_image"])
+            self.apptainer_image_path = image_path
+
+            if download_time is not None:
+                self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE,
+                                       download_time)
+
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
 
             computation_start_time = utils.now_utc()
@@ -257,10 +258,20 @@ class TaskRequestHandler:
                     machine_id=self.executer_uuid,
                     new_status=new_status,
                 ))
+
+        # Catch all exceptions to ensure that we log the error message
+        except Exception as e:  # noqa: BLE001
+            message = utils.get_exception_root_cause_message(e)
+            self.event_logger.log(
+                events.TaskExecutionFailed(
+                    id=self.task_id,
+                    machine_id=self.executer_uuid,
+                    error_message=message,
+                ))
+
         finally:
             self._cleanup()
-
-        self.task_id = None
+            self.task_id = None
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.

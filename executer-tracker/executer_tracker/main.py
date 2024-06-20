@@ -64,6 +64,7 @@ from executer_tracker import (
     executers,
     redis_utils,
     task_execution_loop,
+    utils,
 )
 from executer_tracker.register_executer import register_executer
 from executer_tracker.task_request_handler import TaskRequestHandler
@@ -248,12 +249,7 @@ def main(_):
             logging.info("Terminating executer tracker...")
             reason = ExecuterTerminationReason.ERROR
 
-            # Get the original exception
-            root_cause = e
-            while root_cause.__cause__:
-                root_cause = root_cause.__cause__
-
-            detail = str(root_cause)
+            detail = utils.get_exception_root_cause_message(e)
             termination_handler.log_termination(reason, detail)
 
             monitoring_flag = False
