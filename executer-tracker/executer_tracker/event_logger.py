@@ -1,5 +1,6 @@
 import abc
 
+from absl import logging
 from typing_extensions import override
 
 from inductiva_api.events import RedisStreamEventLoggerSync
@@ -20,6 +21,7 @@ class RedisEventLogger(BaseEventLogger):
 
     @override
     def log(self, event: Event):
+        logging.info("Logging event: %s", event)
         self._logger.log(event)
 
 
@@ -31,4 +33,5 @@ class WebApiLogger(BaseEventLogger):
 
     @override
     def log(self, event: Event):
+        logging.info("Logging event: %s", event)
         self._api_client.log_event(self._executer_tracker_id, event)
