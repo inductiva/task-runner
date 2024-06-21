@@ -51,7 +51,7 @@ class TerminationHandler:
         """
         with self._lock:
             if self._termination_logged:
-                logging.info("Another thread already already started "
+                logging.info("Another thread already started "
                              "termination logging. Skipping...")
                 return False
 
@@ -59,6 +59,8 @@ class TerminationHandler:
 
         stopped_tasks = []
         if self.request_handler.is_task_running():
+            logging.info("Task was being executed: %s.",
+                         self.request_handler.task_id)
             stopped_tasks.append(self.request_handler.task_id)
 
         event = events.ExecuterTrackerTerminated(
