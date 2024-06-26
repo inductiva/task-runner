@@ -20,6 +20,8 @@ class TaskCreated(TaskEvent):
 
 
 class TaskInputUploaded(TaskEvent):
+    # Input size in bytes, it's optional because the input is empty when the
+    # event is emitted by task resubmission
     input_size: Optional[int] = None
 
 
@@ -40,6 +42,8 @@ class TaskWorkFinished(TaskEvent):
 class TaskOutputUploaded(TaskEvent):
     new_status: str
     machine_id: uuid.UUID
+    # Output size in bytes, it's optional because the output may not be
+    # available when the event is emitted by the executer tracker
     output_size: Optional[int] = None
 
 
