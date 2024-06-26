@@ -25,6 +25,10 @@ class TaskInputUploaded(TaskEvent):
     input_size: Optional[int] = None
 
 
+class TaskSubmitted(TaskEvent):
+    pass
+
+
 class TaskPickedUp(TaskEvent):
     machine_id: uuid.UUID
     executer_docker_image_digest: Optional[str] = None
