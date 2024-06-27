@@ -395,7 +395,7 @@ class TaskRequestHandler:
         ttl_str = request.get("time_to_live_seconds")
         ttl_timer = None
         if ttl_str:
-            ttl = int(ttl_str)
+            ttl = float(ttl_str)
             logging.info("Time to live: %s seconds", ttl)
             ttl_timer = threading.Timer(
                 ttl,
