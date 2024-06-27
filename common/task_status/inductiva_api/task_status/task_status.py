@@ -19,3 +19,4 @@ class TaskStatusCode(enum.Enum):
     ZOMBIE = "zombie"
     COMPUTATION_STARTED = "computation-started"
     COMPUTATION_ENDED = "computation-ended"
+    TTL_EXCEEDED = "ttl-exceeded"
