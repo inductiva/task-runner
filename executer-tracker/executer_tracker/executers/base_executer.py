@@ -324,10 +324,8 @@ class BaseExecuter(ABC):
             logging.info("Terminating executer...")
             self.is_shutting_down.set()
 
-        logging.info("Hello...")
         if self.subprocess is not None:
             self.subprocess.exit_gracefully()
-            logging.info("Terminated subprocess.")
 
         return True
 

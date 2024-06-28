@@ -96,9 +96,7 @@ def interrupt_task_ttl_exceeded(
     ttl_function_started.set()
     logging.info("Time to live exceeded. Interrupting task...")
     was_terminated = executer.terminate()
-    logging.info("Was task terminated: %s", was_terminated)
     if was_terminated:
-        logging.info("Setting TTL exceeded flag.")
         ttl_exceeded_flag.set()
     logging.info("Task interrupted.")
 
