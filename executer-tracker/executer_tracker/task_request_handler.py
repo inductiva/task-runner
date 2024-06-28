@@ -70,11 +70,12 @@ def task_message_listener_loop(
 
         if message == KILL_MESSAGE:
             logging.info("Received kill message. Killing task.")
-            executer.terminate()
+            was_terminated = executer.terminate()
             logging.info("Task killed.")
 
             # set flag so that the main thread knows the task was killed
-            killed_flag.set()
+            if was_terminated:
+                killed_flag.set()
             return
 
         elif message == ENABLE_LOGGING_STREAM_MESSAGE:
@@ -89,11 +90,16 @@ def task_message_listener_loop(
 def interrupt_task_ttl_exceeded(
     executer: executers.BaseExecuter,
     ttl_exceeded_flag: threading.Event,
+    ttl_function_started: threading.Event,
 ):
     """Interrupt the task when the time to live is exceeded."""
+    ttl_function_started.set()
     logging.info("Time to live exceeded. Interrupting task...")
-    executer.terminate()
-    ttl_exceeded_flag.set()
+    was_terminated = executer.terminate()
+    logging.info("Was task terminated: %s", was_terminated)
+    if was_terminated:
+        logging.info("Setting TTL exceeded flag.")
+        ttl_exceeded_flag.set()
     logging.info("Task interrupted.")
 
 
@@ -392,6 +398,7 @@ class TaskRequestHandler:
         thread.start()
 
         ttl_exceeded_flag = threading.Event()
+        ttl_function_started = threading.Event()
         ttl_str = request.get("time_to_live_seconds")
         ttl_timer = None
         if ttl_str:
@@ -400,20 +407,26 @@ class TaskRequestHandler:
             ttl_timer = threading.Timer(
                 ttl,
                 interrupt_task_ttl_exceeded,
-                args=(executer, ttl_exceeded_flag),
+                args=(executer, ttl_exceeded_flag, ttl_function_started),
             )
             ttl_timer.start()
 
         exit_code = executer.run()
 
-        if ttl_timer and not ttl_exceeded_flag.is_set():
-            ttl_timer.cancel()
-
         logging.info("Executer finished running.")
-        self.message_listener.unblock(self.task_id)
 
+        self.message_listener.unblock(self.task_id)
         thread.join()
         logging.info("Message listener thread stopped.")
+
+        if ttl_timer:
+            # If the TTL timer was still counting down, cancel it
+            if not ttl_function_started.is_set():
+                ttl_timer.cancel()
+
+            logging.info("Waiting for TTL timer thread to finish...")
+            ttl_timer.finished.wait()
+            logging.info("TTL timer thread stopped.")
 
         exit_reason = TaskExitReason.NORMAL
         if task_killed_flag.is_set():

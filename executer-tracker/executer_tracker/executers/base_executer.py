@@ -5,6 +5,7 @@ its usage.
 """
 import json
 import os
+import threading
 from abc import ABC, abstractmethod
 from collections import namedtuple
 
@@ -81,7 +82,9 @@ class BaseExecuter(ABC):
 
         self._create_output_json_file()
 
-        self.terminated = False
+        self._lock = threading.Lock()
+        self.is_shutting_down = threading.Event()
+
         self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
                                              self.STDOUT_LOGS_FILENAME)
@@ -213,8 +216,9 @@ class BaseExecuter(ABC):
                 to run as a subprocess and user prompts if applicable.
             working_dir: Path to the working directory of the subprocess.
         """
-        if self.terminated:
-            raise ExecuterKilledError()
+        with self._lock:
+            if self.is_shutting_down.is_set():
+                raise ExecuterKilledError()
 
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
@@ -291,6 +295,8 @@ class BaseExecuter(ABC):
             self.pre_process()
             self.execute()
             self.post_process()
+            with self._lock:
+                self.is_shutting_down.set()
             self.pack_output()
         except ExecuterSubProcessError as e:
             exit_code = e.exit_code
@@ -303,11 +309,27 @@ class BaseExecuter(ABC):
 
         return exit_code
 
-    def terminate(self):
-        self.terminated = True
+    def terminate(self) -> bool:
+        """Terminates the executer.
 
+        Returns:
+            True if the executer was successfully terminated, False if it
+            had been terminated before.
+        """
+        with self._lock:
+            if self.is_shutting_down.is_set():
+                logging.info("Executer was already terminated. Skipping...")
+                return False
+
+            logging.info("Terminating executer...")
+            self.is_shutting_down.set()
+
+        logging.info("Hello...")
         if self.subprocess is not None:
             self.subprocess.exit_gracefully()
+            logging.info("Terminated subprocess.")
+
+        return True
 
     def count_vcpus(self, hwthread):
         """Will count the vcpus on the machine.
