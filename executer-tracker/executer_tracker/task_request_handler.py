@@ -294,6 +294,7 @@ class TaskRequestHandler:
                     machine_id=self.executer_uuid,
                     error_message=message,
                 ))
+            raise e
 
         finally:
             self._cleanup()
@@ -535,7 +536,9 @@ class TaskRequestHandler:
         """
         method = request["method"]
 
-        executer_class = api_methods_config.api_method_to_script[method]
+        executer_class = api_methods_config.get_executer(method)
+        if executer_class is None:
+            raise ValueError(f"Executer not found for method: {method}")
 
         return executer_class(
             self.task_workdir,
