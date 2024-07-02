@@ -1,7 +1,9 @@
 """Mapping of API methods to the Executer classes that perform those methods."""
+from typing import Optional, Type
+
 from executer_tracker import executers
 
-api_method_to_script = {
+api_method_to_executer = {
     "sph.splishsplash.run_simulation":
         executers.splishplash.SPlisHSPlasHExecuter,
     "sph.dualsphysics.run_simulation":
@@ -41,3 +43,15 @@ api_method_to_script = {
     "arbitrary.arbitrary.run_simulation":
         executers.arbitrary_commands_executer.ArbitraryCommandsExecuter,
 }
+
+
+def get_executer(api_method: str) -> Optional[Type[executers.BaseExecuter]]:
+    """Get the Executer class for the given API method.
+
+    Args:
+        api_method: The API method to get the Executer class for.
+
+    Returns:
+        The Executer class that performs the given API method.
+    """
+    return api_method_to_executer.get(api_method)

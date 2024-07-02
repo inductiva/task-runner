@@ -7,6 +7,7 @@ Note that, currently, request consumption is blocking.
 """
 import copy
 import datetime
+import enum
 import os
 import shutil
 import tempfile
@@ -36,6 +37,12 @@ DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 TASK_DONE_MESSAGE = "done"
 
 
+class TaskExitReason(enum.Enum):
+    NORMAL = "normal"
+    KILLED = "killed"
+    TTL_EXCEEDED = "ttl-exceeded"
+
+
 def task_message_listener_loop(
     listener: task_message_listener.BaseTaskMessageListener,
     task_id: str,
@@ -63,11 +70,12 @@ def task_message_listener_loop(
 
         if message == KILL_MESSAGE:
             logging.info("Received kill message. Killing task.")
-            executer.terminate()
+            was_terminated = executer.terminate()
             logging.info("Task killed.")
 
             # set flag so that the main thread knows the task was killed
-            killed_flag.set()
+            if was_terminated:
+                killed_flag.set()
             return
 
         elif message == ENABLE_LOGGING_STREAM_MESSAGE:
@@ -77,6 +85,20 @@ def task_message_listener_loop(
         elif message == DISABLE_LOGGING_STREAM_MESSAGE:
             executer.loki_logger.disable()
             logging.info("Logging stream disabled.")
+
+
+def interrupt_task_ttl_exceeded(
+    executer: executers.BaseExecuter,
+    ttl_exceeded_flag: threading.Event,
+    ttl_function_started: threading.Event,
+):
+    """Interrupt the task when the time to live is exceeded."""
+    ttl_function_started.set()
+    logging.info("Time to live exceeded. Interrupting task...")
+    was_terminated = executer.terminate()
+    if was_terminated:
+        ttl_exceeded_flag.set()
+    logging.info("Task interrupted.")
 
 
 class TaskRequestHandler:
@@ -221,8 +243,8 @@ class TaskRequestHandler:
                     id=self.task_id,
                     machine_id=self.executer_uuid,
                 ))
-            exit_code, task_killed = self._execute_request(request)
-            logging.info("Task killed: %s", str(task_killed))
+            exit_code, exit_reason = self._execute_request(request)
+            logging.info("Task exit reason: %s", exit_reason)
 
             computation_end_time = utils.now_utc()
             self.event_logger.log(
@@ -246,11 +268,14 @@ class TaskRequestHandler:
 
             output_size = self._pack_output()
 
-            new_status = task_status.TaskStatusCode.SUCCESS.value
-            if exit_code != 0:
-                new_status = task_status.TaskStatusCode.FAILED.value
-            if task_killed:
+            if exit_reason == TaskExitReason.KILLED:
                 new_status = task_status.TaskStatusCode.KILLED.value
+            elif exit_reason == TaskExitReason.TTL_EXCEEDED:
+                new_status = task_status.TaskStatusCode.TTL_EXCEEDED.value
+            else:
+                new_status = (task_status.TaskStatusCode.SUCCESS.value
+                              if exit_code == 0 else
+                              task_status.TaskStatusCode.FAILED.value)
 
             self.event_logger.log(
                 events.TaskOutputUploaded(
@@ -269,6 +294,7 @@ class TaskRequestHandler:
                     machine_id=self.executer_uuid,
                     error_message=message,
                 ))
+            raise e
 
         finally:
             self._cleanup()
@@ -342,7 +368,7 @@ class TaskRequestHandler:
     def _execute_request(
         self,
         request,
-    ) -> Tuple[int, bool]:
+    ) -> Tuple[int, TaskExitReason]:
         """Execute the request.
 
         This uses a second thread to listen for possible "kill" messages from
@@ -368,17 +394,46 @@ class TaskRequestHandler:
             ),
             daemon=True,
         )
-
         thread.start()
+
+        ttl_exceeded_flag = threading.Event()
+        ttl_function_started = threading.Event()
+        ttl_str = request.get("time_to_live_seconds")
+        ttl_timer = None
+        if ttl_str:
+            ttl = float(ttl_str)
+            logging.info("Time to live: %s seconds", ttl)
+            ttl_timer = threading.Timer(
+                ttl,
+                interrupt_task_ttl_exceeded,
+                args=(executer, ttl_exceeded_flag, ttl_function_started),
+            )
+            ttl_timer.start()
+
         exit_code = executer.run()
 
         logging.info("Executer finished running.")
-        self.message_listener.unblock(self.task_id)
 
+        self.message_listener.unblock(self.task_id)
         thread.join()
         logging.info("Message listener thread stopped.")
 
-        return exit_code, task_killed_flag.is_set()
+        if ttl_timer:
+            # If the TTL timer was still counting down, cancel it
+            if not ttl_function_started.is_set():
+                ttl_timer.cancel()
+
+            logging.info("Waiting for TTL timer thread to finish...")
+            ttl_timer.finished.wait()
+            logging.info("TTL timer thread stopped.")
+
+        exit_reason = TaskExitReason.NORMAL
+        if task_killed_flag.is_set():
+            exit_reason = TaskExitReason.KILLED
+        elif ttl_exceeded_flag.is_set():
+            exit_reason = TaskExitReason.TTL_EXCEEDED
+
+        return exit_code, exit_reason
 
     def _pack_output(self) -> int:
         """Compress outputs and store them in the shared drive."""
@@ -481,7 +536,9 @@ class TaskRequestHandler:
         """
         method = request["method"]
 
-        executer_class = api_methods_config.api_method_to_script[method]
+        executer_class = api_methods_config.get_executer(method)
+        if executer_class is None:
+            raise ValueError(f"Executer not found for method: {method}")
 
         return executer_class(
             self.task_workdir,
