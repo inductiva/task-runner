@@ -1,12 +1,13 @@
 """Test TaskRequestHandler class."""
 import json
 import os
+import queue
 import shutil
 import tempfile
 import threading
 import time
 import uuid
-from typing import List
+from typing import Iterator, List, Optional
 from unittest import mock
 
 import pytest
@@ -15,6 +16,8 @@ from executer_tracker import (
     task_message_listener,
     task_request_handler,
 )
+
+from inductiva_api import events
 
 
 class MockExecuter(
@@ -49,19 +52,25 @@ class MockMessageListener(task_message_listener.BaseTaskMessageListener):
     """MessageListener mock that doesn't receive messages."""
 
     def __init__(self):
-        self._event = threading.Event()
+        self._queue = queue.Queue()
+
+    def send(self, message: str):
+        self._queue.put(message)
 
     def receive(self, task_id: str):
         del task_id  # unused
-        self._event.wait()
-        return "done"
+
+        msg = self._queue.get()
+        return msg
 
     def unblock(self, task_id: str):
         del task_id  # unused
-        self._event.set()
+        self.send("done")
 
 
-def download_input_side_effect(commands: List[str]):
+def download_input_side_effect(
+        commands: List[str],
+        unblock_download_input: Optional[threading.Event] = None):
     """Get function to use as side_effect for file_manager.download_input."""
 
     task_request_payload = {
@@ -91,11 +100,23 @@ def download_input_side_effect(commands: List[str]):
 
             shutil.make_archive(tmp_zip_path, "zip", tmp_dir)
 
+        if unblock_download_input is not None:
+            unblock_download_input.wait()
+
     return _side_effect
 
 
+@pytest.fixture(name="mock_message_listener")
+def fixture_message_listener() -> Iterator[MockMessageListener]:
+    mock_message_listener = MockMessageListener()
+    yield mock_message_listener
+
+
 @pytest.fixture(name="handler")
-def fixture_task_request_handler(tmp_path):
+def fixture_task_request_handler(
+    tmp_path,
+    mock_message_listener,
+) -> Iterator[task_request_handler.TaskRequestHandler]:
     id_ = uuid.uuid4()
     workdir = tmp_path.joinpath("workdir")
     workdir.mkdir()
@@ -112,7 +133,7 @@ def fixture_task_request_handler(tmp_path):
         apptainer_images_manager=apptainer_images_manager,
         api_client=mock.MagicMock(),
         event_logger=event_logger,
-        message_listener=MockMessageListener(),
+        message_listener=mock_message_listener,
         file_manager=mock.MagicMock(),
     )
 
@@ -128,7 +149,8 @@ def fixture_task_request_handler(tmp_path):
 def _setup_mock_task(
     commands: List[str],
     handler: task_request_handler.TaskRequestHandler,
-    time_to_live_seconds: float,
+    time_to_live_seconds: Optional[float] = None,
+    unblock_download_input: Optional[threading.Event] = None,
 ):
     task_id = "umx0oyincuy41x3u7fyazcwjr"
     task_request = {
@@ -136,12 +158,15 @@ def _setup_mock_task(
         "project_id": uuid.uuid4(),
         "task_dir": task_id,
         "container_image": "docker://alpine:latest",  # unused in test
-        "time_to_live_seconds": str(time_to_live_seconds),
         "method": "arbitrary.arbitrary.run_simulation",
     }
 
+    if time_to_live_seconds is not None:
+        task_request["time_to_live_seconds"] = str(time_to_live_seconds)
+
     handler.file_manager.download_input = mock.MagicMock(
-        side_effect=download_input_side_effect(commands=commands))
+        side_effect=download_input_side_effect(
+            commands=commands, unblock_download_input=unblock_download_input))
 
     return task_request
 
@@ -190,3 +215,71 @@ def test_task_request_handler_ttl_not_exceeded(handler):
     # Check if last published event includes status 'success'
     assert handler.event_logger.log.call_args_list[-1][0][
         0].new_status == 'success'
+
+
+def test_task_request_handler_kill_task_before_computation_started(
+    handler,
+    mock_message_listener,
+):
+    unblock_download_input = threading.Event()
+
+    # Mock _build_executer to return a MockExecuter
+    task_request = _setup_mock_task(
+        commands=["sleep 10"],
+        handler=handler,
+        unblock_download_input=unblock_download_input,
+    )
+    thread = threading.Thread(target=handler, args=(task_request,))
+    thread.start()
+
+    assert isinstance(handler.event_logger.log.call_args_list[0][0][0],
+                      events.TaskPickedUp)
+    mock_message_listener.send("kill")
+
+    # download_input step is blocked until this event is set
+    unblock_download_input.set()
+
+    thread.join()
+
+    # Check only one event was published (Killed) after PickedUp
+    assert len(handler.event_logger.log.call_args_list) == 2
+    assert isinstance(handler.event_logger.log.call_args_list[-1][0][0],
+                      events.TaskKilled)
+
+
+def test_task_request_handler_kill_task_after_computation_started(
+    handler,
+    mock_message_listener,
+):
+    # Mock _build_executer to return a MockExecuter
+    task_duration = 30
+
+    task_request = _setup_mock_task(
+        commands=[f"sleep {task_duration}"],
+        handler=handler,
+    )
+    thread = threading.Thread(target=handler, args=(task_request,))
+    thread.start()
+
+    computation_started = False
+    computation_started_timeout_s = 30
+    computation_started_check_period = 1
+    # Wait until computation started event is published
+    while not computation_started and computation_started_timeout_s > 0:
+        computation_started = isinstance(
+            handler.event_logger.log.call_args_list[-1][0][0],
+            events.TaskWorkStarted,
+        )
+        time.sleep(computation_started_check_period)
+        computation_started_timeout_s -= computation_started_check_period
+
+    assert computation_started
+
+    mock_message_listener.send("kill")
+
+    thread.join()
+
+    assert len(handler.event_logger.log.call_args_list) == 4
+    last_event = handler.event_logger.log.call_args_list[-1][0][0]
+    assert isinstance(last_event, events.TaskOutputUploaded)
+    assert last_event.new_status == "killed"

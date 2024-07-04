@@ -45,8 +45,11 @@ class LokiLogger:
     stream for each type of IO.
     """
 
-    def __init__(self, task_id: str, project_id: str = "0000-0000-0000-0000"):
-        self._enabled = threading.Event()
+    def __init__(self,
+                 task_id: str,
+                 enabled: threading.Event,
+                 project_id: str = "0000-0000-0000-0000"):
+        self.enabled = enabled
         self.task_id = task_id
         self.project_id = project_id
         self.server_url = (f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}"
@@ -101,17 +104,9 @@ class LokiLogger:
         """Returns the current time in nanoseconds since the epoch."""
         return str(time.time_ns())
 
-    def enable(self) -> None:
-        """Enables the logger."""
-        self._enabled.set()
-
-    def disable(self) -> None:
-        """Disables the logger."""
-        self._enabled.clear()
-
     def is_enabled(self) -> bool:
         """Returns True if the logger is enabled, False otherwise."""
-        return self._enabled.is_set()
+        return self.enabled.is_set()
 
     def log_text(self,
                  log_message: str,
@@ -141,7 +136,7 @@ class LokiLogger:
             self._send_logs(stream)
 
     def flush(self, io_type: IOTypes) -> None:
-        """Sends the log stream of the specified IO type to Loki server, 
+        """Sends the log stream of the specified IO type to Loki server,
         regarless of whether the buffer is full or not."""
         if not self.is_enabled():
             return

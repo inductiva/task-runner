@@ -9,6 +9,7 @@ import copy
 import datetime
 import enum
 import os
+import queue
 import shutil
 import tempfile
 import threading
@@ -46,8 +47,8 @@ class TaskExitReason(enum.Enum):
 def task_message_listener_loop(
     listener: task_message_listener.BaseTaskMessageListener,
     task_id: str,
-    executer: executers.BaseExecuter,
-    killed_flag: threading.Event,
+    kill_task_thread_queue: queue.Queue,
+    logger_enabled: threading.Event,
 ) -> None:
     """Function to handle the kill request for the running task.
 
@@ -68,22 +69,16 @@ def task_message_listener_loop(
         if message == TASK_DONE_MESSAGE:
             return
 
-        if message == KILL_MESSAGE:
-            logging.info("Received kill message. Killing task.")
-            was_terminated = executer.terminate()
-            logging.info("Task killed.")
-
-            # set flag so that the main thread knows the task was killed
-            if was_terminated:
-                killed_flag.set()
+        elif message == KILL_MESSAGE:
+            kill_task_thread_queue.put(KILL_MESSAGE)
             return
 
         elif message == ENABLE_LOGGING_STREAM_MESSAGE:
-            executer.loki_logger.enable()
+            logger_enabled.set()
             logging.info("Logging stream enabled.")
 
         elif message == DISABLE_LOGGING_STREAM_MESSAGE:
-            executer.loki_logger.disable()
+            logger_enabled.clear()
             logging.info("Logging stream disabled.")
 
 
@@ -99,6 +94,23 @@ def interrupt_task_ttl_exceeded(
     if was_terminated:
         ttl_exceeded_flag.set()
     logging.info("Task interrupted.")
+
+
+def interrupt_task_on_kill_received(
+    executer: executers.BaseExecuter,
+    kill_thread_queue: queue.Queue,
+    task_killed: threading.Event,
+):
+    """Interrupt the task when the kill command is received."""
+    msg = kill_thread_queue.get()
+    if msg == KILL_MESSAGE:
+        logging.info("Received kill message. Killing task.")
+        was_terminated = executer.terminate()
+        if was_terminated:
+            task_killed.set()
+            logging.info("Task killed.")
+    else:
+        logging.info("Stopping kill command listener.")
 
 
 class TaskRequestHandler:
@@ -150,6 +162,9 @@ class TaskRequestHandler:
         self.task_workdir = None
         self.apptainer_image_path = None
         self.threads = []
+        self._message_listener_thread = None
+        self._kill_task_thread_queue = None
+        self._logger_enabled = threading.Event()
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -202,6 +217,14 @@ class TaskRequestHandler:
                 machine_id=self.executer_uuid,
             ))
 
+    def _check_task_killed(self) -> bool:
+        assert self._kill_task_thread_queue is not None
+
+        try:
+            return self._kill_task_thread_queue.get(block=False) == KILL_MESSAGE
+        except queue.Empty:
+            return False
+
     def __call__(self, request: Dict[str, str]) -> None:
         """Execute the task described by the request.
 
@@ -221,11 +244,26 @@ class TaskRequestHandler:
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
+            enabled=self._logger_enabled,
         )
+        self._logger_enabled.clear()
+        self._kill_task_thread_queue = queue.Queue()
 
         self._log_task_picked_up()
 
         try:
+            self._message_listener_thread = threading.Thread(
+                target=task_message_listener_loop,
+                args=(
+                    self.message_listener,
+                    self.task_id,
+                    self._kill_task_thread_queue,
+                    self._logger_enabled,
+                ),
+                daemon=True,
+            )
+            self._message_listener_thread.start()
+
             image_path, download_time = self.apptainer_images_manager.get(
                 request["container_image"])
             self.apptainer_image_path = image_path
@@ -234,7 +272,23 @@ class TaskRequestHandler:
                 self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE,
                                        download_time)
 
+            if self._check_task_killed():
+                self.event_logger.log(
+                    events.TaskKilled(
+                        id=self.task_id,
+                        machine_id=self.executer_uuid,
+                    ))
+                return
+
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
+
+            if self._check_task_killed():
+                self.event_logger.log(
+                    events.TaskKilled(
+                        id=self.task_id,
+                        machine_id=self.executer_uuid,
+                    ))
+                return
 
             computation_start_time = utils.now_utc()
             self.event_logger.log(
@@ -298,7 +352,6 @@ class TaskRequestHandler:
 
         finally:
             self._cleanup()
-            self.task_id = None
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
@@ -384,17 +437,17 @@ class TaskRequestHandler:
         executer = self._build_executer(request)
 
         task_killed_flag = threading.Event()
-        thread = threading.Thread(
-            target=task_message_listener_loop,
+
+        kill_task_thread = threading.Thread(
+            target=interrupt_task_on_kill_received,
             args=(
-                self.message_listener,
-                self.task_id,
                 executer,
+                self._kill_task_thread_queue,
                 task_killed_flag,
             ),
             daemon=True,
         )
-        thread.start()
+        kill_task_thread.start()
 
         ttl_exceeded_flag = threading.Event()
         ttl_function_started = threading.Event()
@@ -411,12 +464,16 @@ class TaskRequestHandler:
             ttl_timer.start()
 
         exit_code = executer.run()
-
         logging.info("Executer finished running.")
 
         self.message_listener.unblock(self.task_id)
-        thread.join()
-        logging.info("Message listener thread stopped.")
+        if self._message_listener_thread:
+            self._message_listener_thread.join()
+            logging.info("Message listener thread stopped.")
+
+        self._kill_task_thread_queue.put(TASK_DONE_MESSAGE)
+        kill_task_thread.join()
+        logging.info("Kill command listener thread stopped.")
 
         if ttl_timer:
             # If the TTL timer was still counting down, cancel it
@@ -520,8 +577,12 @@ class TaskRequestHandler:
             shutil.rmtree(self.task_workdir, ignore_errors=True)
         self.task_workdir = None
 
+        self._message_listener_thread = None
+
         for thread in self.threads:
             thread.join()
+
+        self.task_id = None
 
     def _build_executer(self, request) -> executers.BaseExecuter:
         """Build Python command to run a requested task.
