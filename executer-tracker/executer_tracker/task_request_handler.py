@@ -218,7 +218,8 @@ class TaskRequestHandler:
             ))
 
     def _check_task_killed(self) -> bool:
-        assert self._kill_task_thread_queue is not None
+        if self._kill_task_thread_queue is None:
+            raise RuntimeError("Failed to check if task has been killed.")
 
         try:
             return self._kill_task_thread_queue.get(block=False) == KILL_MESSAGE
