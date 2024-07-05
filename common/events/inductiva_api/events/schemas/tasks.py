@@ -53,7 +53,7 @@ class TaskOutputUploaded(TaskEvent):
 
 class TaskKillRequested(TaskEvent):
     user_id: int
-    current_status: str
+    last_status: str
 
 
 class TaskKillCommandIssued(TaskEvent):
