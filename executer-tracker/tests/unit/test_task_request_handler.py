@@ -158,7 +158,7 @@ def _setup_mock_task(
         "project_id": uuid.uuid4(),
         "task_dir": task_id,
         "container_image": "docker://alpine:latest",  # unused in test
-        "method": "arbitrary.arbitrary.run_simulation",
+        "method": "arbitrary.arbitrary_commands.run_simulation",
     }
 
     if time_to_live_seconds is not None:

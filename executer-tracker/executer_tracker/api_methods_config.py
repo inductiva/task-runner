@@ -40,7 +40,7 @@ api_method_to_executer = {
         executers.dummy.MPIHelloWorldExecuter,
     "schism.schism.run_simulation":
         executers.schism.SCHISMExecuter,
-    "arbitrary.arbitrary.run_simulation":
+    "arbitrary.arbitrary_commands.run_simulation":
         executers.arbitrary_commands_executer.ArbitraryCommandsExecuter,
 }
 
