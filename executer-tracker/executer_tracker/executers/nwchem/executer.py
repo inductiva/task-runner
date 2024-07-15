@@ -21,7 +21,6 @@ class NWChemExecuter(executers.BaseExecuter):
         # Copy the input files to the artifacts directory
         shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
 
-        
         nwchem_bin = "nwchem"
 
         cmd = executers.Command(f"{nwchem_bin} {input_filename}", is_mpi=True)
