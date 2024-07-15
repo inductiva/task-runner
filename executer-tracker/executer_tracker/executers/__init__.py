@@ -20,6 +20,7 @@ from . import (
     gromacs,
     simsopt,
     amrWind,
+    nwchem,
     reef3d,
     schism,
     xbeach,
