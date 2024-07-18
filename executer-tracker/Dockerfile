@@ -11,7 +11,7 @@ RUN wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.6.tar.g
 RUN apt-get install -y build-essential
 RUN tar zxvf openmpi-4.1.6.tar.gz
 WORKDIR /openmpi-4.1.6
-RUN ./configure --prefix=/usr/local
+RUN ./configure --prefix=/opt/openmpi/4.1.6
 RUN make all
 RUN make install
 RUN ldconfig

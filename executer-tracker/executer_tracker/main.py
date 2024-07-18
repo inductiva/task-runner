@@ -92,6 +92,7 @@ def main(_):
     mpi_share_path = None
     mpi_hostfile_path = None
     mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "--allow-run-as-root")
+    mpirun_bin_path = os.getenv("MPIRUN_BIN_PATH", "mpirun")
 
     num_mpi_hosts = 1
 
@@ -113,6 +114,7 @@ def main(_):
         hostfile_path=mpi_hostfile_path,
         share_path=mpi_share_path,
         extra_args=mpi_extra_args,
+        mpirun_bin_path=mpirun_bin_path,
     )
 
     logging.info("MPI configuration:")
