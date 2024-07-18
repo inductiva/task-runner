@@ -3,13 +3,15 @@ import os
 import shlex
 from typing import List, Optional
 
+from executer_tracker.executers import command
 
-class MPIConfiguration():
+
+class MPIClusterConfiguration():
     """Class for MPI configuration."""
     hostfile_path: Optional[str]
     share_path: Optional[str]
     extra_args: List[str]
-    mpirun_bin_path: str
+    mpirun_bin_path_template: str
 
     def __init__(
         self,
@@ -67,13 +69,18 @@ class MPIConfiguration():
             default_version=mpi_default_version,
         )
 
-    def build_command_prefix(self, version: Optional[str] = None) -> List[str]:
-        version = version or self.default_version
+    def build_command_prefix(
+        self,
+        command_config: Optional[command.MPICommandConfig] = None,
+    ) -> List[str]:
+        version = self.default_version
 
-        mpirun_bin_path = self.mpirun_bin_path.format(version=version)
+        if command_config is not None:
+            version = command_config.version
+
+        mpirun_bin_path = self.mpirun_bin_path_template.format(version=version)
         if not os.path.exists(mpirun_bin_path):
-            raise RuntimeError(
-                f"MPIRUN_BIN_PATH does not exist: {mpirun_bin_path}")
+            raise RuntimeError(f"MPI version not available: {version}.")
 
         args = [mpirun_bin_path]
 

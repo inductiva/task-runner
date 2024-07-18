@@ -16,5 +16,5 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         for command in self.args.commands:
-            cmd = executers.Command(command["cmd"])
+            cmd = executers.Command.from_dict(command)
             self.run_subprocess(cmd, self.artifacts_dir)

@@ -129,7 +129,7 @@ def fixture_task_request_handler(
     handler = task_request_handler.TaskRequestHandler(
         executer_uuid=id_,
         workdir=str(workdir),
-        mpi_config=executers.MPIConfiguration(),
+        mpi_config=executers.MPIClusterConfiguration(),
         apptainer_images_manager=apptainer_images_manager,
         api_client=mock.MagicMock(),
         event_logger=event_logger,

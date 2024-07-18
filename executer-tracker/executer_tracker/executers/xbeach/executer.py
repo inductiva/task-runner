@@ -10,7 +10,7 @@ class XBeachExecuter(executers.MPIExecuter):
         self,
         working_dir,
         container_image,
-        mpi_config: mpi_configuration.MPIConfiguration,
+        mpi_config: mpi_configuration.MPIClusterConfiguration,
         loki_logger: loki.LokiLogger,
     ):
         super().__init__(working_dir=working_dir,

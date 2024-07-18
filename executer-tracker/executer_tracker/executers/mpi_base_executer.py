@@ -21,7 +21,7 @@ class MPIExecuter(executers.BaseExecuter):
         self,
         working_dir,
         container_image,
-        mpi_config: mpi_configuration.MPIConfiguration,
+        mpi_config: mpi_configuration.MPIClusterConfiguration,
         loki_logger: loki.LokiLogger,
         sim_binary,
         file_type,

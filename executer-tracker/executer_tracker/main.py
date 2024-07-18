@@ -86,7 +86,7 @@ def main(_):
         None,
     )
 
-    mpi_config = executers.MPIConfiguration.from_env()
+    mpi_config = executers.MPIClusterConfiguration.from_env()
 
     logging.info("MPI configuration:")
     logging.info("  > hostfile: %s", mpi_config.hostfile_path)

@@ -58,7 +58,7 @@ class BaseExecuter(ABC):
         self,
         working_dir: str,
         container_image: str,
-        mpi_config: mpi_configuration.MPIConfiguration,
+        mpi_config: mpi_configuration.MPIClusterConfiguration,
         loki_logger: loki.LokiLogger,
     ):
         """Performs initial setup of the executer.
@@ -241,7 +241,8 @@ class BaseExecuter(ABC):
 
             args = []
             if cmd.is_mpi:
-                args = self.mpi_config.build_command_prefix()
+                args = self.mpi_config.build_command_prefix(
+                    command_config=cmd.mpi_config)
 
             # This is the directory that contains all the task related files
             task_working_dir = self.working_dir

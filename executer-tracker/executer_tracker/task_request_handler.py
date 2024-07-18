@@ -142,7 +142,7 @@ class TaskRequestHandler:
         self,
         executer_uuid: UUID,
         workdir: str,
-        mpi_config: executers.MPIConfiguration,
+        mpi_config: executers.MPIClusterConfiguration,
         apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
         api_client: ApiClient,
         event_logger: executer_tracker.BaseEventLogger,
@@ -349,7 +349,6 @@ class TaskRequestHandler:
                     machine_id=self.executer_uuid,
                     error_message=message,
                 ))
-            raise e
 
         finally:
             self._cleanup()

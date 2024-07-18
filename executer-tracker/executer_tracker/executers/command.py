@@ -1,8 +1,18 @@
 """Generic shell commands class."""
+import dataclasses
 import shlex
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from executer_tracker import executers
+
+
+@dataclasses.dataclass
+class MPICommandConfig():
+    version: str
+
+    @classmethod
+    def from_dict(cls, data: Dict):
+        return cls(version=data["version"])
 
 
 class Command():
@@ -25,6 +35,7 @@ class Command():
         cmd: str,
         prompts: Optional[List[str]] = None,
         is_mpi: bool = False,
+        mpi_config: Optional[MPICommandConfig] = None,
     ):
 
         if prompts is None:
@@ -33,7 +44,22 @@ class Command():
         self.args = self._tokenize(cmd)
         self.prompts = prompts
         self.is_mpi = is_mpi
+        self.mpi_config = mpi_config
         self._check_security(self.args, prompts)
+
+    @classmethod
+    def from_dict(cls, data: Dict):
+        """Create an instance from a dictionary."""
+        mpi_config_data = data.get("mpi_config")
+        mpi_config = MPICommandConfig.from_dict(
+            mpi_config_data) if mpi_config_data else None
+
+        return cls(
+            cmd=data["cmd"],
+            prompts=data.get("prompts", []),
+            is_mpi=mpi_config is not None,
+            mpi_config=mpi_config,
+        )
 
     def _tokenize(self, cmd) -> List[str]:
         """Tokenize command"""
