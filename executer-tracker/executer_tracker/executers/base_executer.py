@@ -241,13 +241,7 @@ class BaseExecuter(ABC):
 
             args = []
             if cmd.is_mpi:
-                args = ["mpirun"]
-                if self.mpi_config.hostfile_path is not None:
-                    args.extend([
-                        "--hostfile",
-                        self.mpi_config.hostfile_path,
-                    ])
-                args.extend(self.mpi_config.extra_args)
+                args = self.mpi_config.build_command_prefix()
 
             # This is the directory that contains all the task related files
             task_working_dir = self.working_dir

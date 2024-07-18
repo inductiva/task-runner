@@ -86,42 +86,13 @@ def main(_):
         None,
     )
 
-    mpi_cluster_str = os.getenv("MPI_CLUSTER", "false")
-    mpi_cluster = mpi_cluster_str.lower() in ("true", "t", "yes", "y", 1)
-
-    mpi_share_path = None
-    mpi_hostfile_path = None
-    mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "--allow-run-as-root")
-    mpirun_bin_path = os.getenv("MPIRUN_BIN_PATH", "mpirun")
-
-    num_mpi_hosts = 1
-
-    if mpi_cluster:
-        mpi_share_path = os.getenv("MPI_SHARE_PATH", None)
-        mpi_hostfile_path = os.getenv("MPI_HOSTFILE_PATH", None)
-        if not mpi_share_path:
-            logging.error("MPI_SHARE_PATH environment variable not set.")
-            sys.exit(1)
-        if not mpi_hostfile_path:
-            logging.error("MPI_HOSTFILE_PATH environment variable not set.")
-            sys.exit(1)
-
-        with open(mpi_hostfile_path, "r", encoding="UTF-8") as f:
-            hosts = [line for line in f.readlines() if line.strip() != ""]
-            num_mpi_hosts = len(hosts)
-
-    mpi_config = executers.MPIConfiguration(
-        hostfile_path=mpi_hostfile_path,
-        share_path=mpi_share_path,
-        extra_args=mpi_extra_args,
-        mpirun_bin_path=mpirun_bin_path,
-    )
+    mpi_config = executers.MPIConfiguration.from_env()
 
     logging.info("MPI configuration:")
-    logging.info("  > hostfile: %s", mpi_hostfile_path)
-    logging.info("  > shared path: %s", mpi_share_path)
-    logging.info("  > extra args: %s", mpi_extra_args)
-    logging.info("  > num hosts: %d", num_mpi_hosts)
+    logging.info("  > hostfile: %s", mpi_config.hostfile_path)
+    logging.info("  > share path: %s", mpi_config.share_path)
+    logging.info("  > extra args: %s", mpi_config.extra_args)
+    logging.info("  > num hosts: %d", mpi_config.num_hosts)
 
     max_timeout = None
     if config.gcloud.is_running_on_gcloud_vm():
@@ -159,8 +130,8 @@ def main(_):
     executer_access_info = register_executer(
         api_client,
         machine_group_id=machine_group_id,
-        mpi_cluster=mpi_cluster,
-        num_mpi_hosts=num_mpi_hosts,
+        mpi_cluster=mpi_config.is_cluster,
+        num_mpi_hosts=mpi_config.num_hosts,
         local_mode=local_mode,
     )
     executer_uuid = executer_access_info.id
