@@ -349,6 +349,7 @@ class TaskRequestHandler:
                     machine_id=self.executer_uuid,
                     error_message=message,
                 ))
+            raise e
 
         finally:
             self._cleanup()
