@@ -3,12 +3,14 @@ import os
 import shutil
 import subprocess
 import zipfile
+from stat import S_IFREG
 from typing import Optional
 
 import fsspec
 from absl import logging
+from stream_zip import ZIP_64, stream_zip
 
-from executer_tracker.utils import execution_time
+from executer_tracker.utils import execution_time, now_utc
 
 DIR_NOT_FOUND_ERROR = "Directory does not exist."
 PERMISSION_ERROR = "Insufficient permissions."
@@ -83,13 +85,6 @@ def get_dir_size(path: str) -> Optional[int]:
     return None
 
 
-def get_total_files_fast(path: str) -> int:
-    total_files = int(
-        subprocess.check_output(['find', path, '-type', 'f', '|', 'wc',
-                                 '-l']).strip())
-    return total_files
-
-
 def get_dir_total_files(path: str) -> int:
     try:
         total_files = int(
@@ -111,3 +106,38 @@ def get_dir_total_files(path: str) -> int:
         logging.error(CONVERT_INT_ERROR)
 
     return None
+
+
+def get_dir_files_paths(directory):
+    """Get all files from a directory."""
+    paths = []
+
+    for root, _, files in os.walk(directory):
+        for file in files:
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, directory)
+            paths.append({"fs": full_path, "name": relative_path})
+
+    return paths
+
+
+def get_zip_files(paths):
+    """Get member files for the ZIP archive generator.
+
+    Docs: https://stream-zip.docs.trade.gov.uk/input-examples/
+    """
+    now = now_utc()
+
+    def contents(name):
+        with open(name, "rb") as f:
+            while chunk := f.read(65536):
+                yield chunk
+
+    return ((path.get("name"), now, S_IFREG | 0o600, ZIP_64,
+             contents(path.get("fs"))) for path in paths)
+
+
+def get_zip_generator(local_path: str):
+    """Get a generator for a ZIP archive."""
+    paths = get_dir_files_paths(local_path)
+    return stream_zip(get_zip_files(paths))

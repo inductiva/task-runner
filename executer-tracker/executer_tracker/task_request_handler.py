@@ -514,52 +514,69 @@ class TaskRequestHandler:
         if output_total_files is not None:
             self._post_task_metric(utils.OUTPUT_TOTAL_FILES, output_total_files)
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            output_zip_path_local = os.path.join(
-                tmp_dir,
-                utils.OUTPUT_ZIP_FILENAME,
-            )
+        # with tempfile.TemporaryDirectory() as tmp_dir:
+        #     output_zip_path_local = os.path.join(
+        #         tmp_dir,
+        #         utils.OUTPUT_ZIP_FILENAME,
+        #     )
 
-            zip_duration = files.make_zip_archive(
-                output_zip_path_local,
-                output_dir,
-            )
+        #     zip_duration = files.make_zip_archive(
+        #         output_zip_path_local,
+        #         output_dir,
+        #     )
 
-            logging.info(
-                "Created output zip archive: %s, in %s seconds",
-                output_zip_path_local,
-                zip_duration,
-            )
+        #     logging.info(
+        #         "Created output zip archive: %s, in %s seconds",
+        #         output_zip_path_local,
+        #         zip_duration,
+        #     )
 
-            self._post_task_metric(utils.ZIP_OUTPUT, zip_duration)
+        #     self._post_task_metric(utils.ZIP_OUTPUT, zip_duration)
 
-            output_zipped_size_bytes = os.path.getsize(output_zip_path_local)
-            logging.info("Output zipped size: %s bytes",
-                         output_zipped_size_bytes)
+        #     output_zipped_size_bytes = os.path.getsize(output_zip_path_local)
+        #     logging.info("Output zipped size: %s bytes",
+        #                  output_zipped_size_bytes)
 
-            self._post_task_metric(
-                utils.OUTPUT_ZIPPED_SIZE,
-                output_zipped_size_bytes,
-            )
+        #     self._post_task_metric(
+        #         utils.OUTPUT_ZIPPED_SIZE,
+        #         output_zipped_size_bytes,
+        #     )
 
-            output_zip_path_remote = os.path.join(
-                self.task_dir_remote,
-                utils.OUTPUT_ZIP_FILENAME,
-            )
+        #     output_zip_path_remote = os.path.join(
+        #         self.task_dir_remote,
+        #         utils.OUTPUT_ZIP_FILENAME,
+        #     )
 
-            upload_duration = self.file_manager.upload_output(
-                self.task_id,
-                self.task_dir_remote,
-                output_zip_path_local,
-            )
+        #     upload_duration = self.file_manager.upload_output(
+        #         self.task_id,
+        #         self.task_dir_remote,
+        #         output_zip_path_local,
+        #     )
 
-            logging.info(
-                "Uploaded output zip to: %s, in %s seconds",
-                output_zip_path_remote,
-                upload_duration,
-            )
+        #     logging.info(
+        #         "Uploaded output zip to: %s, in %s seconds",
+        #         output_zip_path_remote,
+        #         upload_duration,
+        #     )
 
-            self._post_task_metric(utils.UPLOAD_OUTPUT, upload_duration)
+        #     self._post_task_metric(utils.UPLOAD_OUTPUT, upload_duration)
+
+        upload_duration = self.file_manager.upload_output(
+            self.task_id,
+            self.task_dir_remote,
+            output_dir,
+        )
+
+        output_zip_path_remote = os.path.join(
+            self.task_dir_remote,
+            utils.OUTPUT_ZIP_FILENAME,
+        )
+
+        logging.info(
+            "Uploaded output zip to: %s, in %s seconds",
+            output_zip_path_remote,
+            upload_duration,
+        )
 
         return output_zipped_size_bytes
 

@@ -11,6 +11,7 @@ from typing_extensions import override
 
 import executer_tracker
 from executer_tracker import utils
+from executer_tracker.utils import files
 
 
 class BaseFileManager(abc.ABC):
@@ -76,9 +77,12 @@ class FsspecFileManager(BaseFileManager):
             task_dir_remote,
             utils.OUTPUT_ZIP_FILENAME,
         )
-        with open(local_path, "rb") as f_src:
-            with self._filesystem.open(remote_path, "wb") as f_dest:
-                shutil.copyfileobj(f_src, f_dest)
+
+        zip_generator = files.get_zip_generator(local_path)
+
+        with self._filesystem.open(remote_path, "wb") as f_dest:
+            for chunk in zip_generator:
+                f_dest.write(chunk)
 
 
 class WebApiFileManager(BaseFileManager):
@@ -121,15 +125,16 @@ class WebApiFileManager(BaseFileManager):
         upload_info = self._api_client.get_upload_output_url(
             executer_tracker_id=self._executer_tracker_id, task_id=task_id)
 
-        with open(local_path, "rb") as f:
-            resp = requests.request(
-                method=upload_info.method,
-                url=upload_info.url,
-                data=f,
-                timeout=self.REQUEST_TIMEOUT_S,
-                headers={
-                    "Content-Type": "application/octet-stream",
-                },
-            )
+        zip_generator = files.get_zip_generator(local_path)
+
+        resp = requests.request(
+            method=upload_info.method,
+            url=upload_info.url,
+            data=zip_generator,
+            timeout=self.REQUEST_TIMEOUT_S,
+            headers={
+                "Content-Type": "application/octet-stream",
+            },
+        )
 
         resp.raise_for_status()
