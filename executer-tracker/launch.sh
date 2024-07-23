@@ -10,6 +10,9 @@ start() {
 	export EXECUTER_IMAGES_DIR="/root/apptainer"
 	export EXECUTERS_CONFIG="/etc/executer-images-config.json"
 	export GIT_COMMIT_HASH="$(cat revision.txt)"
+	export MPIRUN_BIN_PATH_TEMPLATE="/opt/openmpi/{version}/bin/mpirun"
+	export MPI_DEFAULT_VERSION="4.1.6"
+
 	export API_URL="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/api-url" -H "Metadata-Flavor: Google")"
 	export REDIS_HOSTNAME="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/redis-hostname" -H "Metadata-Flavor: Google")"
     export LOGGING_HOSTNAME="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/logging-hostname" -H "Metadata-Flavor: Google")"
@@ -17,6 +20,7 @@ start() {
 	export EXECUTER_IMAGES_REMOTE_STORAGE="gs://inductiva-apptainer-images"
 	export EXECUTER_TRACKER_TOKEN=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/attributes/executer_tracker_token" -H "Metadata-Flavor: Google")
 	export LOCAL_MODE="false"
+
 
 
 	if [[ $1 == "mpi" ]]; then
