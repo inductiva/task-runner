@@ -1,5 +1,7 @@
 """Class for MPI configuration."""
+import glob
 import os
+import re
 import shlex
 from typing import List, Optional
 
@@ -30,6 +32,8 @@ class MPIClusterConfiguration():
         self.mpirun_bin_path_template = mpirun_bin_path_template
         self.num_hosts = num_hosts
         self.default_version = default_version
+        self.mpi_version_regexp = re.compile(
+            self.mpirun_bin_path_template.format(version="(.*)"))
 
     @classmethod
     def from_env(cls):
@@ -69,6 +73,17 @@ class MPIClusterConfiguration():
             default_version=mpi_default_version,
         )
 
+    def list_available_versions(self) -> List[str]:
+        mpirun_bin_paths = glob.glob(self.mpirun_bin_path_template.format("*"))
+
+        versions = []
+        for path in mpirun_bin_paths:
+            match = self.mpi_version_regexp.match(path)
+            if match is not None:
+                versions.append(match.group(1))
+
+        return versions
+
     def build_command_prefix(
         self,
         command_config: Optional[command.MPICommandConfig] = None,
@@ -80,7 +95,10 @@ class MPIClusterConfiguration():
 
         mpirun_bin_path = self.mpirun_bin_path_template.format(version=version)
         if not os.path.exists(mpirun_bin_path):
-            raise RuntimeError(f"MPI version not available: {version}.")
+            available_versions = self.list_available_versions()
+            raise RuntimeError(
+                f"MPI version not available: {version}.\n"
+                f"Available versions: {', '.join(available_versions)}.")
 
         args = [mpirun_bin_path]
 
