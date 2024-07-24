@@ -116,18 +116,18 @@ class SubprocessTracker:
         # While the process is running poll() returns None.
         try:
             while (exit_code := self.subproc.poll()) is None:
-                psutil.Process(self.subproc.pid)
+                process_status = psutil.Process(self.subproc.pid)
 
-                # logging.info("Status of subprocess %d: %s", self.subproc.pid,
-                #              process_status.status())
-                # logging.info("Time running: %d secs",
-                #              time.perf_counter() - self.spawn_time)
-                # logging.info("Current Mem usage: %s",
-                #              process_status.memory_info())
-                # logging.info("Current CPU usage: %s",
-                #              process_status.cpu_times())
-                # children_procs = process_status.children(recursive=True)
-                # logging.info("Children spawned: %s", children_procs)
+                logging.info("Status of subprocess %d: %s", self.subproc.pid,
+                             process_status.status())
+                logging.info("Time running: %d secs",
+                             time.perf_counter() - self.spawn_time)
+                logging.info("Current Mem usage: %s",
+                             process_status.memory_info())
+                logging.info("Current CPU usage: %s",
+                             process_status.cpu_times())
+                children_procs = process_status.children(recursive=True)
+                logging.info("Children spawned: %s", children_procs)
 
                 if periodic_callback is not None:
                     periodic_callback()
