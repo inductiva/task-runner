@@ -1,6 +1,7 @@
-import pytest
 from unittest import mock
-from executer_tracker.executers import mpi_configuration, command
+
+import pytest
+from executer_tracker.executers import command, mpi_configuration
 
 MPIRUN_BIN_PATH_TEMPLATE = "/opt/openmpi/{version}/bin/mpirun"
 

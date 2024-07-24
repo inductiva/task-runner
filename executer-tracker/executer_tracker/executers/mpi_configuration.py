@@ -7,6 +7,8 @@ from typing import List, Optional
 
 from executer_tracker.executers import command
 
+DEFAULT_VERSION = "4.1.6"
+
 
 class MPIClusterConfiguration():
     """Class for MPI configuration."""
@@ -17,7 +19,7 @@ class MPIClusterConfiguration():
 
     def __init__(
         self,
-        default_version: str,
+        default_version: str = DEFAULT_VERSION,
         is_cluster: bool = False,
         hostfile_path: Optional[str] = None,
         share_path: Optional[str] = None,
@@ -45,10 +47,7 @@ class MPIClusterConfiguration():
         mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "--allow-run-as-root")
         mpirun_bin_path_template = os.getenv("MPIRUN_BIN_PATH_TEMPLATE",
                                              "mpirun")
-        mpi_default_version = os.getenv("MPI_DEFAULT_VERSION")
-        if not mpi_default_version:
-            raise RuntimeError(
-                "MPI_DEFAULT_VERSION environment variable not set.")
+        mpi_default_version = os.getenv("MPI_DEFAULT_VERSION", DEFAULT_VERSION)
 
         num_hosts = 1
         if is_cluster:
