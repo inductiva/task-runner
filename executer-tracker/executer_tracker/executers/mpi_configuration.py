@@ -17,13 +17,13 @@ class MPIClusterConfiguration():
 
     def __init__(
         self,
+        default_version: str,
         is_cluster: bool = False,
         hostfile_path: Optional[str] = None,
         share_path: Optional[str] = None,
         extra_args: str = "",
         mpirun_bin_path_template: str = "mpirun",
         num_hosts: int = 1,
-        default_version: str = "4.1.6",
     ):
         self.is_cluster = is_cluster
         self.hostfile_path = hostfile_path
@@ -45,7 +45,10 @@ class MPIClusterConfiguration():
         mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "--allow-run-as-root")
         mpirun_bin_path_template = os.getenv("MPIRUN_BIN_PATH_TEMPLATE",
                                              "mpirun")
-        mpi_default_version = os.getenv("MPI_DEFAULT_VERSION", "4.1.6")
+        mpi_default_version = os.getenv("MPI_DEFAULT_VERSION")
+        if not mpi_default_version:
+            raise RuntimeError(
+                "MPI_DEFAULT_VERSION environment variable not set.")
 
         num_hosts = 1
         if is_cluster:
@@ -87,6 +90,15 @@ class MPIClusterConfiguration():
 
         return versions
 
+    def get_mpirun_bin_path(self, version: str) -> str:
+        mpirun_bin_path = self.mpirun_bin_path_template.format(version=version)
+        if not os.path.exists(mpirun_bin_path):
+            available_versions = self.list_available_versions()
+            raise RuntimeError(
+                f"MPI version not available: {version}.\n"
+                f"Available versions: {', '.join(available_versions)}.")
+        return mpirun_bin_path
+
     def build_command_prefix(
         self,
         command_config: Optional[command.MPICommandConfig] = None,
@@ -98,12 +110,7 @@ class MPIClusterConfiguration():
             version = command_config.version
             user_provided_args = command_config.args
 
-        mpirun_bin_path = self.mpirun_bin_path_template.format(version=version)
-        if not os.path.exists(mpirun_bin_path):
-            available_versions = self.list_available_versions()
-            raise RuntimeError(
-                f"MPI version not available: {version}.\n"
-                f"Available versions: {', '.join(available_versions)}.")
+        mpirun_bin_path = self.get_mpirun_bin_path(version)
 
         args = [mpirun_bin_path]
 
