@@ -94,7 +94,7 @@ def main(_):
     logging.info("  > extra args: %s", mpi_config.extra_args)
     logging.info("  > num hosts: %d", mpi_config.num_hosts)
     logging.info("  > default version: %s", mpi_config.default_version)
-    logging.info(" > available versions: %s",
+    logging.info("  > available versions: %s",
                  ", ".join(mpi_config.list_available_versions()))
 
     max_timeout = None

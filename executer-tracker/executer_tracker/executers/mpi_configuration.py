@@ -74,13 +74,16 @@ class MPIClusterConfiguration():
         )
 
     def list_available_versions(self) -> List[str]:
-        mpirun_bin_paths = glob.glob(self.mpirun_bin_path_template.format("*"))
+        mpirun_bin_paths = glob.glob(
+            self.mpirun_bin_path_template.format(version="*"))
 
         versions = []
         for path in mpirun_bin_paths:
             match = self.mpi_version_regexp.match(path)
             if match is not None:
                 versions.append(match.group(1))
+
+        versions.sort()
 
         return versions
 
@@ -90,8 +93,10 @@ class MPIClusterConfiguration():
     ) -> List[str]:
         version = self.default_version
 
+        user_provided_args = []
         if command_config is not None:
             version = command_config.version
+            user_provided_args = command_config.args
 
         mpirun_bin_path = self.mpirun_bin_path_template.format(version=version)
         if not os.path.exists(mpirun_bin_path):
@@ -108,5 +113,6 @@ class MPIClusterConfiguration():
                 self.hostfile_path,
             ])
         args.extend(self.extra_args)
+        args.extend(user_provided_args)
 
         return args

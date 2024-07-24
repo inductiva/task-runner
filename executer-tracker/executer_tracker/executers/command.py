@@ -9,10 +9,24 @@ from executer_tracker import executers
 @dataclasses.dataclass
 class MPICommandConfig():
     version: str
+    args: List[str] = dataclasses.field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: Dict):
-        return cls(version=data["version"])
+        options = data.get("options", {})
+
+        args = []
+
+        for name, value in options.items():
+            if isinstance(value, bool) and not value:
+                continue
+
+            args.append(f"--{name}")
+
+            if not isinstance(value, bool):
+                args.append(str(value))
+
+        return cls(version=data["version"], args=args)
 
 
 class Command():
