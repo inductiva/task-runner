@@ -128,7 +128,6 @@ class TaskRequestHandler:
     Attributes:
         redis_connection: Redis connection handler.
         filesystem: fsspec filesystem handler.
-        artifact_store_root: Root directory for storing artifacts.
         executer_uuid: UUID of the executer that handles the requests.
             Used for event logging purposes.
         workdir: Working directory.
@@ -495,8 +494,6 @@ class TaskRequestHandler:
 
     def _pack_output(self) -> int:
         """Compress outputs and store them in the shared drive."""
-        output_zipped_size_bytes = None
-
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
             logging.error("Output directory not found: %s", output_dir)
@@ -514,57 +511,17 @@ class TaskRequestHandler:
         if output_total_files is not None:
             self._post_task_metric(utils.OUTPUT_TOTAL_FILES, output_total_files)
 
-        # with tempfile.TemporaryDirectory() as tmp_dir:
-        #     output_zip_path_local = os.path.join(
-        #         tmp_dir,
-        #         utils.OUTPUT_ZIP_FILENAME,
-        #     )
-
-        #     zip_duration = files.make_zip_archive(
-        #         output_zip_path_local,
-        #         output_dir,
-        #     )
-
-        #     logging.info(
-        #         "Created output zip archive: %s, in %s seconds",
-        #         output_zip_path_local,
-        #         zip_duration,
-        #     )
-
-        #     self._post_task_metric(utils.ZIP_OUTPUT, zip_duration)
-
-        #     output_zipped_size_bytes = os.path.getsize(output_zip_path_local)
-        #     logging.info("Output zipped size: %s bytes",
-        #                  output_zipped_size_bytes)
-
-        #     self._post_task_metric(
-        #         utils.OUTPUT_ZIPPED_SIZE,
-        #         output_zipped_size_bytes,
-        #     )
-
-        #     output_zip_path_remote = os.path.join(
-        #         self.task_dir_remote,
-        #         utils.OUTPUT_ZIP_FILENAME,
-        #     )
-
-        #     upload_duration = self.file_manager.upload_output(
-        #         self.task_id,
-        #         self.task_dir_remote,
-        #         output_zip_path_local,
-        #     )
-
-        #     logging.info(
-        #         "Uploaded output zip to: %s, in %s seconds",
-        #         output_zip_path_remote,
-        #         upload_duration,
-        #     )
-
-        #     self._post_task_metric(utils.UPLOAD_OUTPUT, upload_duration)
-
-        upload_duration = self.file_manager.upload_output(
+        output_zipped_bytes, upload_duration = self.file_manager.upload_output(
             self.task_id,
             self.task_dir_remote,
             output_dir,
+        )
+
+        logging.info("Output zipped size: %s bytes", output_zipped_bytes)
+
+        self._post_task_metric(
+            utils.OUTPUT_ZIPPED_SIZE,
+            output_zipped_bytes,
         )
 
         output_zip_path_remote = os.path.join(
@@ -578,7 +535,9 @@ class TaskRequestHandler:
             upload_duration,
         )
 
-        return output_zipped_size_bytes
+        self._post_task_metric(utils.UPLOAD_OUTPUT, upload_duration)
+
+        return output_zipped_bytes
 
     def _cleanup(self):
         """Cleanup after task execution.

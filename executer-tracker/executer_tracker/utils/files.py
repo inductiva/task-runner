@@ -108,6 +108,21 @@ def get_dir_total_files(path: str) -> int:
     return None
 
 
+class ChunkGenerator:
+
+    def __init__(self, iterator):
+        self.iterator = iterator
+        self.total_bytes = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        chunk = next(self.iterator)
+        self.total_bytes += len(chunk)
+        return chunk
+
+
 def get_dir_files_paths(directory):
     """Get all files from a directory."""
     paths = []
@@ -124,7 +139,11 @@ def get_dir_files_paths(directory):
 def get_zip_files(paths):
     """Get member files for the ZIP archive generator.
 
-    Docs: https://stream-zip.docs.trade.gov.uk/input-examples/
+    ZIP_64 is used to support larger files (> 4 GiB):
+    https://stream-zip.docs.trade.gov.uk/
+
+    Input examples:
+    https://stream-zip.docs.trade.gov.uk/input-examples/
     """
     now = now_utc()
 
@@ -140,4 +159,4 @@ def get_zip_files(paths):
 def get_zip_generator(local_path: str):
     """Get a generator for a ZIP archive."""
     paths = get_dir_files_paths(local_path)
-    return stream_zip(get_zip_files(paths))
+    return ChunkGenerator(stream_zip(get_zip_files(paths)))

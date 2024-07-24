@@ -62,7 +62,7 @@ class FsspecFileManager(BaseFileManager):
             with open(dest_path, "wb") as local_file:
                 shutil.copyfileobj(f, local_file)
 
-    @utils.execution_time
+    @utils.execution_time_with_result
     @override
     def upload_output(
         self,
@@ -83,6 +83,8 @@ class FsspecFileManager(BaseFileManager):
         with self._filesystem.open(remote_path, "wb") as f_dest:
             for chunk in zip_generator:
                 f_dest.write(chunk)
+
+        return zip_generator.total_bytes
 
 
 class WebApiFileManager(BaseFileManager):
@@ -112,7 +114,7 @@ class WebApiFileManager(BaseFileManager):
         )
         urllib.request.urlretrieve(url, dest_path)
 
-    @utils.execution_time
+    @utils.execution_time_with_result
     @override
     def upload_output(
         self,
@@ -138,3 +140,5 @@ class WebApiFileManager(BaseFileManager):
         )
 
         resp.raise_for_status()
+
+        return zip_generator.total_bytes
