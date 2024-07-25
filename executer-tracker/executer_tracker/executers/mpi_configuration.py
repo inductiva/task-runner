@@ -94,8 +94,8 @@ class MPIClusterConfiguration():
         if not os.path.exists(mpirun_bin_path):
             available_versions = self.list_available_versions()
             raise RuntimeError(
-                f"MPI version not available: {version}.\n"
-                f"Available versions: {', '.join(available_versions)}.")
+                f"The request MPI version ({version}) is not available. "
+                f"Available versions: {', '.join(available_versions)}")
         return mpirun_bin_path
 
     def build_command_prefix(
