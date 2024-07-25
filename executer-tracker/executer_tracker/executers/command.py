@@ -14,6 +14,8 @@ class MPICommandConfig():
     @classmethod
     def from_dict(cls, data: Dict):
         options = data.get("options", {})
+        if options is None:
+            options = {}
 
         args = []
 
