@@ -4,7 +4,6 @@ redis
 requests
 docker
 fsspec
-paramiko
 gcsfs
 stream-zip==0.0.81
 
