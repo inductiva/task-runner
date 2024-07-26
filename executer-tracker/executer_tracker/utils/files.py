@@ -1,9 +1,9 @@
 """File related utility functions"""
 import os
 import shutil
+import stat
 import subprocess
 import zipfile
-from stat import S_IFREG
 from typing import Optional
 
 import fsspec
@@ -17,6 +17,7 @@ PERMISSION_ERROR = "Insufficient permissions."
 CMD_ERROR = "Error occurred during command."
 CONVERT_INT_ERROR = "Output could not be converted to integer."
 CMD_EMPTY_OUTPUT_ERROR = "Command output was empty."
+CHUNK_SIZE_BYTES = 65536
 
 
 @execution_time
@@ -124,7 +125,8 @@ class ChunkGenerator:
 
 
 def get_dir_files_paths(directory):
-    """Get all files from a directory."""
+    """Get all files from a directory. The files from subdirectories are also
+    included."""
     paths = []
 
     for root, _, files in os.walk(directory):
@@ -139,6 +141,27 @@ def get_dir_files_paths(directory):
 def get_zip_files(paths):
     """Get member files for the ZIP archive generator.
 
+    Basic usage:
+    https://stream-zip.docs.trade.gov.uk/get-started/
+
+    member_files = (
+        (
+            'my-file-1.txt',     # File name
+            datetime.now(),      # Modification time
+            S_IFREG | 0o600,     # Mode - regular file that owner can read and
+                                 # write
+            ZIP_32,              # ZIP_32 has good support but limited to 4GiB
+            (b'Some bytes 1',),  # Iterable of chunks of contents
+        ),
+        (
+            'my-file-2.txt',
+            datetime.now(),
+            S_IFREG | 0o600,
+            ZIP_32,
+            (b'Some bytes 2',),
+        ),
+    )
+
     ZIP_64 is used to support larger files (> 4 GiB):
     https://stream-zip.docs.trade.gov.uk/
 
@@ -149,11 +172,17 @@ def get_zip_files(paths):
 
     def contents(name):
         with open(name, "rb") as f:
-            while chunk := f.read(65536):
+            while chunk := f.read(CHUNK_SIZE_BYTES):
                 yield chunk
 
-    return ((path.get("name"), now, S_IFREG | 0o600, ZIP_64,
-             contents(path.get("fs"))) for path in paths)
+    return (
+        (
+            path.get("name"),  # File name
+            now,  # Modification time
+            stat.S_IFREG | 0o600,  # Read and write permissions for the owner
+            ZIP_64,  # ZIP_64 has good support for large files
+            contents(path.get("fs")),  # Iterable of chunks of contents
+        ) for path in paths)
 
 
 def get_zip_generator(local_path: str):
