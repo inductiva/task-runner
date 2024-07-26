@@ -1,20 +1,23 @@
 """File related utility functions"""
 import os
 import shutil
+import stat
 import subprocess
 import zipfile
 from typing import Optional
 
 import fsspec
 from absl import logging
+from stream_zip import ZIP_64, stream_zip
 
-from executer_tracker.utils import execution_time
+from executer_tracker.utils import execution_time, now_utc
 
 DIR_NOT_FOUND_ERROR = "Directory does not exist."
 PERMISSION_ERROR = "Insufficient permissions."
 CMD_ERROR = "Error occurred during command."
 CONVERT_INT_ERROR = "Output could not be converted to integer."
 CMD_EMPTY_OUTPUT_ERROR = "Command output was empty."
+CHUNK_SIZE_BYTES = 65536
 
 
 @execution_time
@@ -83,13 +86,6 @@ def get_dir_size(path: str) -> Optional[int]:
     return None
 
 
-def get_total_files_fast(path: str) -> int:
-    total_files = int(
-        subprocess.check_output(['find', path, '-type', 'f', '|', 'wc',
-                                 '-l']).strip())
-    return total_files
-
-
 def get_dir_total_files(path: str) -> int:
     try:
         total_files = int(
@@ -111,3 +107,85 @@ def get_dir_total_files(path: str) -> int:
         logging.error(CONVERT_INT_ERROR)
 
     return None
+
+
+class ChunkGenerator:
+
+    def __init__(self, iterator):
+        self.iterator = iterator
+        self.total_bytes = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        chunk = next(self.iterator)
+        self.total_bytes += len(chunk)
+        return chunk
+
+
+def get_dir_files_paths(directory):
+    """Get all files from a directory. The files from subdirectories are also
+    included."""
+    paths = []
+
+    for root, _, files in os.walk(directory):
+        for file in files:
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, directory)
+            paths.append({"fs": full_path, "name": relative_path})
+
+    return paths
+
+
+def get_zip_files(paths):
+    """Get member files for the ZIP archive generator.
+
+    Basic usage:
+    https://stream-zip.docs.trade.gov.uk/get-started/
+
+    member_files = (
+        (
+            'my-file-1.txt',     # File name
+            datetime.now(),      # Modification time
+            S_IFREG | 0o600,     # Mode - regular file that owner can read and
+                                 # write
+            ZIP_32,              # ZIP_32 has good support but limited to 4GiB
+            (b'Some bytes 1',),  # Iterable of chunks of contents
+        ),
+        (
+            'my-file-2.txt',
+            datetime.now(),
+            S_IFREG | 0o600,
+            ZIP_32,
+            (b'Some bytes 2',),
+        ),
+    )
+
+    ZIP_64 is used to support larger files (> 4 GiB):
+    https://stream-zip.docs.trade.gov.uk/
+
+    Input examples:
+    https://stream-zip.docs.trade.gov.uk/input-examples/
+    """
+    now = now_utc()
+
+    def contents(name):
+        with open(name, "rb") as f:
+            while chunk := f.read(CHUNK_SIZE_BYTES):
+                yield chunk
+
+    return (
+        (
+            path.get("name"),  # File name
+            now,  # Modification time
+            stat.S_IFREG | 0o600,  # Read and write permissions for the owner
+            ZIP_64,  # ZIP_64 has good support for large files
+            contents(path.get("fs")),  # Iterable of chunks of contents
+        ) for path in paths)
+
+
+def get_zip_generator(local_path: str):
+    """Get a generator for a ZIP archive."""
+    paths = get_dir_files_paths(local_path)
+    return ChunkGenerator(stream_zip(get_zip_files(paths)))

@@ -16,12 +16,12 @@ INPUT_ZIP_FILENAME = "input.zip"
 OUTPUT_ZIP_FILENAME = "output.zip"
 OUTPUT_DIR = "output"
 
+# Metrics
 QUEUE_TIME_SECONDS = "queue_time_seconds"
 COMPUTATION_SECONDS = "computation_seconds"
 DOWNLOAD_INPUT = "input_download_seconds"
 UNZIP_INPUT = "input_decompression_seconds"
 DOWNLOAD_EXECUTER_IMAGE = "container_image_download_seconds"
-ZIP_OUTPUT = "output_compression_seconds"
 UPLOAD_OUTPUT = "output_upload_seconds"
 INPUT_ZIPPED_SIZE = "input_zipped_size_bytes"
 INPUT_SIZE = "input_size_bytes"
@@ -54,12 +54,27 @@ def bool_string_to_bool(s: str) -> bool:
 
 
 def execution_time(func):
+    """Decorator to measure the execution time of a function."""
 
     @wraps(func)
     def wrapper(*args, **kwargs):
         start = time.time()
         func(*args, **kwargs)
         return time.time() - start
+
+    return wrapper
+
+
+def execution_time_with_result(func):
+    """Decorator to measure the execution time of a function and return the
+    original result as well."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        elapsed_time = time.time() - start
+        return result, elapsed_time
 
     return wrapper
 
