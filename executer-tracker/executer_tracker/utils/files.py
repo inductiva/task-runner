@@ -125,15 +125,26 @@ class ChunkGenerator:
 
 
 def get_dir_files_paths(directory):
-    """Get all files from a directory. The files from subdirectories are also
-    included."""
+    """Get all files and directories from a directory. The files and
+    directories from subdirectories are also included."""
     paths = []
 
-    for root, _, files in os.walk(directory):
+    def _update_paths(file_name, file_type):
+        full_path = os.path.join(root, file_name)
+        relative_path = os.path.relpath(full_path, directory)
+        if file_type == "directory":
+            relative_path += "/"
+        paths.append({
+            "fs": full_path,
+            "name": relative_path,
+            "type": file_type
+        })
+
+    for root, dirs, files in os.walk(directory):
         for file in files:
-            full_path = os.path.join(root, file)
-            relative_path = os.path.relpath(full_path, directory)
-            paths.append({"fs": full_path, "name": relative_path})
+            _update_paths(file, "file")
+        for dir in dirs:
+            _update_paths(dir, "directory")
 
     return paths
 
@@ -175,13 +186,25 @@ def get_zip_files(paths):
             while chunk := f.read(CHUNK_SIZE_BYTES):
                 yield chunk
 
+    permissions = {
+        # Read, write and execute permissions for the owner
+        "directory": stat.S_IFDIR | 0o700,
+        # Read and write permissions for the owner
+        "file": stat.S_IFREG | 0o600,
+    }
+
     return (
         (
-            path.get("name"),  # File name
-            now,  # Modification time
-            stat.S_IFREG | 0o600,  # Read and write permissions for the owner
-            ZIP_64,  # ZIP_64 has good support for large files
-            contents(path.get("fs")),  # Iterable of chunks of contents
+            # File name
+            path.get("name"),
+            # Modification time
+            now,
+            # Mode
+            permissions.get(path.get("type")),
+            # ZIP_64 has good support for large files
+            ZIP_64,
+            # Iterable of chunks of contents (empty for directories)
+            contents(path.get("fs")) if path.get("type") == "file" else (),
         ) for path in paths)
 
 
