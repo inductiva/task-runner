@@ -125,8 +125,7 @@ class ChunkGenerator:
 
 
 def get_dir_files_paths(directory):
-    """Get all files and directories from a directory. The files and
-    directories from subdirectories are also included."""
+    """Get all files and subdirectories from a directory."""
     paths = []
 
     def _update_paths(file_name, file_type):
