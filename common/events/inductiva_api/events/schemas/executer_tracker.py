@@ -58,3 +58,11 @@ class ExecuterTrackerTerminated(ExecuterTrackerEvent):
     reason: task_status.ExecuterTerminationReason
     detail: Optional[str]
     stopped_tasks: List[str]
+
+
+class MachineDiskResized(event_schemas.Event):
+    """Event issued when the disk of the executer machine is resized."""
+    machine_id: str
+    old_disk_size_gb: int
+    new_disk_size_gb: int
+    elapsed_time_s: float
