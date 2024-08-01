@@ -90,6 +90,8 @@ class ApptainerImagesManager:
                     image_uri,
                 ],
                 check=True,
+                env=os.environ,  # subprocess should inherit the environment
+                # because of APPTAINER environment variables
             )
         except subprocess.CalledProcessError:
             raise ApptainerImageNotFoundError(

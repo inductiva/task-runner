@@ -21,6 +21,11 @@ start() {
 	export EXECUTER_TRACKER_TOKEN=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/attributes/executer_tracker_token" -H "Metadata-Flavor: Google")
 	export LOCAL_MODE="false"
 
+	DATA_DISK_MOUNT_PATH=/mnt/disks/executer-tracker-data
+	export APPTAINER_CACHEDIR=$DATA_DISK_MOUNT_PATH/apptainer/.cache
+	export APPTAINER_TMPDIR=$DATA_DISK_MOUNT_PATH/apptainer/.tmp
+	mkdir -p $APPTAINER_CACHEDIR
+	mkdir -p $APPTAINER_TMPDIR
 
 	if [[ $1 == "mpi" ]]; then
 		NETWORK_URI=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/network" -H "Metadata-Flavor: Google")
