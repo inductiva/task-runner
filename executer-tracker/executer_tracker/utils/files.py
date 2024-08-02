@@ -4,11 +4,12 @@ import shutil
 import stat
 import subprocess
 import zipfile
+import zlib
 from typing import Optional
 
 import fsspec
+import stream_zip
 from absl import logging
-from stream_zip import ZIP_64, stream_zip
 
 from executer_tracker.utils import execution_time, now_utc
 
@@ -17,7 +18,10 @@ PERMISSION_ERROR = "Insufficient permissions."
 CMD_ERROR = "Error occurred during command."
 CONVERT_INT_ERROR = "Output could not be converted to integer."
 CMD_EMPTY_OUTPUT_ERROR = "Command output was empty."
-CHUNK_SIZE_BYTES = 65536
+
+FILE_CHUNK_SIZE_BYTES = 65536  # 64 KiB
+ZIP_CHUNK_SIZE_BYTES = 65536  # 64 KiB
+DEFAULT_ZIP_COMPRESS_LEVEL = 1
 
 
 @execution_time
@@ -124,6 +128,12 @@ class ChunkGenerator:
         return chunk
 
 
+def get_file_content_generator(file_path, chunk_size):
+    with open(file_path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            yield chunk
+
+
 def get_dir_files_paths(directory):
     """Get all files and subdirectories from a directory."""
     paths = []
@@ -148,11 +158,11 @@ def get_dir_files_paths(directory):
     return paths
 
 
-def get_zip_files(paths):
+def get_zip_files(paths, chunk_size):
     """Get member files for the ZIP archive generator.
 
     Basic usage:
-    https://stream-zip.docs.trade.gov.uk/get-started/
+        https://stream-zip.docs.trade.gov.uk/get-started/
 
     member_files = (
         (
@@ -173,17 +183,12 @@ def get_zip_files(paths):
     )
 
     ZIP_64 is used to support larger files (> 4 GiB):
-    https://stream-zip.docs.trade.gov.uk/
+        https://stream-zip.docs.trade.gov.uk/
 
     Input examples:
-    https://stream-zip.docs.trade.gov.uk/input-examples/
+        https://stream-zip.docs.trade.gov.uk/input-examples/
     """
     now = now_utc()
-
-    def contents(name):
-        with open(name, "rb") as f:
-            while chunk := f.read(CHUNK_SIZE_BYTES):
-                yield chunk
 
     permissions = {
         # Read, write and execute permissions for the owner
@@ -201,13 +206,53 @@ def get_zip_files(paths):
             # Mode
             permissions.get(path.get("type")),
             # ZIP_64 has good support for large files
-            ZIP_64,
+            stream_zip.ZIP_64,
             # Iterable of chunks of contents (empty for directories)
-            contents(path.get("fs")) if path.get("type") == "file" else (),
+            get_file_content_generator(path.get("fs"), chunk_size)
+            if path.get("type") == "file" else (),
         ) for path in paths)
 
 
-def get_zip_generator(local_path: str):
-    """Get a generator for a ZIP archive."""
+def get_zip_generator(
+    local_path: str,
+    zip_chunk_size: int = ZIP_CHUNK_SIZE_BYTES,
+    compress_level: int = DEFAULT_ZIP_COMPRESS_LEVEL,
+    files_chunk_size: int = FILE_CHUNK_SIZE_BYTES,
+) -> ChunkGenerator:
+    """Get a generator for a ZIP archive.
+
+    Args:
+        local_path: Path to the directory to be zipped.
+        zip_chunk_size: Size of the chunks of the zip file.
+        compress_level: Compression level.
+        files_chunk_size: Size of the chunks to read from the individual files.
+
+    Advanced usage:
+        https://stream-zip.docs.trade.gov.uk/advanced-usage/
+
+    The level parameter for zlib.compressobj can be set from 0 to 9:
+        - 0: No compression (fastest)
+        - 1-3: Fast compression (less compression ratio)
+        - 4-6: Balanced compression (moderate compression ratio and speed)
+        - 7-9: High compression (better compression ratio but slower)
+
+    Returns:
+        Generator for a ZIP archive.
+    """
+
+    # Override the default compressobj which uses the
+    # maximum compression level (9).
+    def get_compressobj():
+        return zlib.compressobj(
+            wbits=-zlib.MAX_WBITS,
+            level=compress_level,
+        )
+
     paths = get_dir_files_paths(local_path)
-    return ChunkGenerator(stream_zip(get_zip_files(paths)))
+
+    return ChunkGenerator(
+        stream_zip.stream_zip(
+            files=get_zip_files(paths, files_chunk_size),
+            chunk_size=zip_chunk_size,
+            get_compressobj=get_compressobj,
+        ))
