@@ -11,7 +11,6 @@ import enum
 import os
 import queue
 import shutil
-import tempfile
 import threading
 import time
 from typing import Dict, Tuple
@@ -372,49 +371,48 @@ class TaskRequestHandler:
 
         os.makedirs(task_workdir)
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_zip_path = os.path.join(tmp_dir, "file.zip")
+        tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
-            download_duration = self.file_manager.download_input(
-                self.task_id,
-                task_dir_remote,
-                tmp_zip_path,
-            )
+        download_duration = self.file_manager.download_input(
+            self.task_id,
+            task_dir_remote,
+            tmp_zip_path,
+        )
 
-            logging.info(
-                "Downloaded zip to: %s, in %s seconds.",
-                tmp_zip_path,
-                download_duration,
-            )
+        logging.info(
+            "Downloaded zip to: %s, in %s seconds.",
+            tmp_zip_path,
+            download_duration,
+        )
 
-            self._post_task_metric(utils.DOWNLOAD_INPUT, download_duration)
+        self._post_task_metric(utils.DOWNLOAD_INPUT, download_duration)
 
-            input_zipped_size_bytes = os.path.getsize(tmp_zip_path)
-            logging.info("Input zipped size: %s bytes", input_zipped_size_bytes)
+        input_zipped_size_bytes = os.path.getsize(tmp_zip_path)
+        logging.info("Input zipped size: %s bytes", input_zipped_size_bytes)
 
-            self._post_task_metric(
-                utils.INPUT_ZIPPED_SIZE,
-                input_zipped_size_bytes,
-            )
+        self._post_task_metric(
+            utils.INPUT_ZIPPED_SIZE,
+            input_zipped_size_bytes,
+        )
 
-            unzip_duration = files.extract_zip_archive(
-                zip_path=tmp_zip_path,
-                dest_dir=task_workdir,
-            )
+        unzip_duration = files.extract_zip_archive(
+            zip_path=tmp_zip_path,
+            dest_dir=task_workdir,
+        )
 
-            logging.info(
-                "Extracted zip to: %s, in %s seconds",
-                task_workdir,
-                unzip_duration,
-            )
+        logging.info(
+            "Extracted zip to: %s, in %s seconds",
+            task_workdir,
+            unzip_duration,
+        )
 
-            self._post_task_metric(utils.UNZIP_INPUT, unzip_duration)
+        self._post_task_metric(utils.UNZIP_INPUT, unzip_duration)
 
-            input_size_bytes = files.get_dir_size(task_workdir)
-            logging.info("Input size: %s bytes", input_size_bytes)
+        input_size_bytes = files.get_dir_size(task_workdir)
+        logging.info("Input size: %s bytes", input_size_bytes)
 
-            if input_size_bytes is not None:
-                self._post_task_metric(utils.INPUT_SIZE, input_size_bytes)
+        if input_size_bytes is not None:
+            self._post_task_metric(utils.INPUT_SIZE, input_size_bytes)
 
         return task_workdir
 
