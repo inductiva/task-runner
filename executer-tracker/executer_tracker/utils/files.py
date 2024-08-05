@@ -19,8 +19,8 @@ CMD_ERROR = "Error occurred during command."
 CONVERT_INT_ERROR = "Output could not be converted to integer."
 CMD_EMPTY_OUTPUT_ERROR = "Command output was empty."
 
-FILE_CHUNK_SIZE_BYTES = 65536  # 64 KiB
-ZIP_CHUNK_SIZE_BYTES = 65536  # 64 KiB
+DEFAULT_FILE_CHUNK_SIZE_BYTES = 65536  # 64 KiB
+DEFAULT_ZIP_CHUNK_SIZE_BYTES = 65536  # 64 KiB
 DEFAULT_ZIP_COMPRESS_LEVEL = 1
 
 
@@ -215,9 +215,9 @@ def get_zip_files(paths, chunk_size):
 
 def get_zip_generator(
     local_path: str,
-    zip_chunk_size: int = ZIP_CHUNK_SIZE_BYTES,
+    zip_chunk_size: int = DEFAULT_ZIP_CHUNK_SIZE_BYTES,
     compress_level: int = DEFAULT_ZIP_COMPRESS_LEVEL,
-    files_chunk_size: int = FILE_CHUNK_SIZE_BYTES,
+    files_chunk_size: int = DEFAULT_FILE_CHUNK_SIZE_BYTES,
 ) -> ChunkGenerator:
     """Get a generator for a ZIP archive.
 
