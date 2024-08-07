@@ -462,6 +462,7 @@ class TaskRequestHandler:
                 interrupt_task_ttl_exceeded,
                 args=(executer, ttl_exceeded_flag, ttl_function_started),
             )
+            ttl_timer.daemon = True
             ttl_timer.start()
 
         exit_code = executer.run()
