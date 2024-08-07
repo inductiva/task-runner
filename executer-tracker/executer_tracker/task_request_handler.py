@@ -399,6 +399,7 @@ class TaskRequestHandler:
             zip_path=tmp_zip_path,
             dest_dir=task_workdir,
         )
+        os.remove(tmp_zip_path)
 
         logging.info(
             "Extracted zip to: %s, in %s seconds",
