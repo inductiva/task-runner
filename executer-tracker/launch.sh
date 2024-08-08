@@ -20,6 +20,7 @@ start() {
 	export EXECUTER_IMAGES_REMOTE_STORAGE="gs://inductiva-apptainer-images"
 	export EXECUTER_TRACKER_TOKEN=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/attributes/executer_tracker_token" -H "Metadata-Flavor: Google")
 	export LOCAL_MODE="false"
+	export EXECUTER_TRACKER_ID_PATH="/opt/executer-tracker/info.json"
 
 	DATA_DISK_MOUNT_PATH=/mnt/disks/executer-tracker-data
 	export APPTAINER_CACHEDIR=$DATA_DISK_MOUNT_PATH/apptainer/.cache

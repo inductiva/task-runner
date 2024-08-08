@@ -52,6 +52,7 @@ currently active executer trackers.
 Usage (note the required environment variables):
   python executer_tracker.py
 """
+import json
 import os
 import sys
 
@@ -72,6 +73,14 @@ from executer_tracker.utils import config
 from inductiva_api.task_status import ExecuterTerminationReason
 
 
+def _log_executer_tracker_id(path, executer_tracker_id):
+    if not path:
+        return
+
+    with open(path, "w", encoding="UTF-8") as f:
+        json.dump({"id": executer_tracker_id}, f)
+
+
 def main(_):
     redis_hostname = os.getenv("REDIS_HOSTNAME")
     redis_port = os.getenv("REDIS_PORT", "6379")
@@ -85,6 +94,8 @@ def main(_):
         "EXECUTER_IMAGES_REMOTE_STORAGE",
         None,
     )
+
+    executer_tracker_id_path = os.getenv("EXECUTER_TRACKER_ID_PATH")
 
     mpi_config = executers.MPIClusterConfiguration.from_env()
 
@@ -138,6 +149,7 @@ def main(_):
         local_mode=local_mode,
     )
     executer_uuid = executer_access_info.id
+    _log_executer_tracker_id(executer_tracker_id_path, executer_uuid)
 
     redis_stream = executer_access_info.redis_stream
     redis_consumer_name = executer_access_info.redis_consumer_name
