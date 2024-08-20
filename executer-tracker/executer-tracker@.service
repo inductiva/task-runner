@@ -10,6 +10,7 @@ WorkingDirectory=/opt/executer-tracker
 User=root
 ExecStart=/opt/executer-tracker/launch.sh %i
 OOMPolicy=continue
+LimitNOFILE=10240
 
 [Install]
 WantedBy=multi-user.target
