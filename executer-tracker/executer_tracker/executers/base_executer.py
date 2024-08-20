@@ -5,7 +5,6 @@ its usage.
 """
 import json
 import os
-import subprocess
 import threading
 from abc import ABC, abstractmethod
 from collections import namedtuple
@@ -289,35 +288,6 @@ class BaseExecuter(ABC):
         try:
             self.load_input_configuration()
             self.pre_process()
-
-            result = subprocess.run(
-                "ulimit -Sn",
-                shell=True,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            logging.info("subprocess.run(\"ulimit -Sn\"): %s", result.stdout)
-
-            with os.popen("ulimit -Sn") as stream:
-                output = stream.read()
-
-            logging.info("os.popen('ulimit -Sn'): %s", output)
-
-            result = subprocess.run(
-                "apptainer config global --get 'shared loop devices'",
-                shell=True,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            logging.info(
-                "subprocess.run(\"apptainer config global --get "
-                "'shared loop devices'\"): %s",
-                result.stdout,
-            )
-
             self.execute()
             self.post_process()
             with self._lock:
