@@ -28,8 +28,6 @@ def start_loop(
                 logging.info(" --> %s", request)
                 request_handler(request)
 
-                task_fetcher.ack(request["id"])
-
                 # Update the start time to avoid killing the machine
                 idle_timestamp = time.time()
 
