@@ -21,6 +21,9 @@ start() {
 	export EXECUTER_TRACKER_TOKEN=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/attributes/executer_tracker_token" -H "Metadata-Flavor: Google")
 	export LOCAL_MODE="false"
 
+	# Set variable needed for apptainer stats and avoid warnings in apptainer commands with --sharens
+	export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$UID/bus
+
 	DATA_DISK_MOUNT_PATH=/mnt/disks/executer-tracker-data
 	export APPTAINER_CACHEDIR=$DATA_DISK_MOUNT_PATH/apptainer/.cache
 	export APPTAINER_TMPDIR=$DATA_DISK_MOUNT_PATH/apptainer/.tmp
