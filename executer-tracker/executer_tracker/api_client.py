@@ -142,16 +142,6 @@ class ApiClient:
 
         return resp.json()
 
-    def acknowledge_task(
-        self,
-        executer_tracker_id: uuid.UUID,
-        task_id: str,
-    ):
-        return self._request_executer_tracker_api(
-            "POST",
-            f"/{executer_tracker_id}/task/{task_id}/ack",
-        )
-
     def log_event(
         self,
         executer_tracker_id: uuid.UUID,

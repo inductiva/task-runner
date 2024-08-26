@@ -297,6 +297,7 @@ class TaskRequestHandler:
                     id=self.task_id,
                     machine_id=self.executer_uuid,
                 ))
+
             exit_code, exit_reason = self._execute_request(request)
             logging.info("Task exit reason: %s", exit_reason)
 
