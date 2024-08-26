@@ -110,7 +110,3 @@ class OpenFOAMExecuter(executers.BaseExecuter):
                                       n_vcpus)
             if self.validate_parallel_execution(command, n_vcpus):
                 self.run_subprocess(command, self.artifacts_dir)
-        if n_vcpus > 1:
-            for core in range(n_vcpus):
-                processor_dir = f"processor{core}"
-                shutil.rmtree(os.path.join(self.artifacts_dir, processor_dir))
