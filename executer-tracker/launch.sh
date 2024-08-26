@@ -16,11 +16,14 @@ start() {
 	export API_URL="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/api-url" -H "Metadata-Flavor: Google")"
 	export REDIS_HOSTNAME="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/redis-hostname" -H "Metadata-Flavor: Google")"
     export LOGGING_HOSTNAME="$(curl "http://metadata.google.internal/computeMetadata/v1/project/attributes/logging-hostname" -H "Metadata-Flavor: Google")"
-	export MPI_EXTRA_ARGS="--allow-run-as-root"
+	export MPI_EXTRA_ARGS=""
 	export EXECUTER_IMAGES_REMOTE_STORAGE="gs://inductiva-apptainer-images"
 	export EXECUTER_TRACKER_TOKEN=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/attributes/executer_tracker_token" -H "Metadata-Flavor: Google")
 	export LOCAL_MODE="false"
 	export EXECUTER_TRACKER_ID_PATH="/opt/executer-tracker/info.json"
+
+	# Set variable needed for apptainer stats and avoid warnings in apptainer commands with --sharens
+	export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$UID/bus
 
 	DATA_DISK_MOUNT_PATH=/mnt/disks/executer-tracker-data
 	export APPTAINER_CACHEDIR=$DATA_DISK_MOUNT_PATH/apptainer/.cache
@@ -40,8 +43,8 @@ start() {
 
 		export MPI_CLUSTER="true"
 		export MPI_SHARE_PATH=$EXECUTER_TRACKER_DATA_DISK_DIR"/mpi"
-		export MPI_HOSTFILE_PATH="/root/mpi_hosts"
-		export MPI_EXTRA_ARGS="--allow-run-as-root --mca btl_tcp_if_include $SUBNET --mca oob_tcp_if_include $SUBNET"
+		export MPI_HOSTFILE_PATH="/home/executer-tracker/mpi_hosts"
+		export MPI_EXTRA_ARGS="--mca btl_tcp_if_include $SUBNET --mca oob_tcp_if_include $SUBNET"
 
 		# Store Apptainer images in a shared directory so that every cluster
 		# member can access them.

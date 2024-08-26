@@ -9,10 +9,6 @@ class BaseTaskFetcher(abc.ABC):
     def get_task(self, block_s: int):
         pass
 
-    @abc.abstractmethod
-    def ack(self, task_id: str):
-        pass
-
 
 class RedisTaskFetcher(BaseTaskFetcher):
     """Implementation of a task fetcher using Redis streams."""
@@ -53,20 +49,6 @@ class RedisTaskFetcher(BaseTaskFetcher):
 
         return request
 
-    @override
-    def ack(self, task_id: str):
-        stream_entry_id = self._conn.get(f"task:{task_id}:stream_entry_id")
-
-        self._conn.xack(
-            self._stream,
-            self._consumer_group,
-            stream_entry_id,
-        )
-
-        suffixes = self._conn.smembers(self._TASK_KEYS_SET)
-        for suffix in suffixes:
-            self._conn.delete(f"task:{task_id}:{suffix}")
-
 
 class WebApiTaskFetcher(BaseTaskFetcher):
     """Implementation of the task execution long polling the Web API."""
@@ -78,7 +60,3 @@ class WebApiTaskFetcher(BaseTaskFetcher):
     @override
     def get_task(self, block_s: int):
         return self._api_client.get_task(self._id, block_s)
-
-    @override
-    def ack(self, task_id: str):
-        self._api_client.acknowledge_task(self._id, task_id)

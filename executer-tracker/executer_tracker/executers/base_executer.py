@@ -253,16 +253,19 @@ class BaseExecuter(ABC):
             if working_dir:
                 process_working_dir = os.path.join(process_working_dir,
                                                    working_dir)
-
-            args.extend([
+            apptainer_args = [
                 "apptainer",
                 "exec",
                 "--bind",
                 f"{task_working_dir}:{task_working_dir}",
                 "--pwd",
                 process_working_dir,
-                self.container_image,
-            ])
+            ]
+            if cmd.is_mpi:
+                apptainer_args.append("--sharens")
+            apptainer_args.append(self.container_image)
+            args.extend(apptainer_args)
+
             args.extend(cmd.args)
 
             self.subprocess = executers.SubprocessTracker(
