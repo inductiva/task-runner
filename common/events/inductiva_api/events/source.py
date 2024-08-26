@@ -1,8 +1,8 @@
 """Module with functionality for listening to events."""
 from typing import Iterator, Optional, Tuple
 
+import redis
 from absl import logging
-from redis import Redis
 
 from inductiva_api.events import parse
 from inductiva_api.events.schemas import Event
@@ -11,18 +11,14 @@ from inductiva_api.events.schemas import Event
 class RedisStreamEventSource:
     """Class for listening to events from Redis streams."""
 
-    def __init__(self,
-                 stream: str,
-                 redis_hostname: str,
-                 redis_port: int,
-                 consumer_group: Optional[str] = None,
-                 consumer_name: Optional[str] = None) -> None:
-        self._conn = Redis(
-            redis_hostname,
-            redis_port,
-            retry_on_timeout=True,
-            decode_responses=True,
-        )
+    def __init__(
+        self,
+        redis_conn: redis.Redis,
+        stream: str,
+        consumer_group: Optional[str] = None,
+        consumer_name: Optional[str] = None,
+    ) -> None:
+        self._conn = redis_conn
         self._stream = stream
         self._consumer_group = consumer_group
         self._consumer_name = consumer_name
