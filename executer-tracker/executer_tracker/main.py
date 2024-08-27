@@ -55,6 +55,7 @@ Usage (note the required environment variables):
 import json
 import os
 import sys
+import uuid
 
 from absl import app, logging
 
@@ -73,12 +74,12 @@ from executer_tracker.utils import config
 from inductiva_api.task_status import ExecuterTerminationReason
 
 
-def _log_executer_tracker_id(path, executer_tracker_id):
+def _log_executer_tracker_id(path, executer_tracker_id: uuid.UUID):
     if not path:
         return
 
     with open(path, "w", encoding="UTF-8") as f:
-        json.dump({"id": executer_tracker_id}, f)
+        json.dump({"id": str(executer_tracker_id)}, f)
 
 
 def main(_):
