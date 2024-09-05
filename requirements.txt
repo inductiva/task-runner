@@ -1,1 +1,12 @@
-absl-py
+absl-py==1.3.0
+psutil==5.9.4
+redis
+requests
+docker
+fsspec
+gcsfs
+stream-zip==0.0.81
+
+# FEniCSx
+gmsh==4.11.1
+meshio==5.3.5

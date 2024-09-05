@@ -1,172 +1,59 @@
-[![Python package](https://github.com//actions/workflows/python-package.yml/badge.svg)](https://github.com//actions/workflows/python-package.yml)
+## Base image deps
 
-[![Documentation Status](https://readthedocs.com/projects/inductiva-research-labs-/badge/?version=latest&token=a7a7344c5bc9e511ca715449f94612e4bb7c2dff4c90931778b9c85dbbf5480c)](https://inductiva-research-labs-.readthedocs-hosted.com/en/latest/?badge=latest)
+OS: debian 11 (bullseye)
 
-# Start a project
-
-Use this template to generate a repository for your new project. By doing so you
-will quickly have access to a couple of tools we've already set up for you.
-
-## Python
-
-We love Python! To make our lives easier and write good code we follow a couple
-of common best practices:
-
-* For local development we recommend using Python's virtual environments. This
-  way you can keep a separate environment for each project without polluting
-  your operating system with additional Python packages. We also recommend using
-  `pip` for managing those packages.
-
-  To create a new virtual environment (only once):
-
-  ```bash
-  python3 -m venv .env
-  ```
-
-  To activate your virtual environment (every time you want to work on the
-  current project):
-
-  ```bash
-  source .env/bin/activate 
-  ```
-
-  It's always a good practice to upgrade `pip` when you create the virtual environment, before installing other packages. In the past we've noticed some
-  bugs with older versions of `pip`, causing the installation of incompatible
-  versions of several packages.
-
-  ```bash
-  pip install --upgrade pip
-  ```
-
-  To install the project's required packages (whenever dependencies must be
-  updated):
-
-  ```bash
-  pip install -r requirements.txt
-  ```
-
-* We follow
-  [Google's style guide](https://google.github.io/styleguide/pyguide.html).
-  Specifically, we format code with `yapf`, and check for bugs and style
-  problems with `pylint`.
-
-  Usually, there's no need to run these tools manually. We added continuous
-  integration (CI) through GitHub, so every time your pull request has errors
-  you'll be alerted via email. Over time you'll get used to these rules and
-  coding consistently will become second nature.
-
-  However, if you want to run `yapf` and `pylint` locally, simply install them
-  via `pip`:
-
-  ```bash
-  pip install yapf pylint
-  ```
-
-* We write tests using `pytest`. See [`example_test.py`](example_test.py) for an
-  example and delete if example after you copied the template to your new
-  project.
-
-  Tests are also run automatically in GitHub via continuous integration. If you
-  want to run them locally, install `pytest`:
-
-  ```bash
-  pip install pytest
-  ```
-
-  and run:
-
-  ```bash
-  pytest
-  ```
-
-  in your base directory.
-
-  `pytest` is smart enough to discover your tests automatically when you're
-  following
-  [the right conventions](https://docs.pytest.org/en/stable/goodpractices.html#conventions-for-python-test-discovery). At Inductiva we'd prefer that any
-  test file (e.g. `example_test.py`) stays in the same directory next to the
-  component it tests (e.g. `example.py`).
-
-## Documentation
-
-We use [Sphinx](https://www.sphinx-doc.org/) to generate documentation to our
-projects. The documentation files can be written using either Markdown or
-reStructuredText syntax and are stored in the `docs` directory. See
-[`docs/index.md`](docs/index.md) for a collection of simple examples to get you
-started including math formulas and code snippets in your documentation.
-
-If you want to generate the documentation locally, simply install the
-dependencies via `pip`:
-
-```bash
-pip install -r docs/requirements.txt
-```
-
-and run
-
-```bash
-sphinx-build -b html docs docs/_build
-```
-
-in your base directory to build the documentation in `docs/_build`.
-
-To serve the documentation locally and automatically build it with new changes,
-install the `sphinx-autobuild` package,
-
-```bash
-pip install sphinx-autobuild
-```
-
-and run in your base directory
-
-```bash
-sphinx-autobuild -b html docs docs/_build
-```
-
-This will serve the documentation at <http://127.0.0.1:8000> and automatically
-update it when you save changes to the documentation files.
-
-The documentation may also be made available on
-[Read The Docs](https://readthedocs.org/) for configured repositories. When set
-up, this integration will build and deploy the documentation on each commit to
-the `main` branch.
-
-See the documentation for the start-a-project repo at:
-
-https://inductiva-research-labs-start-a-project.readthedocs-hosted.com/en/latest/
-
-Apart from documentation files, we also prepare README files using Markdown
-syntax to present short introductions of the projects. This README is one such
-example.
-
-
-## Conda Environments
-
-To automate all the setup commands above, we have created a Conda
-environment config file that you can use for your convenience.
-
-Make sure the first line of the conda.yml file contains a name related to 
-your project, such as:
+1. MPI
 
 ```
-name: startaproject_env
+wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.6.tar.gz
+sudo apt-get update && sudo apt-get install build-essential
+tar zxvf openmpi-4.1.6.tar.gz
+cd openmpi-4.1.6/
+./configure --prefix=/usr/local
+make all
+sudo make install
+which mpicc
+which mpiexec
+mpiexec --version
+mpicc --version
+sudo ldconfig
 ```
 
-Note: If you are starting a new project from this template repo, it might work 
-automatically for you, because we use the placeholder `name: {{GITHUB_REPOSITORY#*/}}`
-that gets auto-filled with the repo name.
+2. Apptainer
 
-Now, if you have conda installed, just run:
-
-```bash
-conda env create -f conda.yml
+```
+wget https://github.com/apptainer/apptainer/releases/download/v1.2.4/apptainer_1.2.4_amd64.deb
+sudo apt install -y ./apptainer_1.2.4_amd64.deb
 ```
 
-This will install python 3.11, pylint, yapf, pytest, sphinx, and all the 
-package requirements, and you can now activate that environment with:
 
-```bash
-conda activate startaproject_env
+3. skopeo, jq
+
+```
+apt-get install skopeo jq
 ```
 
-And you are good to go!
+4. NFS server
+
+```
+apt-get install nfs-kernel-server
+```
+
+5. [Docker](https://docs.docker.com/engine/install/debian/#install-using-the-repository)
+
+6. We also assume that there is a SSH key pair (`/root/.ssh/id_mpi_cluster` and `/root/.ssh/id_mpi_cluster.pub`) that is used to ssh between the machines when we launch multiple.
+
+7. The base image also has a directory called `/export/mpi` that is exported with NFS.
+
+File `/etc/exports`:
+
+```
+/export       10.0.0.0/8(rw,fsid=0,no_subtree_check,sync,no_root_squash)
+/export/mpi   10.0.0.0/8(rw,nohide,insecure,no_subtree_check,sync,no_root_squash)
+```
+
+8. Python 3.9, `python3-venv`
+
+```
+sudo apt-get install python3-venv
+```
