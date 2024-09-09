@@ -4,12 +4,12 @@ import sys
 import threading
 
 from absl import logging
+from inductiva_api import events
+from inductiva_api.task_status import ExecuterTerminationReason
 
 import executer_tracker
 from executer_tracker import redis_utils
 from executer_tracker.utils import gcloud
-from inductiva_api import events
-from inductiva_api.task_status import ExecuterTerminationReason
 
 
 class TerminationHandler:

@@ -16,7 +16,6 @@ from executer_tracker import (
     task_message_listener,
     task_request_handler,
 )
-
 from inductiva_api import events
 
 

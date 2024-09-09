@@ -28,18 +28,21 @@ jobs:
       env:
         BOT_REPO_ACCESS: ${{ secrets.BOT_REPO_ACCESS }}
       run: |
+        sudo apt-get update && sudo apt-get install -y gmsh
         python -m pip install --upgrade pip setuptools wheel
-        python -m pip install yapf pylint pytest pytest-custom_exit_code
+        python -m pip install uv pytest-cov coverage
         if [[ -f requirements.txt ]]; then python -m pip install -r requirements.txt; fi
     - name: Check formatting with yapf
       if: ${{ always() }}
       run: |
         yapf . --diff --recursive --parallel --exclude=third_party
-    - name: Lint with pylint
+    - name: Lint with ruff
       if: ${{ always() }}
       run: |
-        find . -type f -not -path "./third_party/*" -name '*.py' | xargs pylint
+        ruff check --config=./pyproject.toml
     - name: Test with pytest
       if: ${{ always() }}
+      env:
+        PYTHONPATH: ./executer-tracker
       run: |
-        pytest --suppress-no-test-exit-code
+        set -o pipefail && pytest --cov=executer_tracker --cov-report=term-missing:skip-covered --cov-append --junitxml=exc_tracker.xml -v -s -p no:warnings executer-tracker/tests/unit/ | tee exc_cov.txt

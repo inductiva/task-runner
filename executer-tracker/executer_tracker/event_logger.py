@@ -1,10 +1,9 @@
 import abc
 
 from absl import logging
-from typing_extensions import override
-
 from inductiva_api.events import RedisStreamEventLoggerSync
 from inductiva_api.events.schemas import Event
+from typing_extensions import override
 
 
 class BaseEventLogger(abc.ABC):
