@@ -17,6 +17,8 @@ from typing import Dict, Tuple
 from uuid import UUID
 
 from absl import logging
+from inductiva_api import events
+from inductiva_api.task_status import task_status
 
 import executer_tracker
 from executer_tracker import (
@@ -28,8 +30,6 @@ from executer_tracker import (
     utils,
 )
 from executer_tracker.utils import files, loki
-from inductiva_api import events
-from inductiva_api.task_status import task_status
 
 KILL_MESSAGE = "kill"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"

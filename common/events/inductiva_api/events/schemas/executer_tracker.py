@@ -3,11 +3,10 @@ import datetime
 import uuid
 from typing import List, Literal, Optional, Union
 
-import pydantic
-from typing_extensions import Annotated
-
 import inductiva_api.events.schemas as event_schemas
+import pydantic
 from inductiva_api import task_status
+from typing_extensions import Annotated
 
 
 class GCloudHostInfo(pydantic.BaseModel):

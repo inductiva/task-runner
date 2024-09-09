@@ -8,7 +8,6 @@ from typing import Dict, Optional
 
 import requests
 from absl import logging
-
 from inductiva_api import events
 
 
