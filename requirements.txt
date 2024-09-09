@@ -3,3 +3,4 @@
 -e ./common/events
 -e ./common/task_status
 absl-py
+pytest
