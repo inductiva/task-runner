@@ -3,7 +3,6 @@ from typing import Iterator, Optional, Tuple
 
 import redis
 from absl import logging
-
 from inductiva_api.events import parse
 from inductiva_api.events.schemas import Event
 

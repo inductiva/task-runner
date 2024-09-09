@@ -1,0 +1,42 @@
+[tool.ruff]
+line-length = 81
+
+[tool.ruff.lint]
+preview = true
+
+# See all the lint rules at [here](https://docs.astral.sh/ruff/rules/)
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes,
+    "PL",    # pylint,
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "G",     # flake8-logging-format
+    "I",     # isort
+    "D104",  # missing docstring in public package
+    "BLE001" # broad-except
+]
+
+ignore = [
+    "PLR",     # Pylint refactor
+    "PLW0603", # using the global statement
+    "PLW2901", # redefined loop variable
+    "PLC1901", # compare-to-empty-string
+    "W291",    # trailing whitespace
+    "W293",    # blank line contains whitespace,
+    "E265",    # block comment should start with '# '
+    "E502",    # the backslash is redundant
+    "E266",    # too many leading '#' for block comment
+    "E251",    # unexpected spaces around keyword / parameter equals
+    "UP015",   # Unnecessary open mode parameters
+    "UP034",   # Avoid extraneous parentheses
+    "UP039",   # Unnecessary parentheses after class definition
+    "UP011",   # Unnecessary parentheses to functools.lru_cache
+]
+
+dummy-variable-rgx="^\\*{0,2}(_$|unused_|dummy_)"
+
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]

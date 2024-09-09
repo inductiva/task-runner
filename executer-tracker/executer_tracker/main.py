@@ -58,6 +58,7 @@ import sys
 import uuid
 
 from absl import app, logging
+from inductiva_api.task_status import ExecuterTerminationReason
 
 import executer_tracker
 from executer_tracker import (
@@ -71,7 +72,6 @@ from executer_tracker import (
 from executer_tracker.register_executer import register_executer
 from executer_tracker.task_request_handler import TaskRequestHandler
 from executer_tracker.utils import config
-from inductiva_api.task_status import ExecuterTerminationReason
 
 
 def _log_executer_tracker_id(path, executer_tracker_id: uuid.UUID):
