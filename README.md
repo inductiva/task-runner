@@ -15,7 +15,7 @@ INDUCTIVA_API_KEY=xxxxxxxxxx
 ### Build and Run the application
 Build and run the docker container:
 ```
-docker compose up executer-tracker-local-mode
+docker compose up --build executer-tracker-local-mode
 ```
 
 ### Run Simulations

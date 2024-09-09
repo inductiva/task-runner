@@ -5,34 +5,12 @@ services:
       build:
         context: .
         dockerfile: executer-tracker/Dockerfile
-      depends_on:
-        loki:
-          condition: service_started
       environment:
         LOCAL_MODE: true
         EXECUTER_IMAGES_DIR: /executer-images
-        API_URL: https://api.inductiva.ai
+        API_URL: https://inductiva-web-api-task-runner-846353858263.europe-west1.run.app
         USER_API_KEY: ${INDUCTIVA_API_KEY}
       volumes:
         - ./apptainer:/executer-images
-      networks:
-        - local-runner
       privileged: true
       platform: linux/amd64
-
-  loki:
-    image: grafana/loki:2.9.2
-    networks:
-      - local-runner
-    ports:
-      - ${LOKI_PORT:-3100}:3100
-    volumes:
-      - ./loki-config.yaml:/etc/loki/loki-config.yaml
-      - loki-data:/mnt/loki
-    command: -config.file=/etc/loki/loki-config.yaml
-
-volumes:
-  loki-data:
-
-networks:
-  local-runner:
