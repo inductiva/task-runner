@@ -8,7 +8,7 @@ services:
       environment:
         LOCAL_MODE: true
         EXECUTER_IMAGES_DIR: /executer-images
-        API_URL: https://inductiva-web-api-task-runner-846353858263.europe-west1.run.app
+        API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
       volumes:
         - ./apptainer:/executer-images

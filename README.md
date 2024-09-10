@@ -6,9 +6,10 @@ The prerequisites for running the Task Runner are docker and a Inductiva account
 
 ### Setup Environment
 
-Create a file named `.env` where you will store your Inductiva API key.
+Create a file named `.env` where you will store your Inductiva API key and the Inductiva API URL.
 ```
 INDUCTIVA_API_KEY=xxxxxxxxxx
+INDUCTIVA_API_URL=https://api.inductiva.ai
 ```
 
 
