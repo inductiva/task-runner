@@ -16,7 +16,7 @@ INDUCTIVA_API_URL=https://api.inductiva.ai
 ### Build and Run the application
 Build and run the docker container:
 ```
-docker compose up --build executer-tracker-local-mode
+docker compose up --build task-runner
 ```
 
 ### Run Simulations
