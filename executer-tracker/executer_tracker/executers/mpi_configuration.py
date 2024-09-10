@@ -53,7 +53,7 @@ class MPIClusterConfiguration():
         mpi_default_version = os.getenv("MPI_DEFAULT_VERSION", DEFAULT_VERSION)
 
         local_mode = os.getenv("LOCAL_MODE",
-                               "false").lower() in ("true", "t", "yes", "y", 1)
+                               "true").lower() in ("true", "t", "yes", "y", 1)
 
         num_hosts = 1
         if is_cluster:
