@@ -134,7 +134,8 @@ def main(_):
 
     if machine_group_id:
         logging.info("Specified machine group: %s", machine_group_id)
-    elif machine_group_name and api_client.machine_group_exists(machine_group_name):
+    elif (machine_group_name and
+          api_client.machine_group_exists(machine_group_name)):
         logging.info("Specified machine group exists: %s", machine_group_name)
         machine_group_id = api_client.get_machine_group_id_by_name(
             machine_group_name)
@@ -142,9 +143,10 @@ def main(_):
         if not local_mode:
             raise ValueError("No machine group specified.")
         else:
-            logging.info(
-                "No machine group specified. Creating a new local machine group...")
-            machine_group_id = api_client.create_local_machine_group(machine_group_name=machine_group_name)
+            logging.info("No machine group specified. \
+                Creating a new local machine group...")
+            machine_group_id = api_client.create_local_machine_group(
+                machine_group_name=machine_group_name)
 
     logging.info("Using machine group: %s", machine_group_id)
 

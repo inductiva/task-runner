@@ -32,6 +32,7 @@ def get_machine_group_id() -> Optional[uuid.UUID]:
 
     return uuid.UUID(machine_group_str)
 
+
 def get_machine_group_name() -> Optional[str]:
     machine_group_name = os.getenv("MACHINE_GROUP_NAME")
 
