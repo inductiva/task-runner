@@ -261,7 +261,7 @@ class BaseExecuter(ABC):
                 "--pwd",
                 process_working_dir,
             ]
-            if cmd.is_mpi:
+            if cmd.is_mpi and not self.mpi_config.local_mode:
                 apptainer_args.append("--sharens")
             apptainer_args.append(self.container_image)
             args.extend(apptainer_args)
