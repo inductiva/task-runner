@@ -7,6 +7,7 @@ services:
         dockerfile: executer-tracker/Dockerfile
       environment:
         LOCAL_MODE: true
+        MPIRUN_BIN_PATH_TEMPLATE: /opt/openmpi/{version}/bin/mpirun
         EXECUTER_IMAGES_DIR: /executer-images
         API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
