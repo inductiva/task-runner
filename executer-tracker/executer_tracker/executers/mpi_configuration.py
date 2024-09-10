@@ -52,8 +52,8 @@ class MPIClusterConfiguration():
                                              "mpirun")
         mpi_default_version = os.getenv("MPI_DEFAULT_VERSION", DEFAULT_VERSION)
 
-        local_mode = os.getenv("LOCAL_MODE", "false").lower() in (
-            "true", "t", "yes", "y", 1)
+        local_mode = os.getenv("LOCAL_MODE",
+                               "false").lower() in ("true", "t", "yes", "y", 1)
 
         num_hosts = 1
         if is_cluster:
@@ -79,6 +79,7 @@ class MPIClusterConfiguration():
             mpirun_bin_path_template=mpirun_bin_path_template,
             num_hosts=num_hosts,
             default_version=mpi_default_version,
+            local_mode=local_mode,
         )
 
     def list_available_versions(self) -> List[str]:
