@@ -32,6 +32,16 @@ def get_machine_group_id() -> Optional[uuid.UUID]:
 
     return uuid.UUID(machine_group_str)
 
+def get_machine_group_name() -> Optional[str]:
+    machine_group_name = os.getenv("MACHINE_GROUP_NAME")
+
+    logging.info("Machine group: %s", machine_group_name)
+
+    if not machine_group_name:  # check if is None or empty string
+        return None
+
+    return machine_group_name
+
 
 @dataclasses.dataclass
 class ExecuterConfig:
