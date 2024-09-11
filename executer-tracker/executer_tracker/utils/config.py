@@ -44,6 +44,15 @@ def get_machine_group_name() -> Optional[str]:
     return machine_group_name
 
 
+def is_machine_group_local() -> bool:
+    """Check if the machine group is local."""
+    local_mode = os.getenv("LOCAL_MODE",
+                           "true").lower() in ("true", "t", "yes", "y", 1)
+    logging.info("Running in local mode: %s", local_mode)
+
+    return local_mode
+
+
 @dataclasses.dataclass
 class ExecuterConfig:
     image: str
