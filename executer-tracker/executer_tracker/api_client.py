@@ -219,20 +219,17 @@ class ApiClient:
         )
         return resp.json()["id"]
 
-    def machine_group_exists(self, machine_group_name: str) -> bool:
-        resp = self._request(
-            "GET",
-            f"/compute/group/{machine_group_name}",
-        )
-        return resp.status_code == 200
-
     def get_machine_group_id_by_name(
             self, machine_group_name: str) -> Optional[uuid.UUID]:
         resp = self._request(
             "GET",
             f"/compute/group/{machine_group_name}",
         )
-        return resp.json()["id"]
+
+        if resp.status_code != 200:
+            return
+        
+        return resp.json().get("id")
 
     def post_task_metric(self, task_id: str, metric: str, value: float):
         data = {"metric": metric, "value": value}

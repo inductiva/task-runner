@@ -11,7 +11,7 @@ Create a file named `.env` where you will store your Inductiva API key and the I
 INDUCTIVA_API_KEY=xxxxxxxxxx
 INDUCTIVA_API_URL=https://api.inductiva.ai
 ```
-To specify a name for your machine group or to connect a task-runner to an already existing machine add the machine group name to your `.env`file
+To specify a name for your machine group or to connect a task-runner to an already existing machine add the machine group name to your `.env` file
 
 ```
 MACHINE_GROUP_NAME='my-machine-group-name'
