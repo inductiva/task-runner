@@ -206,15 +206,30 @@ class ApiClient:
             method=resp_body["method"],
         )
 
-    def create_local_machine_group(self) -> uuid.UUID:
+    def create_local_machine_group(self,
+                                   machine_group_name: Optional[str] = None
+                                  ) -> uuid.UUID:
         resp = self._request(
             "POST",
             "/compute/group",
             json={
                 "provider_id": "LOCAL",
+                "name": machine_group_name,
             },
         )
         return resp.json()["id"]
+
+    def get_machine_group_id_by_name(
+            self, machine_group_name: str) -> Optional[uuid.UUID]:
+        resp = self._request(
+            "GET",
+            f"/compute/group/{machine_group_name}",
+        )
+
+        if resp.status_code != 200:
+            return
+
+        return resp.json().get("id")
 
     def post_task_metric(self, task_id: str, metric: str, value: float):
         data = {"metric": metric, "value": value}

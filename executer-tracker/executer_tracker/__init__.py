@@ -10,6 +10,7 @@ from executer_tracker.file_manager import (
     FsspecFileManager,
     WebApiFileManager,
 )
+from executer_tracker.machine_group import MachineGroupInfo
 from executer_tracker.task_fetcher import (
     BaseTaskFetcher,
     RedisTaskFetcher,
