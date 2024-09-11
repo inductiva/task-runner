@@ -53,9 +53,12 @@ class LokiLogger:
         self.task_id = task_id
         self.project_id = project_id
         self.server_url = (f"http://{os.getenv('LOGGING_HOSTNAME', 'loki')}"
-                           ":3100/loki/api/v1/push")
+                           "/loki/api/v1/push")
         self.source = "executer-tracker"
         self.streams_dict = {}
+        self._auth_headers = {}
+        if api_key := os.getenv("USER_API_KEY"):
+            self._auth_headers["X-API-Key"] = api_key
 
     def _send_logs(self, stream: LogStream) -> None:
         """Sends logs to loki through a POST request to push endpoint."""
@@ -82,6 +85,8 @@ class LokiLogger:
                 headers={
                     "Content-Type": "application/json",
                     "Content-Encoding": "gzip",
+                    "X-Task-ID": self.task_id,
+                    **self._auth_headers,
                 },
                 timeout=5,
             )

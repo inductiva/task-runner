@@ -9,6 +9,7 @@ services:
         EXECUTER_IMAGES_DIR: /executer-images
         API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
+        LOGGING_HOSTNAME: ${LOGGING_HOSTNAME}
       volumes:
         - ./apptainer:/executer-images
       privileged: true
