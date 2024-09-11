@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  task-runner:
+      build:
+        context: .
+        dockerfile: executer-tracker/Dockerfile
+      environment:
+        EXECUTER_IMAGES_DIR: /executer-images
+        API_URL: ${INDUCTIVA_API_URL}
+        USER_API_KEY: ${INDUCTIVA_API_KEY}
+      volumes:
+        - ./apptainer:/executer-images
+      privileged: true
+      platform: linux/amd64

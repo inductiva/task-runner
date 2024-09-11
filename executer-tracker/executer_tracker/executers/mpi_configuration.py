@@ -16,6 +16,7 @@ class MPIClusterConfiguration():
     share_path: Optional[str]
     extra_args: List[str]
     mpirun_bin_path_template: str
+    local_mode: bool
 
     def __init__(
         self,
@@ -26,6 +27,7 @@ class MPIClusterConfiguration():
         extra_args: str = "",
         mpirun_bin_path_template: str = "mpirun",
         num_hosts: int = 1,
+        local_mode: bool = True,
     ):
         self.is_cluster = is_cluster
         self.hostfile_path = hostfile_path
@@ -36,6 +38,7 @@ class MPIClusterConfiguration():
         self.default_version = default_version
         self.mpi_version_regexp = re.compile(
             self.mpirun_bin_path_template.format(version="(.*)"))
+        self.local_mode = local_mode
 
     @classmethod
     def from_env(cls):
@@ -48,6 +51,9 @@ class MPIClusterConfiguration():
         mpirun_bin_path_template = os.getenv("MPIRUN_BIN_PATH_TEMPLATE",
                                              "mpirun")
         mpi_default_version = os.getenv("MPI_DEFAULT_VERSION", DEFAULT_VERSION)
+
+        local_mode = os.getenv("LOCAL_MODE",
+                               "true").lower() in ("true", "t", "yes", "y", 1)
 
         num_hosts = 1
         if is_cluster:
@@ -73,6 +79,7 @@ class MPIClusterConfiguration():
             mpirun_bin_path_template=mpirun_bin_path_template,
             num_hosts=num_hosts,
             default_version=mpi_default_version,
+            local_mode=local_mode,
         )
 
     def list_available_versions(self) -> List[str]:

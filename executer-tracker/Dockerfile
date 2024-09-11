@@ -1,9 +1,11 @@
 FROM python:3.9
 
+ENV LOCAL_MODE true
+
 RUN apt-get update && apt-get install -y wget
 RUN cd /tmp \
-    && wget https://github.com/apptainer/apptainer/releases/download/v1.2.5/apptainer_1.2.5_amd64.deb \
-    && apt-get install -y ./apptainer_1.2.5_amd64.deb \
+    && wget https://github.com/apptainer/apptainer/releases/download/v1.3.3/apptainer_1.3.3_amd64.deb \
+    && apt-get install -y ./apptainer_1.3.3_amd64.deb \
     && rm /tmp/*
 
 WORKDIR /
@@ -15,6 +17,7 @@ RUN ./configure --prefix=/opt/openmpi/4.1.6
 RUN make all
 RUN make install
 RUN ldconfig
+ENV MPIRUN_BIN_PATH_TEMPLATE /opt/openmpi/{version}/bin/mpirun
 
 RUN apt-get install -y gmsh
 
