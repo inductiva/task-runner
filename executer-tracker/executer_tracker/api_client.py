@@ -228,7 +228,7 @@ class ApiClient:
 
         if resp.status_code != 200:
             return
-        
+
         return resp.json().get("id")
 
     def post_task_metric(self, task_id: str, metric: str, value: float):
