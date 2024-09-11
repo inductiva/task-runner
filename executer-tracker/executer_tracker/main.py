@@ -123,20 +123,12 @@ def main(_):
         max_timeout = int(
             metadata_max_timeout) if metadata_max_timeout else None
 
-    local_mode = os.getenv("LOCAL_MODE",
-                           "true").lower() in ("true", "t", "yes", "y", 1)
-    logging.info("Running in local mode: %s", local_mode)
-
     api_client = executer_tracker.ApiClient.from_env()
 
-    machine_group_id = config.get_machine_group_id()
-    if not machine_group_id:
-        if not local_mode:
-            raise ValueError("No machine group specified.")
+    machine_group_info = executer_tracker.MachineGroupInfo.from_api(api_client)
 
-        logging.info(
-            "No machine group specified. Creating a new local machine group...")
-        machine_group_id = api_client.create_local_machine_group()
+    machine_group_id = machine_group_info.id
+    local_mode = machine_group_info.local_mode
 
     logging.info("Using machine group: %s", machine_group_id)
 
