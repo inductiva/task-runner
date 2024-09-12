@@ -21,9 +21,6 @@ class HTTPMethod(enum.Enum):
 @dataclasses.dataclass
 class ExecuterAccessInfo:
     id: uuid.UUID
-    redis_stream: str
-    redis_consumer_group: str
-    redis_consumer_name: str
     machine_group_id: uuid.UUID
 
 
@@ -114,9 +111,6 @@ class ApiClient:
 
         return ExecuterAccessInfo(
             id=self._executer_uuid,
-            redis_stream=resp_body["redis_stream"],
-            redis_consumer_group=resp_body["redis_consumer_group"],
-            redis_consumer_name=resp_body["redis_consumer_name"],
             machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
         )
 

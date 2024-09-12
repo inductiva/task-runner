@@ -30,20 +30,6 @@ OUTPUT_ZIPPED_SIZE = "output_zipped_size_bytes"
 OUTPUT_TOTAL_FILES = "output_total_files"
 
 
-def make_task_key(task_id: str, attribute: str) -> str:
-    """Auxiliary function to generate a Redis key to acess a task attribute.
-
-    Args:
-        task_id: task id
-        attribute: name of the task attribute we want to get
-
-    Returns:
-        String representing the key to Redis.
-        Example: "task:8273891:status"
-    """
-    return f"task:{task_id}:{attribute}"
-
-
 def bool_string_to_bool(s: str) -> bool:
     """Converts a string representing a boolean to a boolean.
 

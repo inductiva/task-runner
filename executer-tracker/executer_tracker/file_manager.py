@@ -1,11 +1,8 @@
 import abc
-import os
-import shutil
 import urllib
 import urllib.request
 import uuid
 
-import fsspec
 import requests
 from typing_extensions import override
 
@@ -33,58 +30,6 @@ class BaseFileManager(abc.ABC):
         local_path: str,
     ):
         pass
-
-
-class FsspecFileManager(BaseFileManager):
-
-    def __init__(self, artifact_store_root: str):
-        protocol = "gs" if artifact_store_root == "gs://" else "file"
-        self._filesystem = fsspec.filesystem(protocol)
-        self._artifact_store_root = artifact_store_root
-
-    @utils.execution_time
-    @override
-    def download_input(
-        self,
-        task_id: str,
-        task_dir_remote: str,
-        dest_path: str,
-    ):
-        del task_id  # unused
-
-        remote_path = os.path.join(
-            self._artifact_store_root,
-            task_dir_remote,
-            utils.INPUT_ZIP_FILENAME,
-        )
-
-        with self._filesystem.open(remote_path, "rb") as f:
-            with open(dest_path, "wb") as local_file:
-                shutil.copyfileobj(f, local_file)
-
-    @utils.execution_time_with_result
-    @override
-    def upload_output(
-        self,
-        task_id: str,
-        task_dir_remote: str,
-        local_path: str,
-    ):
-        del task_id  # unused
-
-        remote_path = os.path.join(
-            self._artifact_store_root,
-            task_dir_remote,
-            utils.OUTPUT_ZIP_FILENAME,
-        )
-
-        zip_generator = files.get_zip_generator(local_path)
-
-        with self._filesystem.open(remote_path, "wb") as f_dest:
-            for chunk in zip_generator:
-                f_dest.write(chunk)
-
-        return zip_generator.total_bytes
 
 
 class WebApiFileManager(BaseFileManager):

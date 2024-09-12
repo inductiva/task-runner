@@ -32,4 +32,4 @@ def start_loop(
                 idle_timestamp = time.time()
 
         except ConnectionError as e:
-            logging.info("ERROR REDIS CONNECTION: %s", str(e))
+            logging.info("ERROR CONNECTION: %s", str(e))
