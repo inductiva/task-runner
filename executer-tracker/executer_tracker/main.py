@@ -70,7 +70,6 @@ from executer_tracker import (
 )
 from executer_tracker.register_executer import register_executer
 from executer_tracker.task_request_handler import TaskRequestHandler
-from executer_tracker.utils import config
 
 
 def _log_executer_tracker_id(path, executer_tracker_id: uuid.UUID):
@@ -107,13 +106,9 @@ def main(_):
                  ", ".join(mpi_config.list_available_versions()))
 
     max_timeout = None
-    if config.gcloud.is_running_on_gcloud_vm():
-        # Check if there are any metadata values that override the provided
-        # environment variables.
-        metadata_max_timeout = config.gcloud.get_vm_metadata_value(
-            "attributes/idle_timeout")
-        max_timeout = int(
-            metadata_max_timeout) if metadata_max_timeout else None
+
+    max_timeout = os.getenv("MAX_TIMEOUT")
+    max_timeout = int(max_timeout) if max_timeout else None
 
     api_client = executer_tracker.ApiClient.from_env()
 

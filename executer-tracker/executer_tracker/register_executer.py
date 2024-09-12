@@ -8,7 +8,7 @@ from absl import logging
 
 import executer_tracker
 import executer_tracker.api_client
-from executer_tracker.utils import gcloud, host
+from executer_tracker.utils import host
 
 
 def _get_executer_info(local_mode: bool) -> Dict:
@@ -27,29 +27,16 @@ def _get_executer_info(local_mode: bool) -> Dict:
     logging.info("\t> CPUs (physical): %s", cpu_count.physical)
     logging.info("\t> Memory: %s B", memory)
 
-    if gcloud.is_running_on_gcloud_vm():
-        vm_info = gcloud.get_vm_info()
-        if not vm_info:
-            raise RuntimeError("Failed to get VM info.")
+    default_vm_name = "local-mode-name" if local_mode else None
+    default_vm_id = "local-mode-id" if local_mode else None
 
-        executer_tracker_info["vm_name"] = vm_info.name
-        executer_tracker_info["vm_id"] = vm_info.id
+    vm_name = os.environ.get("VM_NAME", default_vm_name)
+    vm_id = os.environ.get("VM_ID", default_vm_id)
+    if vm_name is None or vm_id is None:
+        raise RuntimeError("VM_NAME and VM_ID must be set in the environment.")
 
-        logging.info("Running on GCloud VM:")
-        logging.info("\t> VM type: %s", vm_info.type)
-        logging.info("\t> VM preemptible: %s", vm_info.preemptible)
-    else:
-        default_vm_name = "local-mode-name" if local_mode else None
-        default_vm_id = "local-mode-id" if local_mode else None
-
-        vm_name = os.environ.get("VM_NAME", default_vm_name)
-        vm_id = os.environ.get("VM_ID", default_vm_id)
-        if vm_name is None or vm_id is None:
-            raise RuntimeError(
-                "VM_NAME and VM_ID must be set in the environment.")
-
-        executer_tracker_info["vm_name"] = vm_name
-        executer_tracker_info["vm_id"] = vm_id
+    executer_tracker_info["vm_name"] = vm_name
+    executer_tracker_info["vm_id"] = vm_id
 
     return executer_tracker_info
 
