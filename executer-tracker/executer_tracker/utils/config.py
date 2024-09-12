@@ -1,9 +1,7 @@
 """Util functions related to executer-tracker config."""
-import dataclasses
-import json
 import os
 import uuid
-from typing import Dict, Optional
+from typing import Optional
 
 from absl import logging
 

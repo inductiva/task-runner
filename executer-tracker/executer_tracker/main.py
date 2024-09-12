@@ -134,7 +134,6 @@ def main(_):
     executer_uuid = executer_access_info.id
     _log_executer_tracker_id(executer_tracker_id_path, executer_uuid)
 
-
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
         local_cache_dir=executer_images_dir,
         remote_storage_url=executer_images_remote_storage,

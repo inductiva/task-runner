@@ -23,11 +23,10 @@ class TerminationHandler:
         self._lock = threading.Lock()
         self._termination_logged = False
 
-        
         api_client = executer_tracker.ApiClient.from_env()
         self.event_logger = executer_tracker.WebApiLogger(
-                api_client=api_client,
-                executer_tracker_id=executer_id,
+            api_client=api_client,
+            executer_tracker_id=executer_id,
         )
 
     def log_termination(self, reason, detail=None) -> bool:

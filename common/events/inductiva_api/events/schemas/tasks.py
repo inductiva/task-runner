@@ -1,6 +1,6 @@
 """Events related to tasks."""
 import uuid
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import inductiva_api.events.schemas as event_schemas
 

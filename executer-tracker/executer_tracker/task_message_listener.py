@@ -1,11 +1,9 @@
 import abc
 import uuid
-from typing import Optional
 
 from typing_extensions import override
 
 import executer_tracker
-from executer_tracker import utils
 
 
 class BaseTaskMessageListener(abc.ABC):
