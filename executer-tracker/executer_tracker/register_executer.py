@@ -27,16 +27,17 @@ def _get_executer_info(local_mode: bool) -> Dict:
     logging.info("\t> CPUs (physical): %s", cpu_count.physical)
     logging.info("\t> Memory: %s B", memory)
 
-    default_vm_name = "local-mode-name" if local_mode else None
-    default_vm_id = "local-mode-id" if local_mode else None
+    default_host_name = "local-mode-name" if local_mode else None
+    default_host_id = "local-mode-id" if local_mode else None
 
-    vm_name = os.environ.get("VM_NAME", default_vm_name)
-    vm_id = os.environ.get("VM_ID", default_vm_id)
-    if vm_name is None or vm_id is None:
-        raise RuntimeError("VM_NAME and VM_ID must be set in the environment.")
+    host_name = os.environ.get("HOST_NAME", default_host_name)
+    host_id = os.environ.get("HOST_ID", default_host_id)
+    if host_name is None or host_id is None:
+        raise RuntimeError(
+            "HOST_NAME and HOST_ID must be set in the environment.")
 
-    executer_tracker_info["vm_name"] = vm_name
-    executer_tracker_info["vm_id"] = vm_id
+    executer_tracker_info["host_name"] = host_name
+    executer_tracker_info["host_id"] = host_id
 
     return executer_tracker_info
 
