@@ -5,8 +5,6 @@ from typing import Optional
 
 from absl import logging
 
-from executer_tracker.utils import gcloud
-
 
 def get_machine_group_id() -> Optional[uuid.UUID]:
     """Get machine group ID from env variable or GCloud VM metadata.
@@ -20,8 +18,7 @@ def get_machine_group_id() -> Optional[uuid.UUID]:
 
     machine_group_str = os.getenv("MACHINE_GROUP_ID")
     if machine_group_str is None:
-        machine_group_str = gcloud.get_vm_metadata_value(
-            "attributes/machine_group")
+        return
 
     logging.info("Machine group: %s", machine_group_str)
 

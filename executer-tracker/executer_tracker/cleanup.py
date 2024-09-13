@@ -8,7 +8,6 @@ from inductiva_api import events
 from inductiva_api.task_status import ExecuterTerminationReason
 
 import executer_tracker
-from executer_tracker.utils import gcloud
 
 
 class TerminationHandler:
@@ -72,10 +71,7 @@ def get_signal_handler(termination_handler):
     def handler(signum, _):
         logging.info("Caught signal %s.", signal.Signals(signum).name)
 
-        if gcloud.is_vm_preempted():
-            reason = ExecuterTerminationReason.VM_PREEMPTED
-        else:
-            reason = ExecuterTerminationReason.INTERRUPTED
+        reason = ExecuterTerminationReason.INTERRUPTED
 
         logged_termination = termination_handler.log_termination(reason)
         if logged_termination:
