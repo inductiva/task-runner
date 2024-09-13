@@ -56,37 +56,9 @@ class MPIExecuter(executers.BaseExecuter):
         os.rename(input_file_full_path,
                   os.path.join(sim_dir, self.sim_specific_input_filename))
 
-        # Searches for inputfiles recursively
-        input_files = set([
-            os.path.relpath(os.path.join(root, file), sim_dir)
-            for root, _, files in os.walk(sim_dir)
-            for file in files
-        ])
-
         cmd = executers.Command(self.sim_binary + " " +
                                 self.sim_specific_input_filename,
                                 is_mpi=True)
         self.run_subprocess(cmd, working_dir=sim_dir)
 
-        # Searches for all_files recursively
-        all_files = set([
-            os.path.relpath(os.path.join(root, file), sim_dir)
-            for root, _, files in os.walk(sim_dir)
-            for file in files
-        ])
-        new_files = all_files - input_files
-
-        for filename in new_files:
-            dst_path = os.path.join(self.artifacts_dir, filename)
-            src_path = os.path.join(sim_dir, filename)
-
-            if os.path.isfile(src_path):
-                # Makes sure dst_path exists (if it does not creates all
-                # relevant folders)
-                directory = os.path.dirname(dst_path)
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-
-                shutil.copy(src_path, dst_path)
-            elif os.path.isdir(src_path):
-                shutil.copytree(src_path, dst_path)
+        shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
