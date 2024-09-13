@@ -1,0 +1,40 @@
+name: Trigger workflow to build VM image
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+    paths:
+      - 'common/**'
+      - 'executer-tracker/**'
+
+jobs:
+  trigger-build-install-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger workflow from inductiva/infra-devops to build VM image
+        run: |
+          if [ "${{ github.ref_name }}" == "main" ];
+          then
+            PROJECT_ID="inductiva-api"
+          else
+            PROJECT_ID="inductiva-api-dev"
+          fi
+
+          BRANCH=${{ github.ref_name}}
+
+          echo "Triggering workflow to build VM image"
+          echo "Branch: $BRANCH"
+          echo "Project ID: $PROJECT_ID"
+
+          curl -f -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.INFRA_DEVOPS_WORKFLOW_DISPATCH }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/inductiva/infra-devops/actions/workflows/install_image.yaml/dispatches \
+            -d '{"ref": "main", "inputs": {"branch": "'$BRANCH'", "gcp-project-id": "'$PROJECT_ID'"}}'
+
