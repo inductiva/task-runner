@@ -105,10 +105,10 @@ def main(_):
     logging.info("  > available versions: %s",
                  ", ".join(mpi_config.list_available_versions()))
 
-    max_timeout = None
+    max_idle_timeout = None
 
-    max_timeout = os.getenv("MAX_TIMEOUT")
-    max_timeout = int(max_timeout) if max_timeout else None
+    max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
+    max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
     api_client = executer_tracker.ApiClient.from_env()
 
@@ -173,7 +173,7 @@ def main(_):
             task_execution_loop.start_loop(
                 task_fetcher=task_fetcher,
                 request_handler=request_handler,
-                max_timeout=max_timeout,
+                max_idle_timeout=max_idle_timeout,
             )
             monitoring_flag = False
         except TimeoutError:
