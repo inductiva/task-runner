@@ -17,7 +17,8 @@ def start_loop(
     idle_timestamp = time.time()
     while True:
         try:
-            if max_idle_timeout and time.time() - idle_timestamp >= max_idle_timeout:
+            if max_idle_timeout and time.time(
+            ) - idle_timestamp >= max_idle_timeout:
                 raise TimeoutError("Max idle time reached")
 
             logging.info("Waiting for requests...")
