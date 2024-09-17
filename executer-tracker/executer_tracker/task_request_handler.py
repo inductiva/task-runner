@@ -52,7 +52,7 @@ def task_message_listener_loop(
     """Function to handle the kill request for the running task.
 
     This function is intended to be run in a separate thread. It waits for
-    the "kill" message to be sent to the task's Redis queue. When the message
+    the "kill" message to be sent. When the message
     is received, the task is killed.
 
     Args:
@@ -125,8 +125,6 @@ class TaskRequestHandler:
     the request for consumption.
 
     Attributes:
-        redis_connection: Redis connection handler.
-        filesystem: fsspec filesystem handler.
         executer_uuid: UUID of the executer that handles the requests.
             Used for event logging purposes.
         workdir: Working directory.
@@ -134,6 +132,9 @@ class TaskRequestHandler:
         apptainer_images_manager: ApptainerImagesManager instance. Used
             to download and cache Apptainer images locally.
         api_client: ApiClient instance. Used to communicate with the API.
+        event_logger: Event logger.
+        message_listener: Task message listener.
+        file_manager: Filesystem manager.
     """
 
     def __init__(
@@ -229,7 +230,7 @@ class TaskRequestHandler:
 
         Note that this method blocks until the task is completed or killed.
         While the task is being processed via the TaskTracker class, a thread
-        is set to listen to a Redis queue, in which a "kill" message may be
+        is set to poll the API, in which a "kill" message may be
         received. If the message is received, then the subprocess running the
         requested task is killed.
 

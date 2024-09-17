@@ -65,13 +65,11 @@ from executer_tracker import (
     apptainer_utils,
     cleanup,
     executers,
-    redis_utils,
     task_execution_loop,
     utils,
 )
 from executer_tracker.register_executer import register_executer
 from executer_tracker.task_request_handler import TaskRequestHandler
-from executer_tracker.utils import config
 
 
 def _log_executer_tracker_id(path, executer_tracker_id: uuid.UUID):
@@ -83,8 +81,6 @@ def _log_executer_tracker_id(path, executer_tracker_id: uuid.UUID):
 
 
 def main(_):
-    redis_hostname = os.getenv("REDIS_HOSTNAME")
-    redis_port = os.getenv("REDIS_PORT", "6379")
     workdir = os.getenv("WORKDIR", "/workdir")
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR", "/apptainer")
     if not executer_images_dir:
@@ -109,19 +105,10 @@ def main(_):
     logging.info("  > available versions: %s",
                  ", ".join(mpi_config.list_available_versions()))
 
-    max_timeout = None
-    if config.gcloud.is_running_on_gcloud_vm():
-        # Check if there are any metadata values that override the provided
-        # environment variables.
-        metadata_redis_hostname = config.gcloud.get_vm_metadata_value(
-            "attributes/api-redis-hostname")
-        if metadata_redis_hostname:
-            redis_hostname = metadata_redis_hostname
+    max_idle_timeout = None
 
-        metadata_max_timeout = config.gcloud.get_vm_metadata_value(
-            "attributes/idle_timeout")
-        max_timeout = int(
-            metadata_max_timeout) if metadata_max_timeout else None
+    max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
+    max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
     api_client = executer_tracker.ApiClient.from_env()
 
@@ -131,8 +118,6 @@ def main(_):
     local_mode = machine_group_info.local_mode
 
     logging.info("Using machine group: %s", machine_group_id)
-
-    redis_conn = redis_utils.create_redis_connection(redis_hostname, redis_port)
 
     executer_access_info = register_executer(
         api_client,
@@ -144,42 +129,25 @@ def main(_):
     executer_uuid = executer_access_info.id
     _log_executer_tracker_id(executer_tracker_id_path, executer_uuid)
 
-    redis_stream = executer_access_info.redis_stream
-    redis_consumer_name = executer_access_info.redis_consumer_name
-    redis_consumer_group = executer_access_info.redis_consumer_group
-
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
         local_cache_dir=executer_images_dir,
         remote_storage_url=executer_images_remote_storage,
     )
 
-    if local_mode:
-        file_manager = executer_tracker.WebApiFileManager(
-            api_client, executer_tracker_id=executer_uuid)
-        task_fetcher = executer_tracker.WebApiTaskFetcher(
-            api_client=api_client,
-            executer_tracker_id=executer_uuid,
-        )
-        event_logger = executer_tracker.WebApiLogger(
-            api_client=api_client,
-            executer_tracker_id=executer_uuid,
-        )
-        message_listener = executer_tracker.WebApiTaskMessageListener(
-            api_client=api_client,
-            executer_tracker_id=executer_uuid,
-        )
-    else:
-        artifact_store_root = os.getenv("ARTIFACT_STORE", "/mnt/artifacts")
-        file_manager = executer_tracker.FsspecFileManager(artifact_store_root)
-        task_fetcher = executer_tracker.RedisTaskFetcher(
-            connection=redis_conn,
-            stream=redis_stream,
-            consumer_group=redis_consumer_group,
-            consumer_name=redis_consumer_name,
-        )
-        event_logger = executer_tracker.RedisEventLogger(connection=redis_conn)
-        message_listener = executer_tracker.RedisTaskMessageListener(
-            connection=redis_conn)
+    file_manager = executer_tracker.WebApiFileManager(
+        api_client, executer_tracker_id=executer_uuid)
+    task_fetcher = executer_tracker.WebApiTaskFetcher(
+        api_client=api_client,
+        executer_tracker_id=executer_uuid,
+    )
+    event_logger = executer_tracker.WebApiLogger(
+        api_client=api_client,
+        executer_tracker_id=executer_uuid,
+    )
+    message_listener = executer_tracker.WebApiTaskMessageListener(
+        api_client=api_client,
+        executer_tracker_id=executer_uuid,
+    )
 
     request_handler = TaskRequestHandler(
         executer_uuid=executer_uuid,
@@ -194,9 +162,6 @@ def main(_):
 
     termination_handler = cleanup.TerminationHandler(
         executer_id=executer_uuid,
-        local_mode=local_mode,
-        redis_hostname=redis_hostname,
-        redis_port=redis_port,
         request_handler=request_handler,
     )
 
@@ -208,7 +173,7 @@ def main(_):
             task_execution_loop.start_loop(
                 task_fetcher=task_fetcher,
                 request_handler=request_handler,
-                max_timeout=max_timeout,
+                max_idle_timeout=max_idle_timeout,
             )
             monitoring_flag = False
         except TimeoutError:

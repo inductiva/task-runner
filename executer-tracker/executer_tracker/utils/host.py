@@ -1,25 +1,7 @@
 """Utilities to get information about the host machine the executer is on."""
-import subprocess
 from dataclasses import dataclass
-from typing import Optional
 
 import psutil
-from absl import logging
-
-
-def get_cpu_info_verbose() -> Optional[str]:
-    """Get verbose CPU information in unstructured text format.
-
-    This fails if the "lscpu" binary is not available.
-    """
-    try:
-        cpu_info = subprocess.check_output("lscpu").decode("utf-8")
-    except FileNotFoundError:
-        logging.warn(
-            "\"lscpu\" binary not found. Verbose CPU info not available.")
-        return None
-
-    return cpu_info
 
 
 @dataclass

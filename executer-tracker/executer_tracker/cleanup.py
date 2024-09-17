@@ -8,8 +8,6 @@ from inductiva_api import events
 from inductiva_api.task_status import ExecuterTerminationReason
 
 import executer_tracker
-from executer_tracker import redis_utils
-from executer_tracker.utils import gcloud
 
 
 class TerminationHandler:
@@ -17,9 +15,6 @@ class TerminationHandler:
     def __init__(
         self,
         executer_id,
-        local_mode,
-        redis_hostname,
-        redis_port,
         request_handler,
     ):
         self.executer_id = executer_id
@@ -27,16 +22,11 @@ class TerminationHandler:
         self._lock = threading.Lock()
         self._termination_logged = False
 
-        if local_mode:
-            api_client = executer_tracker.ApiClient.from_env()
-            self.event_logger = executer_tracker.WebApiLogger(
-                api_client=api_client,
-                executer_tracker_id=executer_id,
-            )
-        else:
-            self.event_logger = executer_tracker.RedisEventLogger(
-                connection=redis_utils.create_redis_connection(
-                    redis_hostname, redis_port))
+        api_client = executer_tracker.ApiClient.from_env()
+        self.event_logger = executer_tracker.WebApiLogger(
+            api_client=api_client,
+            executer_tracker_id=executer_id,
+        )
 
     def log_termination(self, reason, detail=None) -> bool:
         """Logs the termination of the executer tracker.
@@ -81,10 +71,7 @@ def get_signal_handler(termination_handler):
     def handler(signum, _):
         logging.info("Caught signal %s.", signal.Signals(signum).name)
 
-        if gcloud.is_vm_preempted():
-            reason = ExecuterTerminationReason.VM_PREEMPTED
-        else:
-            reason = ExecuterTerminationReason.INTERRUPTED
+        reason = ExecuterTerminationReason.INTERRUPTED
 
         logged_termination = termination_handler.log_termination(reason)
         if logged_termination:

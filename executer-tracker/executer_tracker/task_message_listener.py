@@ -1,11 +1,9 @@
 import abc
 import uuid
-from typing import Optional
 
 from typing_extensions import override
 
 import executer_tracker
-from executer_tracker import utils
 
 
 class BaseTaskMessageListener(abc.ABC):
@@ -17,25 +15,6 @@ class BaseTaskMessageListener(abc.ABC):
     @abc.abstractmethod
     def unblock(self, task_id: str):
         pass
-
-
-class RedisTaskMessageListener(BaseTaskMessageListener):
-    _TASK_COMMANDS_QUEUE_SUFFIX = "commands"
-    _UNBLOCK_COMMAND = "done"
-
-    def __init__(self, connection):
-        self._conn = connection
-
-    @override
-    def receive(self, task_id: str) -> Optional[str]:
-        queue = utils.make_task_key(task_id, self._TASK_COMMANDS_QUEUE_SUFFIX)
-        msg = self._conn.brpop(queue)
-        return msg[1] if msg is not None else None
-
-    @override
-    def unblock(self, task_id: str):
-        queue = utils.make_task_key(task_id, self._TASK_COMMANDS_QUEUE_SUFFIX)
-        self._conn.lpush(queue, self._UNBLOCK_COMMAND)
 
 
 class WebApiTaskMessageListener(BaseTaskMessageListener):
