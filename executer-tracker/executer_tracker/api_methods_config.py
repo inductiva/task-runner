@@ -42,6 +42,8 @@ api_method_to_executer = {
         executers.schism.SCHISMExecuter,
     "compchem.nwchem.run_simulation":
         executers.nwchem.NWChemExecuter,
+    "fvcom.fvcom.run_simulation":
+        executers.fvcom.FVCOMExecuter,
     "arbitrary.arbitrary_commands.run_simulation":
         executers.arbitrary_commands_executer.ArbitraryCommandsExecuter,
 }
