@@ -25,6 +25,7 @@ from . import (
     schism,
     xbeach,
     dummy,
+    fvcom,
     swash,
     swan,
     cans,
