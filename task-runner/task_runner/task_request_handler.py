@@ -20,8 +20,8 @@ from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import task_status
 
-import executer_tracker
-from executer_tracker import (
+import task_runner
+from task_runner import (
     ApiClient,
     api_methods_config,
     apptainer_utils,
@@ -29,7 +29,7 @@ from executer_tracker import (
     task_message_listener,
     utils,
 )
-from executer_tracker.utils import files, loki
+from task_runner.utils import files, loki
 
 KILL_MESSAGE = "kill"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
@@ -144,9 +144,9 @@ class TaskRequestHandler:
         mpi_config: executers.MPIClusterConfiguration,
         apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
         api_client: ApiClient,
-        event_logger: executer_tracker.BaseEventLogger,
+        event_logger: task_runner.BaseEventLogger,
         message_listener: task_message_listener.BaseTaskMessageListener,
-        file_manager: executer_tracker.BaseFileManager,
+        file_manager: task_runner.BaseFileManager,
     ):
         self.executer_uuid = executer_uuid
         self.workdir = workdir

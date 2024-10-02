@@ -2,7 +2,6 @@ import time
 from typing import Optional
 
 from absl import logging
-
 from executer_tracker import BaseTaskFetcher, TaskRequestHandler
 
 

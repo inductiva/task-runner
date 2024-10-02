@@ -1,4 +1,4 @@
-"""Util functions related to executer-tracker config."""
+"""Util functions related to Task Runner config."""
 import os
 import uuid
 from typing import Optional

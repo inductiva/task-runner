@@ -60,16 +60,16 @@ import uuid
 from absl import app, logging
 from inductiva_api.task_status import ExecuterTerminationReason
 
-import executer_tracker
-from executer_tracker import (
+import task_runner
+from task_runner import (
     apptainer_utils,
     cleanup,
     executers,
     task_execution_loop,
     utils,
 )
-from executer_tracker.register_executer import register_executer
-from executer_tracker.task_request_handler import TaskRequestHandler
+from task_runner.register_executer import register_executer
+from task_runner.task_request_handler import TaskRequestHandler
 
 
 def _log_executer_tracker_id(path, executer_tracker_id: uuid.UUID):
@@ -110,9 +110,9 @@ def main(_):
     max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
     max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
-    api_client = executer_tracker.ApiClient.from_env()
+    api_client = task_runner.ApiClient.from_env()
 
-    machine_group_info = executer_tracker.MachineGroupInfo.from_api(api_client)
+    machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
 
     machine_group_id = machine_group_info.id
     local_mode = machine_group_info.local_mode
@@ -134,17 +134,17 @@ def main(_):
         remote_storage_url=executer_images_remote_storage,
     )
 
-    file_manager = executer_tracker.WebApiFileManager(
+    file_manager = task_runner.WebApiFileManager(
         api_client, executer_tracker_id=executer_uuid)
-    task_fetcher = executer_tracker.WebApiTaskFetcher(
+    task_fetcher = task_runner.WebApiTaskFetcher(
         api_client=api_client,
         executer_tracker_id=executer_uuid,
     )
-    event_logger = executer_tracker.WebApiLogger(
+    event_logger = task_runner.WebApiLogger(
         api_client=api_client,
         executer_tracker_id=executer_uuid,
     )
-    message_listener = executer_tracker.WebApiTaskMessageListener(
+    message_listener = task_runner.WebApiTaskMessageListener(
         api_client=api_client,
         executer_tracker_id=executer_uuid,
     )

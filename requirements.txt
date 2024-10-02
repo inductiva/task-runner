@@ -1,5 +1,5 @@
--r ./executer-tracker/requirements.txt
--e ./executer-tracker
+-r ./task-runner/requirements.txt
+-e ./task-runner
 -e ./common/events
 -e ./common/task_status
 absl-py

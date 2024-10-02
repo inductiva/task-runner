@@ -43,6 +43,6 @@ jobs:
     - name: Test with pytest
       if: ${{ always() }}
       env:
-        PYTHONPATH: ./executer-tracker
+        PYTHONPATH: ./task-runner
       run: |
-        set -o pipefail && pytest --cov=executer_tracker --cov-report=term-missing:skip-covered --cov-append --junitxml=exc_tracker.xml -v -s -p no:warnings executer-tracker/tests/unit/ | tee exc_cov.txt
+        set -o pipefail && pytest --cov=executer_tracker --cov-report=term-missing:skip-covered --cov-append --junitxml=exc_tracker.xml -v -s -p no:warnings task-runner/tests/unit/ | tee exc_cov.txt

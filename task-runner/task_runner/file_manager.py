@@ -6,9 +6,9 @@ import uuid
 import requests
 from typing_extensions import override
 
-import executer_tracker
-from executer_tracker import utils
-from executer_tracker.utils import files
+import task_runner
+from task_runner import utils
+from task_runner.utils import files
 
 
 class BaseFileManager(abc.ABC):
@@ -37,7 +37,7 @@ class WebApiFileManager(BaseFileManager):
 
     def __init__(
         self,
-        api_client: executer_tracker.ApiClient,
+        api_client: task_runner.ApiClient,
         executer_tracker_id: uuid.UUID,
     ):
         self._api_client = api_client

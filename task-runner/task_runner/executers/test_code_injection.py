@@ -1,7 +1,6 @@
 """Test the robustness of the command class against code injection attacks."""
 
 import pytest
-
 from executer_tracker import executers
 
 

@@ -12,11 +12,11 @@ RUN cd /tmp \
 RUN apt-get install -y gmsh
 
 # Install the package dependencies in the requirements file.
-COPY /executer-tracker/requirements.txt /requirements.txt
+COPY /task-runner/requirements.txt /requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /requirements.txt
 
-COPY /executer-tracker /executer-tracker
-WORKDIR /executer-tracker
+COPY /task-runner /task-runner
+WORKDIR /task-runner
 RUN pip install .
 
 COPY ./common/events /common/events

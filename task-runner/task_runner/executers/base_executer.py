@@ -11,7 +11,6 @@ from collections import namedtuple
 
 import psutil
 from absl import logging
-
 from executer_tracker import executers
 from executer_tracker.executers import command, mpi_configuration
 from executer_tracker.utils import loki

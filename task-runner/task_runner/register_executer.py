@@ -6,9 +6,9 @@ from uuid import UUID
 
 from absl import logging
 
-import executer_tracker
-import executer_tracker.api_client
-from executer_tracker.utils import host
+import task_runner
+import task_runner.api_client
+from task_runner.utils import host
 
 
 def _get_executer_info(local_mode: bool) -> Dict:
@@ -43,12 +43,12 @@ def _get_executer_info(local_mode: bool) -> Dict:
 
 
 def register_executer(
-    api_client: executer_tracker.ApiClient,
+    api_client: task_runner.ApiClient,
     machine_group_id: Optional[UUID],
     num_mpi_hosts: int,
     mpi_cluster: bool = False,
     local_mode: bool = False,
-) -> executer_tracker.api_client.ExecuterAccessInfo:
+) -> task_runner.api_client.ExecuterAccessInfo:
     """Registers an executer in the API.
 
     This function inspects the environment of the executer and makes a request
@@ -64,10 +64,10 @@ def register_executer(
     executer_info["mpi_cluster"] = mpi_cluster
     executer_info["num_mpi_hosts"] = num_mpi_hosts
 
-    logging.info("Registering executer-tracker with the API...")
+    logging.info("Registering Task Runner with the API...")
     access_info = api_client.register_executer_tracker(executer_info)
     logging.info("Registered with following info:")
-    logging.info(" > executer-tracker ID: %s", access_info.id)
+    logging.info(" > Task Runner ID: %s", access_info.id)
     logging.info(" > machine group ID: %s", access_info.machine_group_id)
 
     return access_info

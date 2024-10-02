@@ -8,7 +8,6 @@ from typing import IO, List
 
 import psutil
 from absl import logging
-
 from executer_tracker.utils import loki
 
 

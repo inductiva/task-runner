@@ -1,8 +1,8 @@
 import logging
 import uuid
 
-from executer_tracker import ApiClient
-from executer_tracker.utils import config
+from task_runner import ApiClient
+from task_runner.utils import config
 
 
 class MachineGroupInfo:
