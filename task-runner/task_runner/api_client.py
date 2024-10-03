@@ -9,6 +9,7 @@ from typing import Dict, Optional
 import requests
 from absl import logging
 from inductiva_api import events
+
 from task_runner.utils import host
 
 
@@ -209,7 +210,7 @@ class ApiClient:
             json={
                 "provider_id": "LOCAL",
                 "name": machine_group_name,
-                "disk_size_gb": host.get_total_memory() // 1e9, 
+                "disk_size_gb": host.get_total_memory() // 1e9,
             },
         )
         return resp.json()["id"]
