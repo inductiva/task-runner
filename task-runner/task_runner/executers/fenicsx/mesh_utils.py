@@ -5,6 +5,7 @@ from typing import Optional
 
 import gmsh
 import numpy as np
+
 from task_runner.executers.fenicsx import gmsh_utils
 from task_runner.executers.fenicsx.geometry import geometry_utils
 

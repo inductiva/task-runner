@@ -1,8 +1,9 @@
 import abc
 import uuid
 
-import task_runner
 from typing_extensions import override
+
+import task_runner
 
 
 class BaseTaskMessageListener(abc.ABC):

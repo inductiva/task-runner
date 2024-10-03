@@ -102,8 +102,7 @@ class ApiClient:
             json=data,
         )
         if resp.status_code != 202:
-            raise RuntimeError(
-                f"Failed to register task runner: {resp.text}")
+            raise RuntimeError(f"Failed to register task runner: {resp.text}")
 
         resp_body = resp.json()
 

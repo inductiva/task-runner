@@ -94,8 +94,8 @@ def main(_):
         remote_storage_url=executer_images_remote_storage,
     )
 
-    file_manager = task_runner.WebApiFileManager(
-        api_client, task_runner_id=executer_uuid)
+    file_manager = task_runner.WebApiFileManager(api_client,
+                                                 task_runner_id=executer_uuid)
     task_fetcher = task_runner.WebApiTaskFetcher(
         api_client=api_client,
         task_runner_id=executer_uuid,

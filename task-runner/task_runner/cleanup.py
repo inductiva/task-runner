@@ -3,10 +3,11 @@ import signal
 import sys
 import threading
 
-import task_runner
 from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import ExecuterTerminationReason
+
+import task_runner
 
 
 class TerminationHandler:
