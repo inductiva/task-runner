@@ -10,6 +10,8 @@ import requests
 from absl import logging
 from inductiva_api import events
 
+from task_runner.utils import host
+
 
 class HTTPMethod(enum.Enum):
     GET = "GET"
@@ -208,6 +210,7 @@ class ApiClient:
             json={
                 "provider_id": "LOCAL",
                 "name": machine_group_name,
+                "disk_size_gb": host.get_total_memory() // 1e9,
             },
         )
         return resp.json()["id"]

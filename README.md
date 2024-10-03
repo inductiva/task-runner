@@ -60,12 +60,14 @@ commands = [
      "-e eql.edr -g eql.log")
 ]
 
+machine = inductiva.resources.machine_groups.get_by_name('my-machine-group-name')
+
 gromacs = inductiva.simulators.GROMACS()
 
 task = gromacs.run(
     input_dir=input_dir,
     commands=commands,
-    provider_id="local"
+    on=machine
 )
 task.wait()
 
