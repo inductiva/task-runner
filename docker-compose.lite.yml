@@ -4,7 +4,7 @@ services:
   task-runner:
       build:
         context: .
-        dockerfile: executer-tracker/Dockerfile.lite
+        dockerfile: task-runner/Dockerfile.lite
       environment:
         EXECUTER_IMAGES_DIR: /executer-images
         API_URL: ${INDUCTIVA_API_URL}

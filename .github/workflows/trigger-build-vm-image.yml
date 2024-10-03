@@ -8,7 +8,7 @@ on:
 
     paths:
       - 'common/**'
-      - 'executer-tracker/**'
+      - 'task-runner/**'
 
 jobs:
   trigger-build-install-image:
