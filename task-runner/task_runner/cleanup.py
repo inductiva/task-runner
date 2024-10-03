@@ -24,7 +24,7 @@ class TerminationHandler:
         api_client = task_runner.ApiClient.from_env()
         self.event_logger = task_runner.WebApiLogger(
             api_client=api_client,
-            executer_tracker_id=executer_id,
+            task_runner_id=executer_id,
         )
 
     def log_termination(self, reason, detail=None) -> bool:

@@ -13,9 +13,9 @@ class BaseTaskFetcher(abc.ABC):
 class WebApiTaskFetcher(BaseTaskFetcher):
     """Implementation of the task execution long polling the Web API."""
 
-    def __init__(self, api_client, executer_tracker_id):
+    def __init__(self, api_client, task_runner_id):
         self._api_client = api_client
-        self._id = executer_tracker_id
+        self._id = task_runner_id
 
     @override
     def get_task(self, block_s: int):

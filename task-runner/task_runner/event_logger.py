@@ -14,11 +14,11 @@ class BaseEventLogger(abc.ABC):
 
 class WebApiLogger(BaseEventLogger):
 
-    def __init__(self, api_client, executer_tracker_id):
+    def __init__(self, api_client, task_runner_id):
         self._api_client = api_client
-        self._executer_tracker_id = executer_tracker_id
+        self._task_runner_id = task_runner_id
 
     @override
     def log(self, event: Event):
         logging.info("Logging event: %s", event)
-        self._api_client.log_event(self._executer_tracker_id, event)
+        self._api_client.log_event(self._task_runner_id, event)

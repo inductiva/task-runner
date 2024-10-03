@@ -95,18 +95,18 @@ def main(_):
     )
 
     file_manager = task_runner.WebApiFileManager(
-        api_client, executer_tracker_id=executer_uuid)
+        api_client, task_runner_id=executer_uuid)
     task_fetcher = task_runner.WebApiTaskFetcher(
         api_client=api_client,
-        executer_tracker_id=executer_uuid,
+        task_runner_id=executer_uuid,
     )
     event_logger = task_runner.WebApiLogger(
         api_client=api_client,
-        executer_tracker_id=executer_uuid,
+        task_runner_id=executer_uuid,
     )
     message_listener = task_runner.WebApiTaskMessageListener(
         api_client=api_client,
-        executer_tracker_id=executer_uuid,
+        task_runner_id=executer_uuid,
     )
 
     request_handler = TaskRequestHandler(

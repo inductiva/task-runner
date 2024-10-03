@@ -38,10 +38,10 @@ class WebApiFileManager(BaseFileManager):
     def __init__(
         self,
         api_client: task_runner.ApiClient,
-        executer_tracker_id: uuid.UUID,
+        task_runner_id: uuid.UUID,
     ):
         self._api_client = api_client
-        self._executer_tracker_id = executer_tracker_id
+        self._task_runner_id = task_runner_id
 
     @utils.execution_time
     @override
@@ -54,7 +54,7 @@ class WebApiFileManager(BaseFileManager):
         del task_dir_remote  # unused
 
         url = self._api_client.get_download_input_url(
-            self._executer_tracker_id,
+            self._task_runner_id,
             task_id,
         )
         urllib.request.urlretrieve(url, dest_path)
@@ -70,7 +70,7 @@ class WebApiFileManager(BaseFileManager):
         del task_dir_remote  # unused
 
         upload_info = self._api_client.get_upload_output_url(
-            executer_tracker_id=self._executer_tracker_id, task_id=task_id)
+            task_runner_id=self._task_runner_id, task_id=task_id)
 
         zip_generator = files.get_zip_generator(local_path)
 

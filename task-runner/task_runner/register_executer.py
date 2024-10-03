@@ -15,7 +15,7 @@ def _get_executer_info(local_mode: bool) -> Dict:
     cpu_count = host.get_cpu_count()
     memory = host.get_total_memory()
 
-    executer_tracker_info = {
+    task_runner_info = {
         "create_time": datetime.now(timezone.utc).isoformat(),
         "cpu_count_logical": cpu_count.logical,
         "cpu_count_physical": cpu_count.physical,
@@ -36,10 +36,10 @@ def _get_executer_info(local_mode: bool) -> Dict:
         raise RuntimeError(
             "HOST_NAME and HOST_ID must be set in the environment.")
 
-    executer_tracker_info["host_name"] = host_name
-    executer_tracker_info["host_id"] = host_id
+    task_runner_info["host_name"] = host_name
+    task_runner_info["host_id"] = host_id
 
-    return executer_tracker_info
+    return task_runner_info
 
 
 def register_executer(
@@ -65,7 +65,7 @@ def register_executer(
     executer_info["num_mpi_hosts"] = num_mpi_hosts
 
     logging.info("Registering Task Runner with the API...")
-    access_info = api_client.register_executer_tracker(executer_info)
+    access_info = api_client.register_task_runner(executer_info)
     logging.info("Registered with following info:")
     logging.info(" > Task Runner ID: %s", access_info.id)
     logging.info(" > machine group ID: %s", access_info.machine_group_id)
