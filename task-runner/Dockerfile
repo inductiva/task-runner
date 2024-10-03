@@ -22,11 +22,11 @@ ENV MPIRUN_BIN_PATH_TEMPLATE /opt/openmpi/{version}/bin/mpirun
 RUN apt-get install -y gmsh
 
 # Install the package dependencies in the requirements file.
-COPY /executer-tracker/requirements.txt /requirements.txt
+COPY /task-runner/requirements.txt /requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /requirements.txt
 
-COPY /executer-tracker /executer-tracker
-WORKDIR /executer-tracker
+COPY /task-runner /task-runner
+WORKDIR /task-runner
 RUN pip install .
 
 COPY ./common/events /common/events
@@ -34,4 +34,4 @@ RUN pip install --no-cache-dir --upgrade /common/events
 COPY ./common/task_status /common/task_status
 RUN pip install --no-cache-dir --upgrade /common/task_status
 
-CMD ["python", "./executer_tracker/main.py"]
+CMD ["python", "./task_runner/main.py"]

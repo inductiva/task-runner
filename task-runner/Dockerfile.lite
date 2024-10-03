@@ -24,4 +24,4 @@ RUN pip install --no-cache-dir --upgrade /common/events
 COPY ./common/task_status /common/task_status
 RUN pip install --no-cache-dir --upgrade /common/task_status
 
-CMD ["python", "./executer_tracker/main.py"]
+CMD ["python", "./task_runner/main.py"]

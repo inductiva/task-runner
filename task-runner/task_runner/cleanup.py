@@ -3,7 +3,7 @@ import signal
 import sys
 import threading
 
-import executer_tracker
+import task_runner
 from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import ExecuterTerminationReason
@@ -21,8 +21,8 @@ class TerminationHandler:
         self._lock = threading.Lock()
         self._termination_logged = False
 
-        api_client = executer_tracker.ApiClient.from_env()
-        self.event_logger = executer_tracker.WebApiLogger(
+        api_client = task_runner.ApiClient.from_env()
+        self.event_logger = task_runner.WebApiLogger(
             api_client=api_client,
             executer_tracker_id=executer_id,
         )

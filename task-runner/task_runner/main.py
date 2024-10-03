@@ -1,56 +1,16 @@
-"""Script that listens to a Redis stream and launches executer scripts.
-
-TL;DR:
+"""Script that requests simulations from the API and launches executer scripts.
 
 This is the entrypoint script that is launched in the executer Docker
-container. It listens to a Redis stream in a blocking fashion: upon
+container. It requests a simulation from the API: upon
 receiving a request, it processes it with the correct executer script.
-After processing the request, it tries to read from the Redis stream again,
+After processing the request, it requests from the API again,
 only processing one request at a time.
 
 The logic of processing a received request is defined in the `__call__` method
 of the `TaskRequestHandler` class (task_request_handler.py file).
 
-## Detailed description:
-
-This script expects 5 environment variables to be set:
-    EXECUTER_TYPE: type of executer that this executer_tracker will
-        run. This is important in order to read from the correct
-        stream, since we are using a different stream for each type
-        of executer supported.
-    REDIS_HOSTNAME: hostname of the Redis server to which to connect.
-    REDIS_PORT: port in which the Redis server is accessible.
-        Optional: uses 6379 by default.
-    REDIS_CONSUMER_NAME: name that this executer tracker will use to
-        read from the Redis stream. The name should be unique among all
-        executers with the same EXECUTER_TYPE.
-    ARTIFACT_STORE: path to shared directory, where artifacts can be accessed
-        by both executers and the Web API.
-
-In this file, a function named `monitor_redis_stream` is defined. The function
-blocks until a request is received via the Redis stream. Then, the request
-received in the Redis stream is passed as an argument to a callback function
-that handles the received request. After the request is processed, the
-`monitor_redis_stream` function acknowledges to the Redis stream that the
-request has been processed (this is important so that we can get information
-from the stream of how many requests are currently pending execution). Note
-that this function only handles one request at a time, only trying to receive
-a new request after the previous one is processed.
-
-The logic of handling the request (the callback function mentioned above) is
-defined in the `__call__` method of the TaskRequestHandler class, defined in
-the task_request_handler.py file. As such, the `monitor_redis_stream` receives
-as argument an object of the TaskRequestHandler class, and calls it when a
-request is read from the Redis stream. Check the task_request_handler.py
-file for more information on the logic of handling a received request.
-
-The `monitor_redis_stream` function is wrapped in a try catch block, so that if
-some exception (or ctrl+c) is caught and the script exits, the consumer name
-is removed from the Redis stream. This is useful for monitoring the number of
-currently active executer trackers.
-
 Usage (note the required environment variables):
-  python executer_tracker.py
+  python main.py
 """
 import json
 import os
@@ -72,12 +32,12 @@ from task_runner.register_executer import register_executer
 from task_runner.task_request_handler import TaskRequestHandler
 
 
-def _log_executer_tracker_id(path, executer_tracker_id: uuid.UUID):
+def _log_task_runner_id(path, task_runner_id: uuid.UUID):
     if not path:
         return
 
     with open(path, "w", encoding="UTF-8") as f:
-        json.dump({"id": str(executer_tracker_id)}, f)
+        json.dump({"id": str(task_runner_id)}, f)
 
 
 def main(_):
@@ -92,7 +52,7 @@ def main(_):
         None,
     )
 
-    executer_tracker_id_path = os.getenv("EXECUTER_TRACKER_ID_PATH")
+    task_runner_id_path = os.getenv("TASK_RUNNER_ID_PATH")
 
     mpi_config = executers.MPIClusterConfiguration.from_env()
 
@@ -127,7 +87,7 @@ def main(_):
         local_mode=local_mode,
     )
     executer_uuid = executer_access_info.id
-    _log_executer_tracker_id(executer_tracker_id_path, executer_uuid)
+    _log_task_runner_id(task_runner_id_path, executer_uuid)
 
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
         local_cache_dir=executer_images_dir,

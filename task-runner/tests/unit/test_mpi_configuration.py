@@ -1,7 +1,7 @@
 from unittest import mock
 
 import pytest
-from executer_tracker.executers import command, mpi_configuration
+from task_runner.executers import command, mpi_configuration
 
 MPIRUN_BIN_PATH_TEMPLATE = "/opt/openmpi/{version}/bin/mpirun"
 

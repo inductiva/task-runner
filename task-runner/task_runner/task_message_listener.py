@@ -1,7 +1,7 @@
 import abc
 import uuid
 
-import executer_tracker
+import task_runner
 from typing_extensions import override
 
 
@@ -20,7 +20,7 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
 
     def __init__(
         self,
-        api_client: executer_tracker.ApiClient,
+        api_client: task_runner.ApiClient,
         executer_tracker_id: uuid.UUID,
         block_s: int = 30,
     ):

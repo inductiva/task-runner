@@ -11,7 +11,7 @@ from typing import Iterator, List, Optional
 from unittest import mock
 
 import pytest
-from executer_tracker import (
+from task_runner import (
     executers,
     task_message_listener,
     task_request_handler,
@@ -136,9 +136,9 @@ def fixture_task_request_handler(
         file_manager=mock.MagicMock(),
     )
 
-    with mock.patch("executer_tracker.api_methods_config.get_executer"
+    with mock.patch("task_runner.api_methods_config.get_executer"
                    ) as get_executer_mock:
-        with mock.patch("executer_tracker.utils.files.get_dir_size"
+        with mock.patch("task_runner.utils.files.get_dir_size"
                        ) as get_dir_size_mock:
             get_dir_size_mock.return_value = 0
             get_executer_mock.return_value = MockExecuter

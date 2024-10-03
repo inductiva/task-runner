@@ -2,9 +2,9 @@
 import os
 import shutil
 
-from executer_tracker import executers
-from executer_tracker.executers import mpi_configuration
-from executer_tracker.utils import loki
+from task_runner import executers
+from task_runner.executers import mpi_configuration
+from task_runner.utils import loki
 
 # Instructions inside Docker containers are run by the root user (as default),
 # so we need to allow Open MPI to be run as root. This is usually strongly
