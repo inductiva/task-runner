@@ -18,10 +18,21 @@ MACHINE_GROUP_NAME='my-machine-group-name'
 ```
 
 ### Build and Run the application
+The application can be run in two different ways: the fully functional `Normal mode` that takes longer to build, or a lighter `Lite mode` that does not install openmpi.
+
+#### Normal mode
 Build and run the docker container:
 ```
 docker compose up --build
 ```
+
+#### Lite mode
+To build run a lighter version of the Task Runner
+```
+docker compose -f docker-compose.lite.yml up --build
+```
+
+NOTE: The simulators that use openmpi (eg. AmrWind, CaNs) can not be chosen to run simulations in Lite mode. 
 
 ### Run Simulations
 
@@ -49,12 +60,14 @@ commands = [
      "-e eql.edr -g eql.log")
 ]
 
+machine = inductiva.resources.machine_groups.get_by_name('my-machine-group-name')
+
 gromacs = inductiva.simulators.GROMACS()
 
 task = gromacs.run(
     input_dir=input_dir,
     commands=commands,
-    provider_id="local"
+    on=machine
 )
 task.wait()
 
