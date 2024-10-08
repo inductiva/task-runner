@@ -42,7 +42,7 @@ api_method_to_executer = {
         executers.fvcom.FVCOMExecuter,
     "arbitrary_commands":
         executers.arbitrary_commands_executer.ArbitraryCommandsExecuter,
-    "quantumespresso.quantumespresso.run_simulation":
+    "quantumespresso":
         executers.quantumespresso.QuantumEspressoExecuter,
 }
 
