@@ -2,7 +2,6 @@
 import os
 import signal
 import subprocess
-import threading
 import time
 from typing import IO, List
 
@@ -10,6 +9,7 @@ import psutil
 from absl import logging
 
 from task_runner.utils import loki
+from executer_tracker.utils import threads as threads_utils
 
 
 def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
@@ -82,7 +82,7 @@ class SubprocessTracker:
             logging.info("Started process with PID %d.", self.subproc.pid)
 
             if self.subproc.stdout is not None:
-                stdout_thread = threading.Thread(
+                stdout_thread = threads_utils.ExceptionThread(
                     target=log_stream,
                     args=(self.subproc.stdout, self.loki_logger, self.stdout,
                           loki.IOTypes.STD_OUT))
@@ -90,7 +90,7 @@ class SubprocessTracker:
                 self.threads.append(stdout_thread)
 
             if self.subproc.stderr is not None:
-                stderr_thread = threading.Thread(
+                stderr_thread = threads_utils.ExceptionThread(
                     target=log_stream,
                     args=(self.subproc.stderr, self.loki_logger, self.stderr,
                           loki.IOTypes.STD_ERR))
@@ -132,13 +132,19 @@ class SubprocessTracker:
                 if periodic_callback is not None:
                     periodic_callback()
 
+                for thread in self.threads:
+                    if not thread.is_alive():
+                        thread.join()
+                        if thread.exception is not None:
+                            raise thread.exception
+
                 time.sleep(period_secs)
 
         except Exception as exception:  # noqa: BLE001
             logging.warning("Caught exception \"%s\". Exiting gracefully",
                             exception)
             self.exit_gracefully()
-            return -1
+            raise exception
 
         logging.info("Process %d exited with exit code %d.", self.subproc.pid,
                      exit_code)
