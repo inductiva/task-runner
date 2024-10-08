@@ -164,14 +164,23 @@ class TaskRequestHandler:
         self._message_listener_thread = None
         self._kill_task_thread_queue = None
         self._logger_enabled = threading.Event()
+        self._shutting_down = False
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
             self.workdir = self.mpi_config.share_path
 
+    def set_shutting_down(self):
+        logging.info("Stopping task...")
+        self._shutting_down = True
+
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
         return self.task_id is not None
+
+    def _publish_event(self, event: events.Event):
+        if not self._shutting_down:
+            self.event_logger.log(event)
 
     def _post_task_metric(self, metric: str, value: float):
         """Post a metric for the currently running task.
@@ -209,7 +218,7 @@ class TaskRequestHandler:
 
         logging.info("Task picked up at: %s", picked_up_timestamp)
 
-        self.event_logger.log(
+        self._publish_event(
             events.TaskPickedUp(
                 timestamp=picked_up_timestamp,
                 id=self.task_id,
@@ -273,7 +282,7 @@ class TaskRequestHandler:
                                        download_time)
 
             if self._check_task_killed():
-                self.event_logger.log(
+                self._publish_event(
                     events.TaskKilled(
                         id=self.task_id,
                         machine_id=self.executer_uuid,
@@ -283,7 +292,7 @@ class TaskRequestHandler:
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
 
             if self._check_task_killed():
-                self.event_logger.log(
+                self._publish_event(
                     events.TaskKilled(
                         id=self.task_id,
                         machine_id=self.executer_uuid,
@@ -291,7 +300,7 @@ class TaskRequestHandler:
                 return
 
             computation_start_time = utils.now_utc()
-            self.event_logger.log(
+            self._publish_event(
                 events.TaskWorkStarted(
                     timestamp=computation_start_time,
                     id=self.task_id,
@@ -302,7 +311,7 @@ class TaskRequestHandler:
             logging.info("Task exit reason: %s", exit_reason)
 
             computation_end_time = utils.now_utc()
-            self.event_logger.log(
+            self._publish_event(
                 events.TaskWorkFinished(
                     timestamp=computation_end_time,
                     id=self.task_id,
@@ -332,7 +341,7 @@ class TaskRequestHandler:
                               if exit_code == 0 else
                               task_status.TaskStatusCode.FAILED.value)
 
-            self.event_logger.log(
+            self._publish_event(
                 events.TaskOutputUploaded(
                     id=self.task_id,
                     machine_id=self.executer_uuid,
@@ -343,7 +352,7 @@ class TaskRequestHandler:
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
             message = utils.get_exception_root_cause_message(e)
-            self.event_logger.log(
+            self._publish_event(
                 events.TaskExecutionFailed(
                     id=self.task_id,
                     machine_id=self.executer_uuid,

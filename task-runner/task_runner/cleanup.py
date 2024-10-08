@@ -53,6 +53,8 @@ class TerminationHandler:
                          self.request_handler.task_id)
             stopped_tasks.append(self.request_handler.task_id)
 
+        self.request_handler.set_shutting_down()
+
         event = events.ExecuterTrackerTerminated(
             uuid=self.executer_id,
             reason=reason,
