@@ -1,9 +1,9 @@
-"""Mapping of API methods to the Executer classes that perform those methods."""
+"""Mapping of API simulators to the Executer classes that perform those simulations."""
 from typing import Optional, Type
 
 from task_runner import executers
 
-api_method_to_executer = {
+simulator_to_executer = {
     "splishsplash":
         executers.splishplash.SPlisHSPlasHExecuter,
     "dualsphysics":
@@ -47,7 +47,7 @@ api_method_to_executer = {
 }
 
 
-def get_executer(api_method: str) -> Optional[Type[executers.BaseExecuter]]:
+def get_executer(simulator: str) -> Optional[Type[executers.BaseExecuter]]:
     """Get the Executer class for the given API method.
 
     Args:
@@ -56,4 +56,4 @@ def get_executer(api_method: str) -> Optional[Type[executers.BaseExecuter]]:
     Returns:
         The Executer class that performs the given API method.
     """
-    return api_method_to_executer.get(api_method)
+    return simulator_to_executer.get(simulator)
