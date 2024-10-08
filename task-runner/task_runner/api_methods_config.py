@@ -1,4 +1,5 @@
-"""Mapping of API simulators to the Executer classes that perform those simulations."""
+"""Mapping of API simulators to the Executer classes that 
+perform those simulations."""
 from typing import Optional, Type
 
 from task_runner import executers
