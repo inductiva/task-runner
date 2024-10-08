@@ -1,57 +1,54 @@
-"""Mapping of API methods to the Executer classes that perform those methods."""
+"""Mapping of API simulators to the Executer classes that 
+perform those simulations."""
 from typing import Optional, Type
 
 from task_runner import executers
 
-api_method_to_executer = {
-    "sph.splishsplash.run_simulation":
+simulator_to_executer = {
+    "splishsplash":
         executers.splishplash.SPlisHSPlasHExecuter,
-    "sph.dualsphysics.run_simulation":
+    "dualsphysics":
         executers.dualsphysics.DualSPHysicsExecuter,
-    "sw.swash.run_simulation":
+    "swash":
         executers.swash.SWASHExecuter,
-    "sw.xbeach.run_simulation":
+    "xbeach":
         executers.xbeach.XBeachExecuter,
-    "fvm.openfoam_foundation.run_simulation":
+    "openfoam_foundation":
         executers.openfoam.OpenFOAMExecuter,
-    "fvm.openfoam_esi.run_simulation":
+    "openfoam_esi":
         executers.openfoam.OpenFOAMExecuter,
-    "openfast.openfast.run_simulation":
+    "openfast":
         executers.openfast.OpenFASTExecuter,
-    "cans.cans.run_simulation":
+    "cans":
         executers.cans.CaNSExecuter,
-    "amrWind.amrWind.run_simulation":
+    "amrWind":
         executers.amrWind.AmrWindExecuter,
-    "md.gromacs.run_simulation":
+    "gromacs":
         executers.gromacs.GROMACS,
-    "stellarators.simsopt.run_simulation":
+    "simsopt":
         executers.simsopt.SimsoptExecuter,
-    "fem.fenicsx.run_simulation":
+    "fenicsx":
         executers.fenicsx.LinearElasticityFEniCSxExecuter,
-    "fdm.fds.run_simulation":
+    "fds":
         executers.fds.FDSExecuter,
-    "reef3d.reef3d.run_simulation":
+    "reef3d":
         executers.reef3d.REEF3DExecuter,
-    "tester.echo.run_simulation":
-        executers.dummy.DummyExecuter,
-    "swan.swan.run_simulation":
+    "swan":
         executers.swan.SWANExecuter,
-    "dummy.dummy.mpi_hello_world":
-        executers.dummy.MPIHelloWorldExecuter,
-    "schism.schism.run_simulation":
+    "schism":
         executers.schism.SCHISMExecuter,
-    "compchem.nwchem.run_simulation":
+    "nwchem":
         executers.nwchem.NWChemExecuter,
-    "fvcom.fvcom.run_simulation":
+    "fvcom":
         executers.fvcom.FVCOMExecuter,
-    "arbitrary.arbitrary_commands.run_simulation":
+    "arbitrary_commands":
         executers.arbitrary_commands_executer.ArbitraryCommandsExecuter,
-    "quantumespresso.quantumespresso.run_simulation":
+    "quantumespresso":
         executers.quantumespresso.QuantumEspressoExecuter,
 }
 
 
-def get_executer(api_method: str) -> Optional[Type[executers.BaseExecuter]]:
+def get_executer(simulator: str) -> Optional[Type[executers.BaseExecuter]]:
     """Get the Executer class for the given API method.
 
     Args:
@@ -60,4 +57,4 @@ def get_executer(api_method: str) -> Optional[Type[executers.BaseExecuter]]:
     Returns:
         The Executer class that performs the given API method.
     """
-    return api_method_to_executer.get(api_method)
+    return simulator_to_executer.get(simulator)

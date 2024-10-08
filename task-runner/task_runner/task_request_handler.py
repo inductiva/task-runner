@@ -583,11 +583,11 @@ class TaskRequestHandler:
         Returns:
             Python command to execute received request.
         """
-        method = request["method"]
+        simulator = request["simulator"]
 
-        executer_class = api_methods_config.get_executer(method)
+        executer_class = api_methods_config.get_executer(simulator)
         if executer_class is None:
-            raise ValueError(f"Executer not found for method: {method}")
+            raise ValueError(f"Executer not found for simulator: {simulator}")
 
         return executer_class(
             self.task_workdir,
