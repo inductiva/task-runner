@@ -9,7 +9,7 @@ import psutil
 from absl import logging
 
 from task_runner.utils import loki
-from executer_tracker.utils import threads as threads_utils
+from task_runner.utils import threads as threads_utils
 
 
 def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
