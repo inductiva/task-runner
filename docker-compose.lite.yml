@@ -1,7 +1,7 @@
 version: "3"
 
 services:
-  task-runner:
+  task-runner-lite:
       build:
         context: .
         dockerfile: task-runner/Dockerfile.lite
