@@ -26,10 +26,22 @@ Build and run the docker container:
 docker compose up --build
 ```
 
+or
+
+```
+make task-runner-up
+```
+
 #### Lite mode
 To build run a lighter version of the Task Runner
 ```
 docker compose -f docker-compose.lite.yml up --build
+```
+
+or 
+
+```
+make task-runner-lite-up
 ```
 
 NOTE: The simulators that use openmpi (eg. AmrWind, CaNs) can not be chosen to run simulations in Lite mode. 
