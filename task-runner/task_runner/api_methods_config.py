@@ -21,8 +21,8 @@ simulator_to_executer = {
         executers.openfast.OpenFASTExecuter,
     "cans":
         executers.cans.CaNSExecuter,
-    "amrWind":
-        executers.amrWind.AmrWindExecuter,
+    "amrwind":
+        executers.amrwind.AmrWindExecuter,
     "gromacs":
         executers.gromacs.GROMACS,
     "simsopt":

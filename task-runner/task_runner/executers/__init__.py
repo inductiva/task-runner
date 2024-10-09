@@ -20,7 +20,7 @@ from . import (
     fenicsx,
     gromacs,
     simsopt,
-    amrWind,
+    amrwind,
     nwchem,
     reef3d,
     schism,
