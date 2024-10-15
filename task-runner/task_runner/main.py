@@ -77,6 +77,9 @@ def main(_):
     machine_group_id = machine_group_info.id
     local_mode = machine_group_info.local_mode
 
+    if local_mode:
+        api_client.start_local_machine_group(machine_group_id)
+
     logging.info("Using machine group: %s", machine_group_id)
 
     executer_access_info = register_executer(
