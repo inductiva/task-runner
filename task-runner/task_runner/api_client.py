@@ -269,7 +269,7 @@ class ApiClient:
                                  files_to_download: list[str]) -> str:
 
         resp = self._request("GET",
-                             f"/storage/download_urls",
+                             "/storage/download_urls",
                              params={
                                  "folder_path": folder_path,
                                  "files_to_download": files_to_download

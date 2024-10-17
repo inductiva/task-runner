@@ -438,9 +438,6 @@ class TaskRequestHandler:
             dest_dir=task_workdir,
         )
 
-
-
-
         os.remove(tmp_zip_path)
 
         logging.info(
