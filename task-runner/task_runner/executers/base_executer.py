@@ -91,6 +91,9 @@ class BaseExecuter(ABC):
         self.stderr_logs_path = os.path.join(self.artifacts_dir,
                                              self.STDERR_LOGS_FILENAME)
 
+        self.on_gpu = os.getenv("LOCAL_MODE",
+                                "false").lower() in ("true", "t", "yes", "y", 1)
+
     def _create_output_json_file(self):
         self.output_json_path = os.path.join(self.output_dir,
                                              self.OUTPUT_FILENAME)
@@ -256,7 +259,6 @@ class BaseExecuter(ABC):
             apptainer_args = [
                 "apptainer",
                 "exec",
-                "--nv",
                 "--bind",
                 f"{task_working_dir}:{task_working_dir}",
                 "--pwd",
@@ -264,6 +266,8 @@ class BaseExecuter(ABC):
             ]
             if cmd.is_mpi and not self.mpi_config.local_mode:
                 apptainer_args.append("--sharens")
+            if self.on_gpu:
+                apptainer_args.append("--nv")
             apptainer_args.append(self.container_image)
             args.extend(apptainer_args)
 

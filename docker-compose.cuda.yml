@@ -10,7 +10,15 @@ services:
         API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
         MACHINE_GROUP_NAME: ${MACHINE_GROUP_NAME}
+        ON_GPU: true
       volumes:
         - ./apptainer:/executer-images
       privileged: true
       platform: linux/amd64
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                count: all
+                capabilities: [gpu]
