@@ -103,9 +103,11 @@ class WebApiFileManager(BaseFileManager):
         self,
         folder_name: str,
         dest_path: str,
+        files_to_download: list[str],
     ):
-        urls = self._api_client.get_download_folder_urls(folder_name,)
+        urls = self._api_client.get_download_folder_urls(
+            folder_name, files_to_download)
 
-        for i, url in enumerate(urls):
-            file_name = os.path.join(dest_path, str(i) + ".zip")
+        for url in urls:
+            file_name = os.path.join(dest_path, str(uuid.uuid4()) + ".zip")
             urllib.request.urlretrieve(url, file_name)

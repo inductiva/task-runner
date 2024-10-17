@@ -374,6 +374,7 @@ class TaskRequestHandler:
             "'_setup_working_dir' called without a task ID.")
 
         task_workdir = os.path.join(self.workdir, self.task_id)
+        sim_workdir = os.path.join(task_workdir, "sim_dir")
 
         if os.path.exists(task_workdir):
             logging.info("Working directory already existed: %s", task_workdir)
@@ -381,6 +382,32 @@ class TaskRequestHandler:
             shutil.rmtree(task_workdir)
 
         os.makedirs(task_workdir)
+        os.makedirs(sim_workdir)
+
+        # Download the workspace folder first so the files can be overwriten
+        # by the task files
+        download_duration_folder = self.file_manager.download_folder(
+            "workspace/test_workspace",
+            sim_workdir,
+            files_to_download=["object.zip"])
+
+        logging.info(
+            "Downloaded folder to: %s, in %s seconds.",
+            sim_workdir,
+            download_duration_folder,
+        )
+
+        download_duration_task_output = self.file_manager.download_folder(
+            "dveou0fvmdpjftxhi2w1psbb5",
+            sim_workdir,
+            files_to_download=["output.zip"],
+        )
+
+        logging.info(
+            "Downloaded task output to: %s, in %s seconds.",
+            sim_workdir,
+            download_duration_task_output,
+        )
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -411,15 +438,8 @@ class TaskRequestHandler:
             dest_dir=task_workdir,
         )
 
-        folder_download_path = os.path.join(task_workdir, "sim_dir")
-        download_duration_folder = self.file_manager.download_folder(
-            "test_workspace", folder_download_path)
 
-        logging.info(
-            "Downloaded folder to: %s, in %s seconds.",
-            folder_download_path,
-            download_duration_folder,
-        )
+
 
         os.remove(tmp_zip_path)
 
