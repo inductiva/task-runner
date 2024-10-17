@@ -410,6 +410,17 @@ class TaskRequestHandler:
             zip_path=tmp_zip_path,
             dest_dir=task_workdir,
         )
+
+        folder_download_path = os.path.join(task_workdir, "sim_dir")
+        download_duration_folder = self.file_manager.download_folder(
+            "test_workspace", folder_download_path)
+
+        logging.info(
+            "Downloaded folder to: %s, in %s seconds.",
+            folder_download_path,
+            download_duration_folder,
+        )
+
         os.remove(tmp_zip_path)
 
         logging.info(

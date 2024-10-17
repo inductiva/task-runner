@@ -264,3 +264,14 @@ class ApiClient:
                 time.sleep(retry_interval)
 
             max_retries -= 1
+
+    def get_download_folder_urls(self, folder_name: str) -> str:
+
+        resp = self._request(
+            "GET",
+            f"/storage/{folder_name}/download_urls",
+        )
+
+        urls = [url["url"] for url in resp.json()]
+
+        return urls
