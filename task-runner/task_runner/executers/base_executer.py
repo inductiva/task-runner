@@ -256,6 +256,7 @@ class BaseExecuter(ABC):
             apptainer_args = [
                 "apptainer",
                 "exec",
+                "--nv",
                 "--bind",
                 f"{task_working_dir}:{task_working_dir}",
                 "--pwd",
