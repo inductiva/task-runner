@@ -8,6 +8,7 @@ Note that, currently, request consumption is blocking.
 import copy
 import datetime
 import enum
+import json
 import os
 import queue
 import shutil
@@ -250,6 +251,7 @@ class TaskRequestHandler:
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
         self.submitted_timestamp = request.get("submitted_timestamp")
+        self.input_resources = json.loads(request.get("input_resources", "[]"))
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -386,28 +388,17 @@ class TaskRequestHandler:
 
         # Download the workspace folder first so the files can be overwriten
         # by the task files
-        download_duration_folder = self.file_manager.download_folder(
-            "workspace/test_workspace",
-            sim_workdir,
-            files_to_download=["object.zip"])
-
-        logging.info(
-            "Downloaded folder to: %s, in %s seconds.",
-            sim_workdir,
-            download_duration_folder,
-        )
-
-        download_duration_task_output = self.file_manager.download_folder(
-            "dveou0fvmdpjftxhi2w1psbb5",
-            sim_workdir,
-            files_to_download=["output.zip"],
-        )
-
-        logging.info(
-            "Downloaded task output to: %s, in %s seconds.",
-            sim_workdir,
-            download_duration_task_output,
-        )
+        for input_resource in self.input_resources:
+            # assume its a file if it has a '.'
+            if '.' in input_resource.split('/')[-1]:
+                file_name = input_resource.split('/')[-1]
+                path = '/'.join(input_resource.split('/')[:-1])
+            else:
+                path = input_resource
+            download_duration = self.file_manager.download_folder(
+                path,
+                sim_workdir,
+                files_to_download=[file_name] if file_name else [])
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
