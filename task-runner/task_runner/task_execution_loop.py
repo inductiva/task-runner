@@ -1,8 +1,8 @@
 import time
 from typing import Optional
 
-import requests
 from absl import logging
+from requests.exceptions import ConnectionError, ReadTimeout
 
 from task_runner import BaseTaskFetcher, TaskRequestHandler
 
@@ -35,6 +35,7 @@ def start_loop(
 
         except ConnectionError as e:
             logging.info("ERROR CONNECTION: %s", str(e))
-        except requests.exceptions.ReadTimeout as e:
+            continue
+        except ReadTimeout as e:
             logging.exception("Request timed out: %s", str(e))
             continue
