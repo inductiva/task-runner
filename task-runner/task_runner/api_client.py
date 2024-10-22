@@ -8,7 +8,9 @@ from typing import Dict, Optional
 
 import requests
 from absl import logging
+from cleanup import ExecuterTerminationError
 from inductiva_api import events
+from inductiva_api.task_status import ExecuterTerminationReason
 
 from task_runner.utils import host
 
@@ -133,7 +135,10 @@ class ApiClient:
         )
         if resp.status_code == 204:
             return None
-
+        if resp.status_code >= 400:
+            raise ExecuterTerminationError(
+                ExecuterTerminationReason.INTERRUPTED,
+                detail=resp.json()["detail"])
         return resp.json()
 
     def log_event(

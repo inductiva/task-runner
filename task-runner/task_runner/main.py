@@ -70,6 +70,8 @@ def main(_):
     max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
     max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
+    max_idle_timeout = 180
+
     api_client = task_runner.ApiClient.from_env()
 
     machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
@@ -139,9 +141,8 @@ def main(_):
                 max_idle_timeout=max_idle_timeout,
             )
             monitoring_flag = False
-        except TimeoutError:
-            logging.info(
-                "Max idle time reached. Terminating executer tracker...")
+        except cleanup.ExecuterTerminationError as e:
+            logging.info("Max idle time reached. Terminating task runner...")
             status_code = api_client.kill_machine()
 
             if status_code == 422:
@@ -150,12 +151,11 @@ def main(_):
                     " VM constraint. Restarting monitoring process.")
                 monitoring_flag = True
             else:
-                reason = ExecuterTerminationReason.IDLE_TIMEOUT
-                termination_handler.log_termination(reason)
+                termination_handler.log_termination(e.reason, e.detail)
                 monitoring_flag = False
         except Exception as e:  # noqa: BLE001
             logging.exception("Caught exception: %s", str(e))
-            logging.info("Terminating executer tracker...")
+            logging.info("Terminating task runner...")
             reason = ExecuterTerminationReason.ERROR
 
             detail = utils.get_exception_root_cause_message(e)

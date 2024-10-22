@@ -2,6 +2,8 @@ import time
 from typing import Optional
 
 from absl import logging
+from cleanup import ExecuterTerminationError
+from inductiva_api.task_status import ExecuterTerminationReason
 from requests.exceptions import ConnectionError, ReadTimeout
 
 from task_runner import BaseTaskFetcher, TaskRequestHandler
@@ -20,7 +22,8 @@ def start_loop(
         try:
             if max_idle_timeout and time.time(
             ) - idle_timestamp >= max_idle_timeout:
-                raise TimeoutError("Max idle time reached")
+                raise ExecuterTerminationError(
+                    reason=ExecuterTerminationReason.IDLE_TIMEOUT, detail=None)
 
             logging.info("Waiting for requests...")
             request = task_fetcher.get_task(block_s=block_s)

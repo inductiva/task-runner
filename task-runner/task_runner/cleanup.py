@@ -10,6 +10,17 @@ from inductiva_api.task_status import ExecuterTerminationReason
 import task_runner
 
 
+class ExecuterTerminationError(Exception):
+    """Exception raised when the executer tracker is terminated."""
+
+    def __init__(self, reason, detail=None):
+        self.reason = reason
+        self.detail = detail
+
+    def __str__(self):
+        return f"ExecuterException({self.reason}, {self.detail})"
+
+
 class TerminationHandler:
 
     def __init__(
