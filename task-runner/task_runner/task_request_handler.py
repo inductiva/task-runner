@@ -13,6 +13,7 @@ import queue
 import shutil
 import threading
 import time
+import traceback
 from typing import Dict, Tuple
 from uuid import UUID
 
@@ -357,6 +358,7 @@ class TaskRequestHandler:
                     id=self.task_id,
                     machine_id=self.executer_uuid,
                     error_message=message,
+                    traceback=traceback.format_exc(),
                 ))
             raise e
 

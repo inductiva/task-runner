@@ -2,6 +2,7 @@
 import signal
 import sys
 import threading
+import traceback
 
 from absl import logging
 from inductiva_api import events
@@ -55,11 +56,14 @@ class TerminationHandler:
 
         self.request_handler.set_shutting_down()
 
+        traceback_str = traceback.format_exc() if detail else None
+
         event = events.ExecuterTrackerTerminated(
             uuid=self.executer_id,
             reason=reason,
             stopped_tasks=stopped_tasks,
             detail=detail,
+            traceback=traceback_str,
         )
         self.event_logger.log(event)
 
