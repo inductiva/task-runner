@@ -218,13 +218,6 @@ class TaskRequestHandler:
 
         logging.info("Task picked up at: %s", picked_up_timestamp)
 
-        self._publish_event(
-            events.TaskPickedUp(
-                timestamp=picked_up_timestamp,
-                id=self.task_id,
-                machine_id=self.executer_uuid,
-            ))
-
     def _check_task_killed(self) -> bool:
         if self._kill_task_thread_queue is None:
             raise RuntimeError("Failed to check if task has been killed.")
