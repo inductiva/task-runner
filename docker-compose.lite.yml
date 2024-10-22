@@ -12,7 +12,7 @@ services:
         MACHINE_GROUP_NAME: ${MACHINE_GROUP_NAME}
       volumes:
         - ./apptainer:/executer-images
-      extra-hosts:
+      extra_hosts:
         - "host.docker.internal:host-gateway"
       privileged: true
       platform: linux/amd64
