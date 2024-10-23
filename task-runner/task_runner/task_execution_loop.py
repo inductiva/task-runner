@@ -5,6 +5,7 @@ from absl import logging
 from requests.exceptions import ConnectionError, ReadTimeout
 
 from task_runner import BaseTaskFetcher, TaskRequestHandler
+from task_runner.cleanup import ScaleDownTimeoutError
 
 
 def start_loop(
@@ -20,7 +21,7 @@ def start_loop(
         try:
             if max_idle_timeout and time.time(
             ) - idle_timestamp >= max_idle_timeout:
-                raise TimeoutError("Max idle time reached")
+                raise ScaleDownTimeoutError()
 
             logging.info("Waiting for requests...")
             request = task_fetcher.get_task(block_s=block_s)
