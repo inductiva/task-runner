@@ -2,11 +2,11 @@ import time
 from typing import Optional
 
 from absl import logging
-from cleanup import ExecuterTerminationError
 from inductiva_api.task_status import ExecuterTerminationReason
 from requests.exceptions import ConnectionError, ReadTimeout
 
 from task_runner import BaseTaskFetcher, TaskRequestHandler
+from task_runner.cleanup import ExecuterTerminationError
 
 
 def start_loop(
