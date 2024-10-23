@@ -43,6 +43,15 @@ Build and run the Task Runner with CUDA support:
 make task-runner-cuda-up
 ```
 
+#### Launching more than one Task Runner on the same machine
+To launch more than one Task Runner associated to the same Machine Grup, add the variable `ID=` to 
+For example to launch 3 Task Runners connected to the same try:
+`
+make task-runner-up
+make ID=2 task-runner-up
+make ID=3 task-runner-up
+`
+
 ### Run Simulations
 
 You can now run simulations locally by passing a local machine when you call the `run` function. Try out the following example:
