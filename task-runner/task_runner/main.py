@@ -163,7 +163,9 @@ def main(_):
             reason = ExecuterTerminationReason.ERROR
 
             detail = utils.get_exception_root_cause_message(e)
-            termination_handler.log_termination(reason, detail)
+            termination_handler.log_termination(reason,
+                                                detail,
+                                                save_traceback=True)
 
             monitoring_flag = False
 

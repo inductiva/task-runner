@@ -27,8 +27,7 @@ class ScaleDownTimeoutError(ExecuterTerminationError):
     and the Machine Group is scaled down."""
 
     def __init__(self):
-        super().__init__(ExecuterTerminationReason.IDLE_TIMEOUT,
-                         "Max idle time reached")
+        super().__init__(ExecuterTerminationReason.IDLE_TIMEOUT)
 
 
 class TerminationHandler:
@@ -49,7 +48,10 @@ class TerminationHandler:
             task_runner_id=executer_id,
         )
 
-    def log_termination(self, reason, detail=None) -> bool:
+    def log_termination(self,
+                        reason,
+                        detail=None,
+                        save_traceback=False) -> bool:
         """Logs the termination of the executer tracker.
 
         This method should be called when the executer tracker is terminated.
@@ -76,7 +78,7 @@ class TerminationHandler:
 
         self.request_handler.set_shutting_down()
 
-        traceback_str = traceback.format_exc() if detail else None
+        traceback_str = traceback.format_exc() if save_traceback else None
 
         event = events.ExecuterTrackerTerminated(
             uuid=self.executer_id,
