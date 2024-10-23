@@ -15,4 +15,5 @@ class ExecuterTrackerEvent(event_schemas.Event):
 class ExecuterTrackerTerminated(ExecuterTrackerEvent):
     reason: task_status.ExecuterTerminationReason
     detail: Optional[str]
+    traceback: Optional[str] = None
     stopped_tasks: List[str]
