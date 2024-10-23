@@ -277,7 +277,7 @@ class ApiClient:
                              "/storage/download_urls",
                              params={
                                  "folder_path": folder_path,
-                                 "files_to_download": files_to_download
+                                 "files": files_to_download
                              })
         urls = [url["url"] for url in resp.json()]
 
