@@ -40,3 +40,4 @@ class TaskKilled(TaskEvent):
 class TaskExecutionFailed(TaskEvent):
     error_message: str
     machine_id: uuid.UUID
+    traceback: Optional[str] = None

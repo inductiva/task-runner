@@ -2,12 +2,32 @@
 import signal
 import sys
 import threading
+import traceback
 
 from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import ExecuterTerminationReason
 
 import task_runner
+
+
+class ExecuterTerminationError(Exception):
+    """Exception raised when the executer tracker is terminated."""
+
+    def __init__(self, reason, detail=None):
+        self.reason = reason
+        self.detail = detail
+
+    def __str__(self):
+        return f"ExecuterTerminationError({self.reason}, {self.detail})"
+
+
+class ScaleDownTimeoutError(ExecuterTerminationError):
+    """Exception raised when the timeout is reached, 
+    and the Machine Group is scaled down."""
+
+    def __init__(self):
+        super().__init__(ExecuterTerminationReason.IDLE_TIMEOUT)
 
 
 class TerminationHandler:
@@ -28,7 +48,10 @@ class TerminationHandler:
             task_runner_id=executer_id,
         )
 
-    def log_termination(self, reason, detail=None) -> bool:
+    def log_termination(self,
+                        reason,
+                        detail=None,
+                        save_traceback=False) -> bool:
         """Logs the termination of the executer tracker.
 
         This method should be called when the executer tracker is terminated.
@@ -55,11 +78,14 @@ class TerminationHandler:
 
         self.request_handler.set_shutting_down()
 
+        traceback_str = traceback.format_exc() if save_traceback else None
+
         event = events.ExecuterTrackerTerminated(
             uuid=self.executer_id,
             reason=reason,
             stopped_tasks=stopped_tasks,
             detail=detail,
+            traceback=traceback_str,
         )
         self.event_logger.log(event)
 
