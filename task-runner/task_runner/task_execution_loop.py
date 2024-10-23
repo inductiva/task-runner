@@ -23,7 +23,8 @@ def start_loop(
             if max_idle_timeout and time.time(
             ) - idle_timestamp >= max_idle_timeout:
                 raise ExecuterTerminationError(
-                    reason=ExecuterTerminationReason.IDLE_TIMEOUT, detail=None)
+                    reason=ExecuterTerminationReason.IDLE_TIMEOUT,
+                    detail="Max idle time reached")
 
             logging.info("Waiting for requests...")
             request = task_fetcher.get_task(block_s=block_s)

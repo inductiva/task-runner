@@ -70,8 +70,6 @@ def main(_):
     max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
     max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
-    max_idle_timeout = 180
-
     api_client = task_runner.ApiClient.from_env()
 
     machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
@@ -142,7 +140,8 @@ def main(_):
             )
             monitoring_flag = False
         except cleanup.ExecuterTerminationError as e:
-            logging.info("Max idle time reached. Terminating task runner...")
+            logging.exception("Caught exception: %s", str(e))
+            logging.info("Terminating task runner...")
             status_code = api_client.kill_machine()
 
             if status_code == 422:
