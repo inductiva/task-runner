@@ -394,6 +394,7 @@ class TaskRequestHandler:
                 file_name = input_resource.split('/')[-1]
                 path = '/'.join(input_resource.split('/')[:-1])
             else:
+                file_name = None
                 path = input_resource
             download_duration = self.file_manager.download_folder(
                 path,
