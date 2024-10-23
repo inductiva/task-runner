@@ -139,7 +139,7 @@ def main(_):
                 max_idle_timeout=max_idle_timeout,
             )
             monitoring_flag = False
-        except cleanup.ExecuterTerminationError as e:
+        except cleanup.ScaleDownTimeoutError as e:
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")
             status_code = api_client.kill_machine()
@@ -152,6 +152,11 @@ def main(_):
             else:
                 termination_handler.log_termination(e.reason, e.detail)
                 monitoring_flag = False
+        except cleanup.ExecuterTerminationError as e:
+            logging.exception("Caught exception: %s", str(e))
+            logging.info("Terminating task runner...")
+            termination_handler.log_termination(e.reason, e.detail)
+            monitoring_flag = False
         except Exception as e:  # noqa: BLE001
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")

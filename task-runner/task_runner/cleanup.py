@@ -18,7 +18,16 @@ class ExecuterTerminationError(Exception):
         self.detail = detail
 
     def __str__(self):
-        return f"ExecuterException({self.reason}, {self.detail})"
+        return f"ExecuterTerminationError({self.reason}, {self.detail})"
+
+
+class ScaleDownTimeoutError(ExecuterTerminationError):
+    """Exception raised when the timeout is reached, 
+    and the Machine Group is scaled down."""
+
+    def __init__(self):
+        super().__init__(ExecuterTerminationReason.IDLE_TIMEOUT,
+                         "Max idle time reached")
 
 
 class TerminationHandler:
