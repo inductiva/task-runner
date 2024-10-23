@@ -44,13 +44,13 @@ make task-runner-cuda-up
 ```
 
 #### Launching more than one Task Runner on the same machine
-To launch more than one Task Runner associated to the same Machine Grup, add the variable `ID=` to 
-For example to launch 3 Task Runners connected to the same try:
-`
+To launch more than one Task Runner associated to the same Machine Group, add argument `ID=` to when calling make.
+For example to launch 3 Task Runners connected to the same Machine Group do:
+```
 make task-runner-up
 make ID=2 task-runner-up
 make ID=3 task-runner-up
-`
+```
 
 ### Run Simulations
 
