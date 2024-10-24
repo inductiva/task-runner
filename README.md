@@ -27,29 +27,11 @@ Build and run the docker container:
 make task-runner-up
 ```
 
-#### Lite mode
-Build and run a lighter version of the Task Runner
-
-```
-make task-runner-lite-up
-```
-
-NOTE: The simulators that use openmpi (eg. AmrWind, CaNs) can not be chosen to run simulations in Lite mode. 
-
 #### With GPU access
 Build and run the Task Runner with CUDA support:
 
 ```
 make task-runner-cuda-up
-```
-
-#### Launching more than one Task Runner on the same machine
-To launch more than one Task Runner associated to the same Machine Group, add argument `ID=` when calling make.
-For example to launch 3 Task Runners connected to the same Machine Group do:
-```
-make task-runner-up
-make ID=2 task-runner-up
-make ID=3 task-runner-up
 ```
 
 ### Run Simulations
