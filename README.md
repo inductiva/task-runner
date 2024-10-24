@@ -18,21 +18,23 @@ MACHINE_GROUP_NAME='my-machine-group-name'
 ```
 
 ### Build and Run the application
-The application can be run in two different ways: the fully functional `Normal mode` that takes longer to build, or a lighter `Lite mode` that does not install openmpi.
+The application is run by launching a docker container. The default Task Runner does not access the GPU, but a different container with CUDA support is also available.
 
-#### Normal mode
+#### Task Runner
 Build and run the docker container:
 
 ```
 make task-runner-up
 ```
 
-#### With GPU access
+#### Task Runner with GPU access
 Build and run the Task Runner with CUDA support:
 
 ```
 make task-runner-cuda-up
 ```
+
+Please make sure you have the nvidia drivers installed. 
 
 ### Run Simulations
 
@@ -72,4 +74,34 @@ task = gromacs.run(
 task.wait()
 
 task.download_outputs()
+```
+
+### For developers/contributors
+The following are instructions that can help developers setup the development mode or create scenarios for testing features. 
+
+#### Connect to local API
+If you want connect to an API that is running locally in your `.env` file set the url as:
+
+```
+INDUCTIVA_API_URL=http://host.docker.internal:(api-port)
+``` 
+
+Replacing api-port with the port where the API is exposed. 
+
+#### Lite mode
+To implement and test features that do not require running MPI simulators it is possible to build and run a lighter version of the Task Runner that does not install openmpi by:
+
+```
+make task-runner-lite-up
+```
+
+NOTE: The simulators that use openmpi (eg. AmrWind, CaNs) can not be chosen to run simulations in Lite mode. 
+
+#### Launching more than one Task Runner on the same machine
+To launch more than one Task Runner associated to the same Machine Group, add argument `ID=` when calling make.
+For example to launch 3 Task Runners connected to the same Machine Group do:
+```
+make task-runner-up
+make ID=2 task-runner-up
+make ID=3 task-runner-up
 ```
