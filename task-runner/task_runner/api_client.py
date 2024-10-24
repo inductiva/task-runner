@@ -9,7 +9,9 @@ from typing import Dict, Optional
 import requests
 from absl import logging
 from inductiva_api import events
+from inductiva_api.task_status import ExecuterTerminationReason
 
+from task_runner.cleanup import ExecuterTerminationError
 from task_runner.utils import host
 
 
@@ -133,7 +135,10 @@ class ApiClient:
         )
         if resp.status_code == 204:
             return None
-
+        if resp.status_code >= 400:
+            raise ExecuterTerminationError(
+                ExecuterTerminationReason.INTERRUPTED,
+                detail=resp.json()["detail"])
         return resp.json()
 
     def log_event(
@@ -211,6 +216,16 @@ class ApiClient:
                 "provider_id": "LOCAL",
                 "name": machine_group_name,
                 "disk_size_gb": host.get_total_memory() // 1e9,
+            },
+        )
+        return resp.json()["id"]
+
+    def start_local_machine_group(self, machine_group_id: uuid.UUID):
+        resp = self._request(
+            "POST",
+            "/compute/group/start",
+            json={
+                "id": machine_group_id,
             },
         )
         return resp.json()["id"]

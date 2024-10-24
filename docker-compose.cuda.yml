@@ -1,18 +1,24 @@
 version: "3"
 
 services:
-  task-runner-lite:
+  task-runner:
       build:
         context: .
-        dockerfile: task-runner/Dockerfile.lite
+        dockerfile: task-runner/Dockerfile
       environment:
         EXECUTER_IMAGES_DIR: /executer-images
         API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
         MACHINE_GROUP_NAME: ${MACHINE_GROUP_NAME}
+        ON_GPU: true
       volumes:
         - ./apptainer:/executer-images
-      extra_hosts:
-        - "host.docker.internal:host-gateway"
       privileged: true
       platform: linux/amd64
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                count: all
+                capabilities: [gpu]

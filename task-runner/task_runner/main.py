@@ -77,6 +77,9 @@ def main(_):
     machine_group_id = machine_group_info.id
     local_mode = machine_group_info.local_mode
 
+    if local_mode:
+        api_client.start_local_machine_group(machine_group_id)
+
     logging.info("Using machine group: %s", machine_group_id)
 
     executer_access_info = register_executer(
@@ -136,9 +139,9 @@ def main(_):
                 max_idle_timeout=max_idle_timeout,
             )
             monitoring_flag = False
-        except TimeoutError:
-            logging.info(
-                "Max idle time reached. Terminating executer tracker...")
+        except cleanup.ScaleDownTimeoutError as e:
+            logging.exception("Caught exception: %s", str(e))
+            logging.info("Terminating task runner...")
             status_code = api_client.kill_machine()
 
             if status_code == 422:
@@ -147,16 +150,22 @@ def main(_):
                     " VM constraint. Restarting monitoring process.")
                 monitoring_flag = True
             else:
-                reason = ExecuterTerminationReason.IDLE_TIMEOUT
-                termination_handler.log_termination(reason)
+                termination_handler.log_termination(e.reason, e.detail)
                 monitoring_flag = False
+        except cleanup.ExecuterTerminationError as e:
+            logging.exception("Caught exception: %s", str(e))
+            logging.info("Terminating task runner...")
+            termination_handler.log_termination(e.reason, e.detail)
+            monitoring_flag = False
         except Exception as e:  # noqa: BLE001
             logging.exception("Caught exception: %s", str(e))
-            logging.info("Terminating executer tracker...")
+            logging.info("Terminating task runner...")
             reason = ExecuterTerminationReason.ERROR
 
             detail = utils.get_exception_root_cause_message(e)
-            termination_handler.log_termination(reason, detail)
+            termination_handler.log_termination(reason,
+                                                detail,
+                                                save_traceback=True)
 
             monitoring_flag = False
 

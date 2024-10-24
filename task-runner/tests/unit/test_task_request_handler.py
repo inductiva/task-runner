@@ -157,7 +157,7 @@ def _setup_mock_task(
         "project_id": uuid.uuid4(),
         "task_dir": task_id,
         "container_image": "docker://alpine:latest",  # unused in test
-        "method": "arbitrary.arbitrary_commands.run_simulation",
+        "simulator": "arbitrary_commands",
     }
 
     if time_to_live_seconds is not None:
@@ -233,8 +233,7 @@ def test_task_request_handler_kill_task_before_computation_started(
     thread = threading.Thread(target=handler, args=(task_request,))
     thread.start()
 
-    assert isinstance(handler.event_logger.log.call_args_list[0][0][0],
-                      events.TaskPickedUp)
+    assert len(handler.event_logger.log.call_args_list) == 0
     mock_message_listener.send("kill")
 
     # download_input step is blocked until this event is set
@@ -243,7 +242,7 @@ def test_task_request_handler_kill_task_before_computation_started(
     thread.join()
 
     # Check only one event was published (Killed) after PickedUp
-    assert len(handler.event_logger.log.call_args_list) == 2
+    assert len(handler.event_logger.log.call_args_list) == 1
     assert isinstance(handler.event_logger.log.call_args_list[-1][0][0],
                       events.TaskKilled)
 
@@ -267,10 +266,11 @@ def test_task_request_handler_kill_task_after_computation_started(
     computation_started_check_period = 1
     # Wait until computation started event is published
     while not computation_started and computation_started_timeout_s > 0:
-        computation_started = isinstance(
-            handler.event_logger.log.call_args_list[-1][0][0],
-            events.TaskWorkStarted,
-        )
+        computation_started = len(
+            handler.event_logger.log.call_args_list) > 0 and isinstance(
+                handler.event_logger.log.call_args_list[-1][0][0],
+                events.TaskWorkStarted,
+            )
         time.sleep(computation_started_check_period)
         computation_started_timeout_s -= computation_started_check_period
 
@@ -280,7 +280,7 @@ def test_task_request_handler_kill_task_after_computation_started(
 
     thread.join()
 
-    assert len(handler.event_logger.log.call_args_list) == 4
+    assert len(handler.event_logger.log.call_args_list) == 3
     last_event = handler.event_logger.log.call_args_list[-1][0][0]
     assert isinstance(last_event, events.TaskOutputUploaded)
     assert last_event.new_status == "killed"
