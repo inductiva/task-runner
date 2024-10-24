@@ -6,17 +6,17 @@ DOCKER_COMPOSE_COMMAND=\
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER=\
 	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner \
+	-p task-runner$(ID) \
 	-f docker-compose.yml
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER_CUDA=\
 	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner-cuda \
+	-p task-runner-cuda$(ID) \
 	-f docker-compose.cuda.yml
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE=\
 	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner-lite \
+	-p task-runner-lite$(ID) \
 	-f docker-compose.lite.yml
 
 .PHONY: %
