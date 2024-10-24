@@ -144,6 +144,7 @@ class SubprocessTracker:
             logging.warning("Caught exception \"%s\". Exiting gracefully",
                             exception)
             self.exit_gracefully()
+            raise exception
 
         logging.info("Process %d exited with exit code %d.", self.subproc.pid,
                      exit_code)
