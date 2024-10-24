@@ -186,6 +186,11 @@ class ApiClient:
             "GET",
             f"/{task_runner_id}/task/{task_id}/download_input_url",
         )
+        if resp.status_code != 200:
+            raise RuntimeError(
+                "Failed to get download input URL for "
+                f"task-runner {task_runner_id}, task {task_id}. "
+                f"Status code: {resp.status_code} Response: {resp.text}")
 
         return resp.json()["url"]
 
