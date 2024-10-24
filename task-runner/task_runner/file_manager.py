@@ -1,4 +1,5 @@
 import abc
+import os
 import urllib
 import urllib.request
 import uuid
@@ -28,6 +29,14 @@ class BaseFileManager(abc.ABC):
         task_id: str,
         task_dir_remote: str,
         local_path: str,
+    ):
+        pass
+
+    @abc.abstractmethod
+    def download_folder(
+        self,
+        folder_name: str,
+        dest_path: str,
     ):
         pass
 
@@ -87,3 +96,19 @@ class WebApiFileManager(BaseFileManager):
         resp.raise_for_status()
 
         return zip_generator.total_bytes
+
+    @utils.execution_time
+    @override
+    def download_folder(
+        self,
+        folder_name: str,
+        dest_path: str,
+        files_to_download: list[str],
+    ):
+        urls = self._api_client.get_download_folder_urls(
+            folder_name, files_to_download)
+
+        for url in urls:
+            file_name = os.path.basename(url.split('?')[0])
+            file_path = os.path.join(dest_path, file_name)
+            urllib.request.urlretrieve(url, file_path)

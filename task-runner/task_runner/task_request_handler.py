@@ -8,6 +8,7 @@ Note that, currently, request consumption is blocking.
 import copy
 import datetime
 import enum
+import json
 import os
 import queue
 import shutil
@@ -244,6 +245,7 @@ class TaskRequestHandler:
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
         self.submitted_timestamp = request.get("submitted_timestamp")
+        self.input_resources = json.loads(request.get("input_resources", "[]"))
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -368,6 +370,7 @@ class TaskRequestHandler:
             "'_setup_working_dir' called without a task ID.")
 
         task_workdir = os.path.join(self.workdir, self.task_id)
+        sim_workdir = os.path.join(task_workdir, "sim_dir")
 
         if os.path.exists(task_workdir):
             logging.info("Working directory already existed: %s", task_workdir)
@@ -375,6 +378,22 @@ class TaskRequestHandler:
             shutil.rmtree(task_workdir)
 
         os.makedirs(task_workdir)
+        os.makedirs(sim_workdir)
+
+        # Download the workspace folder first so the files can be overwriten
+        # by the task files
+        for input_resource in self.input_resources:
+            # assume its a file if it has a '.'
+            if '.' in input_resource.split('/')[-1]:
+                file_name = input_resource.split('/')[-1]
+                path = '/'.join(input_resource.split('/')[:-1])
+            else:
+                file_name = None
+                path = input_resource
+            download_duration = self.file_manager.download_folder(
+                path,
+                sim_workdir,
+                files_to_download=[file_name] if file_name else [])
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -404,6 +423,7 @@ class TaskRequestHandler:
             zip_path=tmp_zip_path,
             dest_dir=task_workdir,
         )
+
         os.remove(tmp_zip_path)
 
         logging.info(
