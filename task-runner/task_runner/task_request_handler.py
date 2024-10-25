@@ -355,7 +355,6 @@ class TaskRequestHandler:
                     error_message=message,
                     traceback=traceback.format_exc(),
                 ))
-            raise e
 
         finally:
             self._cleanup()
