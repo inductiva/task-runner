@@ -31,7 +31,6 @@ async def get_directory_contents(task=""):
 async def read_file(filename):
     with open(filename, 'rb') as f:
         cnt = f.read()
-        print(f'file content: {cnt}')
         return cnt.decode()
 
 
@@ -72,7 +71,6 @@ async def create_peer_connection():
                 channel.send(json.dumps({"type": "pwd", "data": os.getcwd()}))
 
             elif message.startswith(("download:", "cat:")):
-                logging.info("GOT download")
                 filename = message.split(":")[1]
                 content = await read_file(filename)
                 logging.info("Sending file %s to peer", filename)
@@ -92,7 +90,7 @@ async def create_peer_connection():
                 path = message.split(":")[1]
                 os.chdir(path)
                 contents = await get_directory_contents()
-                channel.send(json.dumps(contents))
+                channel.send(json.dumps({"type": "cd", "data": contents}))
 
     return pc
 
