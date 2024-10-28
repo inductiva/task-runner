@@ -588,4 +588,9 @@ class TaskRequestHandler:
             self.apptainer_image_path,
             copy.deepcopy(self.mpi_config),
             self.loki_logger,
+            executers.CommandEventLogger(
+                self.task_id,
+                self.executer_uuid,
+                self.event_logger,
+            ),
         )

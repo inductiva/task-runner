@@ -41,3 +41,16 @@ class TaskExecutionFailed(TaskEvent):
     error_message: str
     machine_id: uuid.UUID
     traceback: Optional[str] = None
+
+
+class TaskCommandStarted(TaskEvent):
+    machine_id: uuid.UUID
+    command: str
+    container_command: str
+
+
+class TaskCommandFinished(TaskEvent):
+    machine_id: uuid.UUID
+    command: str
+    exit_code: int
+    execution_time: float

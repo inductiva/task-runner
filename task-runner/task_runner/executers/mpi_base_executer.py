@@ -23,11 +23,13 @@ class MPIExecuter(executers.BaseExecuter):
         container_image,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
         loki_logger: loki.LokiLogger,
+        command_event_logger: executers.CommandEventLogger,
         sim_binary,
         file_type,
         sim_specific_input_filename,
     ):
-        super().__init__(working_dir, container_image, mpi_config, loki_logger)
+        super().__init__(working_dir, container_image, mpi_config, loki_logger,
+                         command_event_logger)
         self.sim_binary = sim_binary
         self.sim_specific_input_filename = sim_specific_input_filename
         self.file_type = file_type

@@ -12,10 +12,12 @@ class SWANExecuter(executers.MPIExecuter):
         container_image,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
         loki_logger: loki.LokiLogger,
+        command_event_logger: executers.CommandEventLogger,
     ):
         super().__init__(working_dir=working_dir,
                          container_image=container_image,
                          loki_logger=loki_logger,
+                         command_event_logger=command_event_logger,
                          mpi_config=mpi_config,
                          sim_binary="swan.exe",
                          file_type="swn",
