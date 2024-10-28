@@ -21,6 +21,7 @@ services:
       build:
         context: .
         dockerfile: file-streamer/Dockerfile
+      network_mode: host
       volumes:
         - workdir:/workdir
       privileged: true
