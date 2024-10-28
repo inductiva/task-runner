@@ -6,6 +6,7 @@ its usage.
 import json
 import os
 import threading
+import time
 from abc import ABC, abstractmethod
 from collections import namedtuple
 
@@ -60,6 +61,7 @@ class BaseExecuter(ABC):
         container_image: str,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
         loki_logger: loki.LokiLogger,
+        exec_command_logger: executers.ExecCommandLogger,
     ):
         """Performs initial setup of the executer.
 
@@ -73,6 +75,7 @@ class BaseExecuter(ABC):
         self.artifacts_dir = os.path.join(self.output_dir,
                                           self.ARTIFACTS_DIRNAME)
         self.loki_logger = loki_logger
+        self.exec_command_logger = exec_command_logger
 
         logging.info("Working directory: %s", self.working_dir)
 
@@ -269,20 +272,32 @@ class BaseExecuter(ABC):
             if self.on_gpu:
                 apptainer_args.append("--nv")
             apptainer_args.append(self.container_image)
-            args.extend(apptainer_args)
 
-            args.extend(cmd.args)
+            apptainer_command_args = [*args, *apptainer_args, *cmd.args]
+            command_args = [*args, *cmd.args]
 
             self.subprocess = executers.SubprocessTracker(
-                args=args,
+                args=apptainer_command_args,
                 working_dir=None,
                 stdout=stdout,
                 stderr=stderr,
                 stdin=stdin,
                 loki_logger=self.loki_logger,
             )
+            self.exec_command_logger.log_command_started(
+                command=" ".join(command_args),
+                container_command=" ".join(apptainer_command_args),
+            )
+            start = time.perf_counter()
             self.subprocess.run()
             exit_code = self.subprocess.wait()
+            execution_time = time.perf_counter() - start
+
+            self.exec_command_logger.log_command_finished(
+                exit_code=exit_code,
+                execution_time_seconds=execution_time,
+            )
+
             if exit_code != 0:
                 raise ExecuterSubProcessError(exit_code)
 

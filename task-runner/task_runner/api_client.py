@@ -1,10 +1,11 @@
 """Client for the Inductiva API."""
 import dataclasses
+import datetime
 import enum
 import os
 import time
 import uuid
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import requests
 from absl import logging
@@ -269,3 +270,50 @@ class ApiClient:
                 time.sleep(retry_interval)
 
             max_retries -= 1
+
+    def create_operation(
+        self,
+        operation_name: str,
+        task_id: str,
+        attributes: Dict[str, Any],
+        timestamp: Optional[datetime.datetime] = None,
+    ) -> str:
+        timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
+
+        resp = self._request_task_runner_api(
+            "POST",
+            f"{self._executer_uuid}/task/{task_id}/operation",
+            json={
+                "time": timestamp.isoformat(),
+                "name": operation_name,
+                "attributes": {
+                    **attributes,
+                },
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["operation_id"]
+
+    def end_operation(
+        self,
+        operation_name: str,
+        operation_id: str,
+        task_id: str,
+        attributes: Dict[str, Any],
+        timestamp: Optional[datetime.datetime] = None,
+    ):
+        timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
+
+        resp = self._request_task_runner_api(
+            "POST",
+            f"{self._executer_uuid}/task/{task_id}/operation/done",
+            json={
+                "operation_id": operation_id,
+                "time": timestamp.isoformat(),
+                "name": operation_name,
+                "attributes": {
+                    **attributes,
+                },
+            },
+        )
+        resp.raise_for_status()
