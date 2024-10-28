@@ -12,6 +12,7 @@ services:
         MACHINE_GROUP_NAME: ${MACHINE_GROUP_NAME}
       volumes:
         - ./apptainer:/executer-images
+        - workdir:/workdir
       extra_hosts:
         - "host.docker.internal:host-gateway"
       privileged: true
@@ -20,5 +21,10 @@ services:
       build:
         context: .
         dockerfile: file-streamer/Dockerfile
+      volumes:
+        - workdir:/workdir
       privileged: true
       platform: linux/amd64
+
+volumes:
+  workdir:

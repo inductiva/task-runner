@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 
 import aiohttp
@@ -23,15 +24,15 @@ INTERNAL_ICE_SERVERS = [{
 }]
 
 
-async def get_directory_contents():
-    return os.listdir('.')
+async def get_directory_contents(task=""):
+    return os.listdir('./' + task)
 
 
 async def read_file(filename):
     with open(filename, 'rb') as f:
         cnt = f.read()
         print(f'file content: {cnt}')
-        return cnt
+        return cnt.decode()
 
 
 async def tail_file(filename, lines=10):
@@ -64,22 +65,40 @@ async def create_peer_connection():
         async def on_message(message):
             if message == "list":
                 contents = await get_directory_contents()
-                channel.send(json.dumps(contents))
+                channel.send(json.dumps({"type": "list", "data": contents}))
 
-            elif message.startswith("download:"):
+            elif message == "pwd":
+                logging.info("GOT pwd")
+                channel.send(json.dumps({"type": "pwd", "data": os.getcwd()}))
+
+            elif message.startswith(("download:", "cat:")):
+                logging.info("GOT download")
                 filename = message.split(":")[1]
                 content = await read_file(filename)
-                channel.send(content)
+                logging.info("Sending file %s to peer", filename)
+                channel.send(
+                    json.dumps({
+                        "type": message.split(":")[0],
+                        "filename": filename,
+                        "data": content
+                    }))
 
             elif message.startswith("tail:"):
                 filename = message.split(":")[1]
                 content = await tail_file(filename)
                 channel.send(content)
 
+            elif message.startswith("cd:"):
+                path = message.split(":")[1]
+                os.chdir(path)
+                contents = await get_directory_contents()
+                channel.send(json.dumps(contents))
+
     return pc
 
 
 async def main():
+    os.chdir('/workdir')
     async with aiohttp.ClientSession() as session:
         await session.post(f"{SIGNALING_SERVER}/register",
                            json={"clientId": "taskid_123"})
@@ -105,4 +124,5 @@ async def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
