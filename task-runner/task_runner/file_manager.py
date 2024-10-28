@@ -105,10 +105,12 @@ class WebApiFileManager(BaseFileManager):
         dest_path: str,
         files_to_download: list[str],
     ):
-        urls = self._api_client.get_download_folder_urls(
+        files_url = self._api_client.get_download_folder_urls(
             folder_name, files_to_download)
 
-        for url in urls:
-            file_name = os.path.basename(url.split('?')[0])
-            file_path = os.path.join(dest_path, file_name)
+        for file_url in files_url:
+            url = file_url["url"]
+            base_path = file_url["file_path"]
+            file_path = os.path.join(dest_path, base_path)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
             urllib.request.urlretrieve(url, file_path)

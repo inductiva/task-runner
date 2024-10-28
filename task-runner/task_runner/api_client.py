@@ -279,6 +279,10 @@ class ApiClient:
                                  "folder_path": folder_path,
                                  "files": files_to_download
                              })
-        urls = [url["url"] for url in resp.json()]
+        response_data = resp.json()
+        files_url = [{
+            "url": item["url"],
+            "file_path": item["file_path"],
+        } for item in response_data]
 
-        return urls
+        return files_url
