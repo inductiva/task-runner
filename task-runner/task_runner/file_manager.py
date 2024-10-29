@@ -1,5 +1,6 @@
 import abc
 import os
+from typing import List
 import urllib
 import urllib.request
 import uuid
@@ -33,9 +34,9 @@ class BaseFileManager(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def download_folder(
+    def download_input_resources(
         self,
-        folder_name: str,
+        input_resources: List[str],
         dest_path: str,
     ):
         pass
@@ -99,14 +100,12 @@ class WebApiFileManager(BaseFileManager):
 
     @utils.execution_time
     @override
-    def download_folder(
+    def download_input_resources(
         self,
-        folder_name: str,
+        input_resources: List[str],
         dest_path: str,
-        files_to_download: list[str],
     ):
-        files_url = self._api_client.get_download_folder_urls(
-            folder_name, files_to_download)
+        files_url = self._api_client.get_download_urls(input_resources)
 
         for file_url in files_url:
             url = file_url["url"]

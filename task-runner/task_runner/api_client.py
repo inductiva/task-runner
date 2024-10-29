@@ -270,14 +270,12 @@ class ApiClient:
 
             max_retries -= 1
 
-    def get_download_folder_urls(self, folder_path: str,
-                                 files_to_download: list[str]) -> str:
+    def get_download_urls(self, input_resources: list[str]) -> str:
 
         resp = self._request("GET",
                              "/storage/download_urls",
                              params={
-                                 "folder_path": folder_path,
-                                 "files": files_to_download
+                                 "input_resources": input_resources,
                              })
         response_data = resp.json()
         files_url = [{

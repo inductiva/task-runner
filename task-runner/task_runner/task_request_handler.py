@@ -382,18 +382,8 @@ class TaskRequestHandler:
 
         # Download the workspace folder first so the files can be overwriten
         # by the task files
-        for input_resource in self.input_resources:
-            # assume its a file if it has a '.'
-            if '.' in input_resource.split('/')[-1]:
-                file_name = input_resource.split('/')[-1]
-                path = '/'.join(input_resource.split('/')[:-1])
-            else:
-                file_name = None
-                path = input_resource
-            download_duration = self.file_manager.download_folder(
-                path,
-                sim_workdir,
-                files_to_download=[file_name] if file_name else [])
+        download_duration = self.file_manager.download_input_resources(
+            self.input_resources, sim_workdir)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
