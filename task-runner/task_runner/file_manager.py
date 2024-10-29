@@ -38,6 +38,7 @@ class BaseFileManager(abc.ABC):
         self,
         input_resources: List[str],
         dest_path: str,
+        task_runner_id: uuid.UUID,
     ):
         pass
 
@@ -104,8 +105,10 @@ class WebApiFileManager(BaseFileManager):
         self,
         input_resources: List[str],
         dest_path: str,
+        task_runner_id: uuid.UUID,
     ):
-        files_url = self._api_client.get_download_urls(input_resources)
+        files_url = self._api_client.get_download_urls(input_resources,
+                                                       task_runner_id)
 
         for file_url in files_url:
             url = file_url["url"]
