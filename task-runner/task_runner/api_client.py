@@ -269,3 +269,20 @@ class ApiClient:
                 time.sleep(retry_interval)
 
             max_retries -= 1
+
+    def get_download_urls(self, input_resources: list[str],
+                          task_runner_id: uuid.UUID) -> str:
+
+        resp = self._request_task_runner_api("GET",
+                                             f"/{task_runner_id}/download_urls",
+                                             params={
+                                                 "input_resources":
+                                                     input_resources,
+                                             })
+        response_data = resp.json()
+        files_url = [{
+            "url": item["url"],
+            "file_path": item["file_path"],
+        } for item in response_data]
+
+        return files_url
