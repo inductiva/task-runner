@@ -380,10 +380,11 @@ class TaskRequestHandler:
         os.makedirs(task_workdir)
         os.makedirs(sim_workdir)
 
-        # Download the workspace folder first so the files can be overwriten
+        # Download input resources first so they can be overwriten
         # by the task files
-        download_duration = self.file_manager.download_input_resources(
-            self.input_resources, sim_workdir, self.executer_uuid)
+        if self.input_resources:
+            download_duration = self.file_manager.download_input_resources(
+                self.input_resources, sim_workdir, self.executer_uuid)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
