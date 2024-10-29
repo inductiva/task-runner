@@ -31,7 +31,7 @@ async def get_directory_contents(task=""):
 async def read_file(filename):
     with open(filename, 'rb') as f:
         cnt = f.read()
-        return cnt.decode()
+        return cnt
 
 
 async def tail_file(filename, lines=10):
@@ -74,12 +74,14 @@ async def create_peer_connection():
                 filename = message.split(":")[1]
                 content = await read_file(filename)
                 logging.info("Sending file %s to peer", filename)
-                channel.send(
-                    json.dumps({
-                        "type": message.split(":")[0],
-                        "filename": filename,
-                        "data": content
-                    }))
+                header = json.dumps({
+                    "type": message.split(":")[0],
+                    "filename": filename,
+                }).encode()
+                message = header + b'\n' + content[:1024]
+                logging.info("Header: %s", header)
+                logging.info("Content: %s", content[:1024])
+                channel.send(message)
 
             elif message.startswith("tail:"):
                 filename = message.split(":")[1]
