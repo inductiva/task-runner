@@ -145,6 +145,7 @@ class TaskRequestHandler:
         mpi_config: executers.MPIClusterConfiguration,
         apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
         api_client: ApiClient,
+        api_file_tracker: task_runner.ApiFileTracker,
         event_logger: task_runner.BaseEventLogger,
         message_listener: task_message_listener.BaseTaskMessageListener,
         file_manager: task_runner.BaseFileManager,
@@ -157,6 +158,7 @@ class TaskRequestHandler:
         self.event_logger = event_logger
         self.message_listener = message_listener
         self.file_manager = file_manager
+        self.api_file_tracker = api_file_tracker
         self.task_id = None
         self.loki_logger = None
         self.task_workdir = None
@@ -406,6 +408,8 @@ class TaskRequestHandler:
         )
         os.remove(tmp_zip_path)
 
+        self.api_file_tracker.start(self.task_id)
+
         logging.info(
             "Extracted zip to: %s, in %s seconds",
             task_workdir,
@@ -558,7 +562,7 @@ class TaskRequestHandler:
             logging.info("Cleaning up working directory: %s", self.task_workdir)
             shutil.rmtree(self.task_workdir, ignore_errors=True)
         self.task_workdir = None
-
+        self.api_file_tracker.stop(self.task_id)
         self._message_listener_thread = None
 
         for thread in self.threads:

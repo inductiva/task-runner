@@ -1,6 +1,3 @@
-# sender.py
-
-import asyncio
 import json
 import logging
 import os
@@ -22,6 +19,36 @@ INTERNAL_ICE_SERVERS = [{
 }, {
     "urls": ["turn:10.132.0.71:3478"]
 }]
+
+
+class FileTracker:
+
+    async def __init__(self, task):
+        self.task = task
+        self.session = aiohttp.ClientSession()
+        await self.session.post(f"{SIGNALING_SERVER}/register",
+                                json={"clientId": task})
+
+    async def listen(self):
+        while True:
+            async with self.session.get(
+                    f"{SIGNALING_SERVER}/message?clientId={self.task}") as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if data['type'] == 'offer':
+                        pc = await create_peer_connection()
+                        await pc.setRemoteDescription(
+                            RTCSessionDescription(sdp=data['sdp'],
+                                                  type=data['type']))
+                        answer = await pc.createAnswer()
+                        await pc.setLocalDescription(answer)
+                        await self.session.post(
+                            f"{SIGNALING_SERVER}/offer",
+                            json={
+                                "receiverId": data['senderId'],
+                                "type": "answer",
+                                "sdp": pc.localDescription.sdp
+                            })
 
 
 async def get_directory_contents(task=""):
@@ -95,34 +122,3 @@ async def create_peer_connection():
                 channel.send(json.dumps({"type": "cd", "data": contents}))
 
     return pc
-
-
-async def main():
-    os.chdir('/workdir')
-    async with aiohttp.ClientSession() as session:
-        await session.post(f"{SIGNALING_SERVER}/register",
-                           json={"clientId": "taskid_123"})
-
-        while True:
-            async with session.get(
-                    f"{SIGNALING_SERVER}/message?clientId=taskid_123") as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data['type'] == 'offer':
-                        pc = await create_peer_connection()
-                        await pc.setRemoteDescription(
-                            RTCSessionDescription(sdp=data['sdp'],
-                                                  type=data['type']))
-                        answer = await pc.createAnswer()
-                        await pc.setLocalDescription(answer)
-                        await session.post(f"{SIGNALING_SERVER}/offer",
-                                           json={
-                                               "receiverId": data['senderId'],
-                                               "type": "answer",
-                                               "sdp": pc.localDescription.sdp
-                                           })
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(main())

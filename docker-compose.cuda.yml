@@ -22,9 +22,9 @@ services:
               - driver: nvidia
                 count: all
                 capabilities: [gpu]
-  file-streamer:
+  file-tracker:
     build:
       context: .
-      dockerfile: file-streamer/Dockerfile
+      dockerfile: file-tracker/Dockerfile
     privileged: true
     platform: linux/amd64

@@ -16,9 +16,9 @@ services:
         - "host.docker.internal:host-gateway"
       privileged: true
       platform: linux/amd64
-  file-streamer:
+  file-tracker:
     build:
       context: .
-      dockerfile: file-streamer/Dockerfile
+      dockerfile: file-tracker/Dockerfile
     privileged: true
     platform: linux/amd64

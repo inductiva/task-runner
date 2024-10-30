@@ -5,6 +5,8 @@ services:
       build:
         context: .
         dockerfile: task-runner/Dockerfile
+      networks:
+        - task-runner-net
       environment:
         EXECUTER_IMAGES_DIR: /executer-images
         API_URL: ${INDUCTIVA_API_URL}
@@ -17,15 +19,19 @@ services:
         - "host.docker.internal:host-gateway"
       privileged: true
       platform: linux/amd64
-  file-streamer:
+  file-tracker:
       build:
         context: .
-        dockerfile: file-streamer/Dockerfile
-      network_mode: host
+        dockerfile: file-tracker/Dockerfile
+      networks:
+        - task-runner-net
       volumes:
         - workdir:/workdir
       privileged: true
       platform: linux/amd64
+
+networks:
+  task-runner-net:
 
 volumes:
   workdir:
