@@ -24,6 +24,15 @@ class TaskListener:
         message = data.decode()
         logging.info("New task: %s", message)
 
+        if message.startswith("start:"):
+            task_id = message.split(":")[1]
+            await self.task_coordinator.listen(task_id)
+        elif message.startswith("stop:"):
+            task_id = message.split(":")[1]
+            await self.task_coordinator.close()
+        else:
+            logging.error("Unknown message: %s", message)
+
         # Send a response back to the client
         writer.write(b"ACK")
         await writer.drain()

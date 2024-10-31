@@ -2,14 +2,15 @@ import asyncio
 import logging
 import os
 
+from file_tracker import FileTracker
 from task_listener import TaskListener
 
 
 async def main():
     os.chdir('/workdir')
 
-    task_coordinator = 0
-    task_listener = TaskListener(task_coordinator)
+    file_tracker = FileTracker()
+    task_listener = TaskListener(file_tracker)
     logging.info("Starting task listener")
     await task_listener.start()
     logging.info("Task listener started")
