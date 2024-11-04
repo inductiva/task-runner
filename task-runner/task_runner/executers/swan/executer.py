@@ -9,6 +9,7 @@ import shutil
 
 class SWANExecuter(executers.BaseExecuter):
     """Executer class for the SWAN simulator."""
+
     def execute(self):
         sim_binary = self.args.command
         input_filename = self.args.input_filename
@@ -29,12 +30,10 @@ class SWANExecuter(executers.BaseExecuter):
             else:
                 cmd_str = f"{sim_binary} -input {input_filename}"
         elif sim_binary == "swan.exe":
-                cmd_str = f"{sim_binary}"
+            cmd_str = f"{sim_binary}"
         else:
             raise ValueError("Invalid sim_binary")
 
-        cmd = executers.Command(cmd_str,
-                                is_mpi=True)
+        cmd = executers.Command(cmd_str, is_mpi=True)
 
         self.run_subprocess(cmd, self.artifacts_dir)
-
