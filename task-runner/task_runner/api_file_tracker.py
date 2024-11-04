@@ -1,6 +1,6 @@
 import asyncio
 
-SERVER_HOST = 'file-tracker'
+SERVER_HOST = 'localhost'
 SERVER_PORT = 5000
 
 
