@@ -1,10 +1,8 @@
 """Run simulation with SWAN."""
-from task_runner import executers
-from task_runner.executers import mpi_configuration
-from task_runner.utils import loki
-
 import os
 import shutil
+
+from task_runner import executers
 
 
 class SWANExecuter(executers.BaseExecuter):
