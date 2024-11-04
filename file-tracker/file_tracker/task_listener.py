@@ -22,7 +22,6 @@ class TaskListener:
     async def _handler(self, reader, writer):
         data = await reader.read(1024)
         message = data.decode()
-        logging.info("New task: %s", message)
 
         if message.startswith("start:"):
             task_id = message.split(":")[1]

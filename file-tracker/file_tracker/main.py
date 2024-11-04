@@ -2,18 +2,17 @@ import asyncio
 import logging
 import os
 
-from file_tracker import FileTracker
+from connection_manager import ConnectionManager
 from task_listener import TaskListener
 
 
 async def main():
     os.chdir('/workdir')
 
-    file_tracker = FileTracker()
-    task_listener = TaskListener(file_tracker)
+    connection_manager = ConnectionManager()
+    task_listener = TaskListener(connection_manager)
     logging.info("Starting task listener")
     await task_listener.start()
-    logging.info("Task listener started")
 
 
 if __name__ == '__main__':
