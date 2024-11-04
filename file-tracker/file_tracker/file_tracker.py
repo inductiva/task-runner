@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+from collections import deque
 
 import aiohttp
 from aiortc import RTCPeerConnection, RTCSessionDescription
@@ -77,28 +78,28 @@ async def get_directory_contents(path):
     return contents
 
 
-async def read_file(filename):
-    with open(filename, 'rb') as f:
-        cnt = f.read()
-        return cnt
-
-
 async def tail_file(filename, lines=10):
     with open(filename, 'rb') as f:
-        f.seek(0, 2)
+        f.seek(0, 2)  # Seek to the end of the file
         block_size = 1024
-        block_num = -1
-        blocks = []
-        while f.tell() + (block_num * block_size) > 0:
-            try:
-                f.seek(block_num * block_size, 2)
-            except OSError:
-                f.seek(0)
-                blocks.append(f.read())
+        blocks = deque()
+        read_lines = 0
+
+        while f.tell() > 0:
+            current_block_size = min(block_size, f.tell())
+
+            f.seek(-current_block_size, 1)
+            block = f.read(current_block_size)
+            f.seek(
+                -current_block_size, 1
+            )  # Move the cursor back to the position before reading the block
+
+            read_lines += block.count(b'\n')  # Count lines for early stopping
+            blocks.appendleft(block)
+            if read_lines > lines:
                 break
-            blocks.append(f.read(block_size))
-            block_num -= 1
-        content = b''.join(reversed(blocks))
+
+        content = b''.join(blocks)
         return b'\n'.join(content.split(b'\n')[-lines:])
 
 
@@ -115,13 +116,6 @@ async def create_peer_connection(task_id):
             if message == "ls":
                 contents = await get_directory_contents(path)
                 channel.send(json.dumps(contents))
-
-            elif message.startswith(("download:")):
-                filename = message.split(":")[1]
-                content = await read_file(path + filename)
-                logging.info("Sending file %s to peer", filename)
-                message = content[-1024:]
-                channel.send(message)
 
             elif message.startswith("tail:"):
                 filename = message.split(":")[1]
