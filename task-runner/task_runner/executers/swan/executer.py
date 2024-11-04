@@ -22,13 +22,13 @@ class SWANExecuter(executers.BaseExecuter):
         if self.args.use_hwthread:
             self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
 
-        if sim_binary is "swanrun":
+        if sim_binary == "swanrun":
             if input_filename.endswith(".swn"):
                 #remove the .swn extension
                 cmd_str = f"{sim_binary} -input {input_filename[:-4]}"
             else:
                 cmd_str = f"{sim_binary} -input {input_filename}"
-        elif sim_binary is "swan.exe":
+        elif sim_binary == "swan.exe":
                 cmd_str = f"{sim_binary}"
         else:
             raise ValueError("Invalid sim_binary")
