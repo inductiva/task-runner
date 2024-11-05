@@ -126,8 +126,6 @@ class SubprocessTracker:
                              process_status.memory_info())
                 logging.info("Current CPU usage: %s",
                              process_status.cpu_times())
-                children_procs = process_status.children(recursive=True)
-                logging.info("Children spawned: %s", children_procs)
 
                 if periodic_callback is not None:
                     periodic_callback()
