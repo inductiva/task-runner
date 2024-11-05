@@ -1,8 +1,7 @@
 """Run simulation with SWAN."""
+from task_runner import executers
 from task_runner.executers import mpi_configuration
 from task_runner.utils import loki
-
-from task_runner import executers
 
 
 class SWANExecuter(executers.MPIExecuter):
@@ -21,4 +20,3 @@ class SWANExecuter(executers.MPIExecuter):
                          sim_binary="swan.exe",
                          file_type="swn",
                          sim_specific_input_filename="INPUT")
-
