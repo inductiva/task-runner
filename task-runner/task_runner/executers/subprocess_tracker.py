@@ -5,7 +5,6 @@ import subprocess
 import time
 from typing import IO, List
 
-import psutil
 from absl import logging
 
 from task_runner.utils import loki
@@ -116,17 +115,6 @@ class SubprocessTracker:
         # While the process is running poll() returns None.
         try:
             while (exit_code := self.subproc.poll()) is None:
-                process_status = psutil.Process(self.subproc.pid)
-
-                logging.info("Status of subprocess %d: %s", self.subproc.pid,
-                             process_status.status())
-                logging.info("Time running: %d secs",
-                             time.perf_counter() - self.spawn_time)
-                logging.info("Current Mem usage: %s",
-                             process_status.memory_info())
-                logging.info("Current CPU usage: %s",
-                             process_status.cpu_times())
-
                 if periodic_callback is not None:
                     periodic_callback()
 
