@@ -41,8 +41,8 @@ def _log_task_runner_id(path, task_runner_id: uuid.UUID):
 
 
 def main(_):
-    workdir = os.getenv("WORKDIR", "/workdir")
-    executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR", "/apptainer")
+    workdir = os.getenv("WORKDIR", "workdir")
+    executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR", "apptainer")
     if not executer_images_dir:
         logging.error("EXECUTER_IMAGES_DIR environment variable not set.")
         sys.exit(1)

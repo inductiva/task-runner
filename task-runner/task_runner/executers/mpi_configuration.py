@@ -1,5 +1,6 @@
 """Class for MPI configuration."""
 import glob
+import logging
 import os
 import re
 import shlex
@@ -98,7 +99,8 @@ class MPIClusterConfiguration():
 
     def get_mpirun_bin_path(self, version: str) -> str:
         mpirun_bin_path = self.mpirun_bin_path_template.format(version=version)
-        if not os.path.exists(mpirun_bin_path):
+        logging.info(mpirun_bin_path)
+        if not os.path.exists(mpirun_bin_path) and not self.local_mode:
             available_versions = self.list_available_versions()
             raise RuntimeError(
                 f"The request MPI version ({version}) is not available. "

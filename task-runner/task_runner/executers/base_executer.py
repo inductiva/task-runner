@@ -253,6 +253,7 @@ class BaseExecuter(ABC):
             # This is the directory where the command will be executed. It
             # can be a subdirectory of the task directory.
             process_working_dir = task_working_dir
+            logging.info("Working directory: %s", working_dir)
             if working_dir:
                 process_working_dir = os.path.join(process_working_dir,
                                                    working_dir)
@@ -260,11 +261,12 @@ class BaseExecuter(ABC):
                 "apptainer",
                 "exec",
                 "--bind",
-                f"{task_working_dir}:{task_working_dir}",
+                f"{task_working_dir}:/{task_working_dir}",
                 "--pwd",
                 process_working_dir,
             ]
-            if cmd.is_mpi and not self.mpi_config.local_mode:
+
+            if cmd.is_mpi:
                 apptainer_args.append("--sharens")
             if self.on_gpu:
                 apptainer_args.append("--nv")
