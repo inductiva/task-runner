@@ -111,7 +111,6 @@ class WebApiFileManager(BaseFileManager):
 
         return size
 
-
     @utils.execution_time
     @override
     def download_input_resources(
