@@ -10,7 +10,6 @@ from typing import Optional
 import stream_zip
 from absl import logging
 
-
 from task_runner.utils import execution_time, now_utc
 
 DIR_NOT_FOUND_ERROR = "Directory does not exist."
