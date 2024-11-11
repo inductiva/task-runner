@@ -8,6 +8,7 @@ Note that, currently, request consumption is blocking.
 import copy
 import datetime
 import enum
+import json
 import os
 import queue
 import shutil
@@ -244,6 +245,7 @@ class TaskRequestHandler:
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
         self.submitted_timestamp = request.get("submitted_timestamp")
+        self.input_resources = json.loads(request.get("input_resources", "[]"))
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -368,6 +370,7 @@ class TaskRequestHandler:
             "'_setup_working_dir' called without a task ID.")
 
         task_workdir = os.path.join(self.workdir, self.task_id)
+        sim_workdir = os.path.join(task_workdir, "sim_dir")
 
         if os.path.exists(task_workdir):
             logging.info("Working directory already existed: %s", task_workdir)
@@ -375,6 +378,13 @@ class TaskRequestHandler:
             shutil.rmtree(task_workdir)
 
         os.makedirs(task_workdir)
+        os.makedirs(sim_workdir)
+
+        # Download input resources first so they can be overwriten
+        # by the task files
+        if self.input_resources:
+            download_duration = self.file_manager.download_input_resources(
+                self.input_resources, sim_workdir, self.executer_uuid)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -404,6 +414,7 @@ class TaskRequestHandler:
             zip_path=tmp_zip_path,
             dest_dir=task_workdir,
         )
+
         os.remove(tmp_zip_path)
 
         logging.info(

@@ -115,7 +115,6 @@ class SubprocessTracker:
         # While the process is running poll() returns None.
         try:
             while (exit_code := self.subproc.poll()) is None:
-
                 if periodic_callback is not None:
                     periodic_callback()
 
