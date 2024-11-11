@@ -2,6 +2,7 @@
 import os
 import stat
 import subprocess
+import tempfile
 import zipfile
 import zlib
 from typing import Optional
@@ -225,3 +226,40 @@ def get_zip_generator(
             chunk_size=zip_chunk_size,
             get_compressobj=get_compressobj,
         ))
+
+
+def make_zip_archive(
+    local_path: str,
+    compress_level: int = DEFAULT_ZIP_COMPRESS_LEVEL,
+) -> str:
+    """
+    Returns a zip of the local_path with compression level.
+
+    Args:
+        - local_path: str, path to the folder to compress
+        - compress_level: int, compression level (0-9)
+
+    Returns:
+        - str: Path to the generated ZIP file
+    """
+
+    paths = get_dir_files_paths(local_path)
+    logging.info("========")
+    logging.info(paths)
+
+    with tempfile.NamedTemporaryFile(suffix=".zip",
+                                     delete=False) as temp_zip_file:
+        output_zip = temp_zip_file.name
+
+        with zipfile.ZipFile(output_zip,
+                             "w",
+                             zipfile.ZIP_DEFLATED,
+                             compresslevel=compress_level) as zip_file:
+
+            for foldername, _, filenames in os.walk(local_path):
+                for filename in filenames:
+                    file_path = os.path.join(foldername, filename)
+                    arcname = os.path.relpath(file_path, local_path)
+                    zip_file.write(file_path, arcname=arcname)
+
+    return output_zip

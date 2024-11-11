@@ -246,6 +246,9 @@ class TaskRequestHandler:
         self.task_dir_remote = request["task_dir"]
         self.submitted_timestamp = request.get("submitted_timestamp")
         self.input_resources = json.loads(request.get("input_resources", "[]"))
+        # convert to bool because stream_zip is either 't' or 'f'
+        self.stream_zip = True if request.get("stream_zip",
+                                              "t") == "t" else False
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -531,6 +534,7 @@ class TaskRequestHandler:
             self.task_id,
             self.task_dir_remote,
             output_dir,
+            self.stream_zip,
         )
 
         logging.info("Output zipped size: %s bytes", output_zipped_bytes)

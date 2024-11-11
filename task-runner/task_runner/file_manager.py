@@ -77,18 +77,26 @@ class WebApiFileManager(BaseFileManager):
         task_id: str,
         task_dir_remote: str,
         local_path: str,
+        stream_zip: bool = True,
     ):
         del task_dir_remote  # unused
+
+        if stream_zip:
+            data = files.get_zip_generator(local_path)
+            size = data.total_bytes
+        else:
+            path = os.path.join(local_path, "artifacts")
+            zip_path = files.make_zip_archive(path)
+            data = open(zip_path, "rb")
+            size = os.path.getsize(zip_path)
 
         upload_info = self._api_client.get_upload_output_url(
             task_runner_id=self._task_runner_id, task_id=task_id)
 
-        zip_generator = files.get_zip_generator(local_path)
-
         resp = requests.request(
             method=upload_info.method,
             url=upload_info.url,
-            data=zip_generator,
+            data=data,
             timeout=self.REQUEST_TIMEOUT_S,
             headers={
                 "Content-Type": "application/octet-stream",
@@ -97,7 +105,12 @@ class WebApiFileManager(BaseFileManager):
 
         resp.raise_for_status()
 
-        return zip_generator.total_bytes
+        if not stream_zip:
+            data.close()
+            os.remove(zip_path)
+
+        return size
+
 
     @utils.execution_time
     @override
