@@ -8,7 +8,6 @@ import zlib
 from typing import Optional
 
 import stream_zip
-from absl import logging
 
 from task_runner.utils import execution_time, now_utc
 
@@ -243,10 +242,6 @@ def make_zip_archive(
         - str: Path to the generated ZIP file
     """
 
-    paths = get_dir_files_paths(local_path)
-    logging.info("========")
-    logging.info(paths)
-
     with tempfile.NamedTemporaryFile(suffix=".zip",
                                      delete=False) as temp_zip_file:
         output_zip = temp_zip_file.name
@@ -255,8 +250,14 @@ def make_zip_archive(
                              "w",
                              zipfile.ZIP_DEFLATED,
                              compresslevel=compress_level) as zip_file:
-
             for foldername, _, filenames in os.walk(local_path):
+                # Add directory (including empty folders) to the archive
+                relative_folder_path = os.path.relpath(foldername, local_path)
+                if relative_folder_path != ".":
+                    zip_file.write(foldername,
+                                   arcname=relative_folder_path + '/')
+
+                # Add each file to the archive
                 for filename in filenames:
                     file_path = os.path.join(foldername, filename)
                     arcname = os.path.relpath(file_path, local_path)

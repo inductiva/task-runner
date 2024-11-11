@@ -85,8 +85,7 @@ class WebApiFileManager(BaseFileManager):
             data = files.get_zip_generator(local_path)
             size = data.total_bytes
         else:
-            path = os.path.join(local_path, "artifacts")
-            zip_path = files.make_zip_archive(path)
+            zip_path = files.make_zip_archive(local_path)
             data = open(zip_path, "rb")
             size = os.path.getsize(zip_path)
 
