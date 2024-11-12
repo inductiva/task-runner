@@ -83,11 +83,9 @@ class WebApiFileManager(BaseFileManager):
 
         if stream_zip:
             data = files.get_zip_generator(local_path)
-            size = data.total_bytes
         else:
             zip_path = files.make_zip_archive(local_path)
             data = open(zip_path, "rb")
-            size = os.path.getsize(zip_path)
 
         upload_info = self._api_client.get_upload_output_url(
             task_runner_id=self._task_runner_id, task_id=task_id)
@@ -104,8 +102,11 @@ class WebApiFileManager(BaseFileManager):
 
         resp.raise_for_status()
 
-        if not stream_zip:
+        if stream_zip:
+            size = data.total_bytes
+        else:
             data.close()
+            size = os.path.getsize(zip_path)
             os.remove(zip_path)
 
         return size
