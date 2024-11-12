@@ -280,9 +280,6 @@ def test_task_request_handler_kill_task_after_computation_started(
 
     thread.join()
 
-    from absl import logging
-    print("+++++")
-    print(handler.event_logger.log.call_args_list)
     assert len(handler.event_logger.log.call_args_list) == 3
     last_event = handler.event_logger.log.call_args_list[-1][0][0]
     assert isinstance(last_event, events.TaskOutputUploaded)
