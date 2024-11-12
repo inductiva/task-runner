@@ -71,7 +71,6 @@ class WebApiFileManager(BaseFileManager):
         )
         urllib.request.urlretrieve(url, dest_path)
 
-    @utils.execution_time_with_result
     @override
     def upload_output(
         self,

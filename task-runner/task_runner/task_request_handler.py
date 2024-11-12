@@ -540,7 +540,7 @@ class TaskRequestHandler:
         logging.info("Output zipped in: %s seconds", zip_duration)
 
         self._post_task_metric(
-            utils.OUTPUT_ZIP_DURATION,
+            utils.OUTPUT_COMPRESSION_SECONDS,
             zip_duration,
         )
 
