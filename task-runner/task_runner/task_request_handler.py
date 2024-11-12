@@ -530,11 +530,18 @@ class TaskRequestHandler:
         if output_total_files is not None:
             self._post_task_metric(utils.OUTPUT_TOTAL_FILES, output_total_files)
 
-        output_zipped_bytes, upload_duration = self.file_manager.upload_output(
-            self.task_id,
-            self.task_dir_remote,
-            output_dir,
-            self.stream_zip,
+        output_zipped_bytes, zip_duration, upload_duration = (
+            self.file_manager.upload_output(
+                self.task_id,
+                self.task_dir_remote,
+                output_dir,
+            ))
+
+        logging.info("Output zipped in: %s seconds", zip_duration)
+
+        self._post_task_metric(
+            utils.OUTPUT_ZIP_DURATION,
+            zip_duration,
         )
 
         logging.info("Output zipped size: %s bytes", output_zipped_bytes)

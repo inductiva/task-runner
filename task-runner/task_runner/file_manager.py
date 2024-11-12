@@ -1,5 +1,6 @@
 import abc
 import os
+import time
 import urllib
 import urllib.request
 import uuid
@@ -83,13 +84,15 @@ class WebApiFileManager(BaseFileManager):
 
         if stream_zip:
             data = files.get_zip_generator(local_path)
+            zip_duration = 0
         else:
-            zip_path = files.make_zip_archive(local_path)
+            zip_path, zip_duration = files.make_zip_archive(local_path)
             data = open(zip_path, "rb")
 
         upload_info = self._api_client.get_upload_output_url(
             task_runner_id=self._task_runner_id, task_id=task_id)
 
+        start_time = time.time()
         resp = requests.request(
             method=upload_info.method,
             url=upload_info.url,
@@ -99,6 +102,7 @@ class WebApiFileManager(BaseFileManager):
                 "Content-Type": "application/octet-stream",
             },
         )
+        upload_time = time.time() - start_time
 
         resp.raise_for_status()
 
@@ -109,7 +113,7 @@ class WebApiFileManager(BaseFileManager):
             size = os.path.getsize(zip_path)
             os.remove(zip_path)
 
-        return size
+        return size, zip_duration, upload_time
 
     @utils.execution_time
     @override

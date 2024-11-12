@@ -10,7 +10,7 @@ from typing import Optional
 import stream_zip
 from absl import logging
 
-from task_runner.utils import execution_time, now_utc
+from task_runner import utils
 
 DIR_NOT_FOUND_ERROR = "Directory does not exist."
 PERMISSION_ERROR = "Insufficient permissions."
@@ -23,7 +23,7 @@ DEFAULT_ZIP_CHUNK_SIZE_BYTES = 65536  # 64 KiB
 DEFAULT_ZIP_COMPRESS_LEVEL = 1
 
 
-@execution_time
+@utils.execution_time
 def extract_zip_archive(zip_path: str, dest_dir: str) -> float:
     """Extract ZIP archive.
 
@@ -158,7 +158,7 @@ def get_zip_files(paths, chunk_size):
     Input examples:
         https://stream-zip.docs.trade.gov.uk/input-examples/
     """
-    now = now_utc()
+    now = utils.now_utc()
 
     permissions = {
         # Read, write and execute permissions for the owner
@@ -228,6 +228,7 @@ def get_zip_generator(
         ))
 
 
+@utils.execution_time_with_result
 def make_zip_archive(
     local_path: str,
     compress_level: int = DEFAULT_ZIP_COMPRESS_LEVEL,

@@ -28,6 +28,7 @@ INPUT_SIZE = "input_size_bytes"
 OUTPUT_SIZE = "output_size_bytes"
 OUTPUT_ZIPPED_SIZE = "output_zipped_size_bytes"
 OUTPUT_TOTAL_FILES = "output_total_files"
+OUTPUT_ZIP_DURATION = "output_zip_duration"
 
 
 def bool_string_to_bool(s: str) -> bool:
