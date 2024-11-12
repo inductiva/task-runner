@@ -2,7 +2,17 @@
 Task Runner allows you to run simulations locally via the Inductiva API.
 
 ## How to Run
-The prerequisites for running the Task Runner are docker and a Inductiva account. 
+
+### Pre-requisites
+
+- Operating System: **Linux** -- MacOS should work, but might be slower building MPI dependencies. Windows was not yet tested.
+- **docker** -- user should already have been added to the docker group, or have admin rights to do it
+- **git** -- (optional) to clone this repository, alternatively download the zip file.
+- **make** (optional) -- to launch the commands easily, alternatively run them explicitely on the terminal.
+
+Additionally you need:
+
+- an **Inductiva API key**. (register at https://console.inductiva.ai)
 
 ### Setup Environment
 
