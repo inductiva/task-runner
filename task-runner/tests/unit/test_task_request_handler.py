@@ -167,7 +167,7 @@ def _setup_mock_task(
         side_effect=download_input_side_effect(
             commands=commands, unblock_download_input=unblock_download_input))
 
-    handler.file_manager.upload_output = mock.MagicMock(return_value=(0, 0))
+    handler.file_manager.upload_output = mock.MagicMock(return_value=(0, 0, 0))
 
     return task_request
 
@@ -280,6 +280,9 @@ def test_task_request_handler_kill_task_after_computation_started(
 
     thread.join()
 
+    from absl import logging
+    print("+++++")
+    print(handler.event_logger.log.call_args_list)
     assert len(handler.event_logger.log.call_args_list) == 3
     last_event = handler.event_logger.log.call_args_list[-1][0][0]
     assert isinstance(last_event, events.TaskOutputUploaded)
