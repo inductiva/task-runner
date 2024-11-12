@@ -29,6 +29,7 @@ class TaskOutputUploaded(TaskEvent):
     # Output size in bytes, it's optional because the output may not be
     # available when the event is emitted by the executer tracker
     output_size: Optional[int] = None
+    terminal: bool = True
 
 
 class TaskKilled(TaskEvent):

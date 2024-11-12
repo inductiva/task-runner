@@ -74,6 +74,7 @@ class TerminationHandler:
         if self.request_handler.is_task_running():
             logging.info("Task was being executed: %s.",
                          self.request_handler.task_id)
+            self.request_handler.save_output()
             stopped_tasks.append(self.request_handler.task_id)
 
         self.request_handler.set_shutting_down()
