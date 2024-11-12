@@ -90,8 +90,9 @@ class MPIClusterConfiguration():
         versions = []
         for path in mpirun_bin_paths:
             match = self.mpi_version_regexp.match(path)
+            print(match)
             if match is not None:
-                versions.append(match.group(1))
+                versions.append(match.group(0))
 
         versions.sort()
 

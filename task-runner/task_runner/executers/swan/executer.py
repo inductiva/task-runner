@@ -1,4 +1,5 @@
 """Run simulation with SWAN."""
+import logging
 import os
 import shutil
 
@@ -16,11 +17,11 @@ class SWANExecuter(executers.BaseExecuter):
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         if self.args.n_vcpus:
-            self.mpi_config.extra_args.extend(["-np", f"{self.args.n_vcpus}"])
+            self.mpi_config.extra_args.extend(["-n", f"{self.args.n_vcpus}"])
 
         if self.args.use_hwthread:
             self.mpi_config.extra_args.extend(["--use-hwthread-cpus"])
-
+        logging.info("Binary: %s", sim_binary)
         if sim_binary == "swanrun":
             if input_filename.endswith(".swn"):
                 #remove the .swn extension

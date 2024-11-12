@@ -253,15 +253,19 @@ class BaseExecuter(ABC):
             # This is the directory where the command will be executed. It
             # can be a subdirectory of the task directory.
             process_working_dir = task_working_dir
+            logging.info(" Process Working directory: %s", process_working_dir)
             logging.info("Working directory: %s", working_dir)
+
             if working_dir:
                 process_working_dir = os.path.join(process_working_dir,
                                                    working_dir)
+                process_working_dir = os.path.abspath(working_dir)
+
             apptainer_args = [
                 "apptainer",
                 "exec",
                 "--bind",
-                f"{task_working_dir}:/{task_working_dir}",
+                f"{os.path.abspath(working_dir)}:/{task_working_dir}",
                 "--pwd",
                 process_working_dir,
             ]
