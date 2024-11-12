@@ -18,7 +18,7 @@ class SWANExecuter(executers.BaseExecuter):
         if input_file.endswith(".swn"):
             input_file = input_file[:-4]
         return executers.Command(f"{binary} -input {input_file} -mpi {np}",
-                                 is_mpi)
+                                 is_mpi=is_mpi)
 
     def execute(self):
         sim_binary = self.args.command
