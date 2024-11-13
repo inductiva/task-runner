@@ -135,10 +135,15 @@ class ApiClient:
         )
         if resp.status_code == 204:
             return None
+
+        if resp.status_code >= 500:
+            return None
+
         if resp.status_code >= 400:
             raise ExecuterTerminationError(
                 ExecuterTerminationReason.INTERRUPTED,
                 detail=resp.json()["detail"])
+
         return resp.json()
 
     def log_event(
