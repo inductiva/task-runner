@@ -8,6 +8,7 @@ services:
         API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
         MACHINE_GROUP_NAME: ${MACHINE_GROUP_NAME}
+        HOST_NAME: ${HOST_NAME}
         ON_GPU: true
       volumes:
         - ./apptainer:/executer-images
