@@ -176,16 +176,13 @@ class TaskRequestHandler:
         logging.info("Stopping task...")
         self._shutting_down = True
 
-    def save_output(self):
+    def save_output(self, new_task_status=None):
         output_size = self._pack_output()
         self._publish_event(
-            events.TaskOutputUploaded(
-                id=self.task_id,
-                machine_id=self.executer_uuid,
-                new_status=task_status.TaskStatusCode.EXECUTER_TERMINATED.value,
-                output_size=output_size,
-                terminal=False,
-            ))
+            events.TaskOutputUploaded(id=self.task_id,
+                                      machine_id=self.executer_uuid,
+                                      new_status=new_task_status,
+                                      output_size=output_size))
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
@@ -360,16 +357,7 @@ class TaskRequestHandler:
         except Exception as e:  # noqa: BLE001
             message = utils.get_exception_root_cause_message(e)
 
-            output_size = self._pack_output()
-
-            self._publish_event(
-                events.TaskOutputUploaded(
-                    id=self.task_id,
-                    machine_id=self.executer_uuid,
-                    new_status=task_status.TaskStatusCode.FAILED.value,
-                    output_size=output_size,
-                    terminal=False,
-                ))
+            self.save_output()
 
             self._publish_event(
                 events.TaskExecutionFailed(
