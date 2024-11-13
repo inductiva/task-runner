@@ -535,14 +535,16 @@ class TaskRequestHandler:
                 self.task_id,
                 self.task_dir_remote,
                 output_dir,
+                stream_zip=self.stream_zip,
             ))
 
         logging.info("Output zipped in: %s seconds", zip_duration)
 
-        self._post_task_metric(
-            utils.OUTPUT_COMPRESSION_SECONDS,
-            zip_duration,
-        )
+        if zip_duration:
+            self._post_task_metric(
+                utils.OUTPUT_COMPRESSION_SECONDS,
+                zip_duration,
+            )
 
         logging.info("Output zipped size: %s bytes", output_zipped_bytes)
 

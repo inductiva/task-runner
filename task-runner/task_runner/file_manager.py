@@ -31,6 +31,7 @@ class BaseFileManager(abc.ABC):
         task_id: str,
         task_dir_remote: str,
         local_path: str,
+        stream_zip: bool,
     ):
         pass
 
@@ -83,7 +84,7 @@ class WebApiFileManager(BaseFileManager):
 
         if stream_zip:
             data = files.get_zip_generator(local_path)
-            zip_duration = 0
+            zip_duration = None
         else:
             zip_path, zip_duration = files.make_zip_archive(local_path)
             data = open(zip_path, "rb")
