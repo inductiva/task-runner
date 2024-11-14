@@ -38,10 +38,10 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                 task_id,
                 block_s=self._block_s,
             )
-            if not isinstance(message, task_runner.HTTPResponse):
-                return message
+            if message.status == task_runner.HTTPStatus.SUCESS:
+                return message.data
 
-            if message == task_runner.HTTPResponse.INTERNAL_SERVER_ERROR:
+            if message.status == task_runner.HTTPStatus.INTERNAL_SERVER_ERROR:
                 time.sleep(30)
 
     @override
