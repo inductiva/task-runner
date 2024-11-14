@@ -277,7 +277,7 @@ class ApiClient:
                 json=data,
             )
 
-            if resp.status_code == HTTPStatus.SUCCESS.value:
+            if resp.status_code == HTTPStatus.ACCEPTED.value:
                 sent = True
             else:
                 logging.error(
