@@ -1,7 +1,8 @@
 DOCKER_COMPOSE_ENV_FILE=.env
+HOSTNAME:=$(shell uname -n) 
 
 DOCKER_COMPOSE_COMMAND=\
-	docker compose \
+	HOSTNAME=$(HOSTNAME) docker compose \
 	--env-file $(DOCKER_COMPOSE_ENV_FILE)
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER=\
