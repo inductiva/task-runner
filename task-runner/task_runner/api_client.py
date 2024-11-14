@@ -24,7 +24,7 @@ class HTTPMethod(enum.Enum):
 
 
 class HTTPStatus(enum.Enum):
-    SUCESS = 200
+    SUCCESS = 200
     ACCEPTED = 202
     NO_CONTENT = 204
     CLIENT_ERROR = 400
@@ -156,7 +156,7 @@ class ApiClient:
                 ExecuterTerminationReason.INTERRUPTED,
                 detail=resp.json()["detail"])
 
-        return HTTPResponse(HTTPStatus.SUCESS, resp.json())
+        return HTTPResponse(HTTPStatus.SUCCESS, resp.json())
 
     def log_event(
         self,
@@ -185,7 +185,7 @@ class ApiClient:
         if resp.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR.value:
             return HTTPResponse(HTTPStatus.INTERNAL_SERVER_ERROR, None)
 
-        return HTTPResponse(HTTPStatus.SUCESS, resp.json())
+        return HTTPResponse(HTTPStatus.SUCCESS, resp.json())
 
     def unblock_task_message_listeners(
         self,

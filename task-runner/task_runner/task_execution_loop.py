@@ -27,7 +27,7 @@ def start_loop(
             logging.info("Waiting for requests...")
             request = task_fetcher.get_task(block_s=block_s)
 
-            if request.status == HTTPStatus.SUCESS:
+            if request.status == HTTPStatus.SUCCESS:
                 logging.info("Received request:")
                 logging.info(" --> %s", request.data)
                 request_handler(request.data)

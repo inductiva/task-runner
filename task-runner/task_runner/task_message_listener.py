@@ -38,7 +38,7 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                 task_id,
                 block_s=self._block_s,
             )
-            if message.status == task_runner.HTTPStatus.SUCESS:
+            if message.status == task_runner.HTTPStatus.SUCCESS:
                 return message.data
 
             if message.status == task_runner.HTTPStatus.INTERNAL_SERVER_ERROR:
