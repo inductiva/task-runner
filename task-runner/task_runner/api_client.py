@@ -22,6 +22,14 @@ class HTTPMethod(enum.Enum):
     DELETE = "DELETE"
 
 
+class HTTPResponse(enum.Enum):
+    SUCESS = 200
+    ACCEPTED = 202
+    NO_CONTENT = 204
+    CLIENT_ERROR = 400
+    INTERNAL_SERVER_ERROR = 500
+
+
 @dataclasses.dataclass
 class ExecuterAccessInfo:
     id: uuid.UUID
@@ -105,7 +113,7 @@ class ApiClient:
             "/register",
             json=data,
         )
-        if resp.status_code != 202:
+        if resp.status_code != HTTPResponse.ACCEPTED.value:
             raise RuntimeError(f"Failed to register task runner: {resp.text}")
 
         resp_body = resp.json()
@@ -133,13 +141,13 @@ class ApiClient:
             "GET",
             f"/{task_runner_id}/task?block_s={block_s}",
         )
-        if resp.status_code == 204:
-            return None
+        if resp.status_code == HTTPResponse.NO_CONTENT.value:
+            return HTTPResponse.NO_CONTENT
 
-        if resp.status_code >= 500:
-            return None
+        if resp.status_code >= HTTPResponse.INTERNAL_SERVER_ERROR.value:
+            return HTTPResponse.INTERNAL_SERVER_ERROR
 
-        if resp.status_code >= 400:
+        if resp.status_code >= HTTPResponse.CLIENT_ERROR.value:
             raise ExecuterTerminationError(
                 ExecuterTerminationReason.INTERRUPTED,
                 detail=resp.json()["detail"])
@@ -167,8 +175,11 @@ class ApiClient:
             "GET",
             f"/{task_runner_id}/task/{task_id}/message?block_s={block_s}",
         )
-        if resp.status_code == 204:
-            return None
+        if resp.status_code == HTTPResponse.NO_CONTENT.value:
+            return HTTPResponse.NO_CONTENT
+
+        if resp.status_code >= HTTPResponse.INTERNAL_SERVER_ERROR.value:
+            return HTTPResponse.INTERNAL_SERVER_ERROR
 
         return resp.json()
 
@@ -242,7 +253,7 @@ class ApiClient:
             f"/compute/group/{machine_group_name}",
         )
 
-        if resp.status_code != 200:
+        if resp.status_code != HTTPResponse.SUCESS.value:
             return
 
         return resp.json().get("id")
@@ -262,7 +273,7 @@ class ApiClient:
                 json=data,
             )
 
-            if resp.status_code == 202:
+            if resp.status_code == HTTPResponse.SUCESS.value:
                 sent = True
             else:
                 logging.error(
