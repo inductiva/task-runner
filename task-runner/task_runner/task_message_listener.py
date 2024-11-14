@@ -1,4 +1,5 @@
 import abc
+import time
 import uuid
 
 from typing_extensions import override
@@ -37,8 +38,11 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                 task_id,
                 block_s=self._block_s,
             )
-            if message is not None:
+            if message not in task_runner.HTTPResponse:
                 return message
+
+            if message == task_runner.HTTPResponse.INTERNAL_SERVER_ERROR:
+                time.sleep(30)
 
     @override
     def unblock(self, task_id: str):
