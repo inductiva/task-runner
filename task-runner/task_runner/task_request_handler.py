@@ -183,6 +183,7 @@ class TaskRequestHandler:
                                       machine_id=self.executer_uuid,
                                       new_status=new_task_status,
                                       output_size=output_size))
+        return True
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
@@ -294,6 +295,7 @@ class TaskRequestHandler:
                 return
 
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
+            safely_delete = False
 
             if self._check_task_killed():
                 self._publish_event(
@@ -334,8 +336,6 @@ class TaskRequestHandler:
                 computation_seconds,
             )
 
-            output_size = self._pack_output()
-
             if exit_reason == TaskExitReason.KILLED:
                 new_status = task_status.TaskStatusCode.KILLED.value
             elif exit_reason == TaskExitReason.TTL_EXCEEDED:
@@ -345,30 +345,28 @@ class TaskRequestHandler:
                               if exit_code == 0 else
                               task_status.TaskStatusCode.FAILED.value)
 
-            self._publish_event(
-                events.TaskOutputUploaded(
-                    id=self.task_id,
-                    machine_id=self.executer_uuid,
-                    new_status=new_status,
-                    output_size=output_size,
-                ))
+            safely_delete = self.save_output(new_task_status=new_status)
 
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
             message = utils.get_exception_root_cause_message(e)
+            try:
+                safely_delete = self.save_output()
 
-            self.save_output()
-
-            self._publish_event(
-                events.TaskExecutionFailed(
-                    id=self.task_id,
-                    machine_id=self.executer_uuid,
-                    error_message=message,
-                    traceback=traceback.format_exc(),
-                ))
+                self._publish_event(
+                    events.TaskExecutionFailed(
+                        id=self.task_id,
+                        machine_id=self.executer_uuid,
+                        error_message=message,
+                        traceback=traceback.format_exc(),
+                    ))
+            except Exception as e:  # noqa: BLE001
+                safely_delete = False
+                self.task_id = None
 
         finally:
-            self._cleanup()
+            if safely_delete:
+                self._cleanup()
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
