@@ -5,7 +5,6 @@ from absl import logging
 from requests.exceptions import ConnectionError, ReadTimeout
 
 from task_runner import BaseTaskFetcher, TaskRequestHandler
-from task_runner.api_client import HTTPResponse
 from task_runner.cleanup import ScaleDownTimeoutError
 
 
@@ -27,15 +26,13 @@ def start_loop(
             logging.info("Waiting for requests...")
             request = task_fetcher.get_task(block_s=block_s)
 
-            if request not in HTTPResponse:
+            if request is not None:
                 logging.info("Received request:")
                 logging.info(" --> %s", request)
                 request_handler(request)
 
                 # Update the start time to avoid killing the machine
                 idle_timestamp = time.time()
-            elif request == HTTPResponse.INTERNAL_SERVER_ERROR:
-                time.sleep(30)
 
         except ConnectionError as e:
             logging.info("ERROR CONNECTION: %s", str(e))
