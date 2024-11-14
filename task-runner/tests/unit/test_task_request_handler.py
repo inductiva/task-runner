@@ -167,7 +167,7 @@ def _setup_mock_task(
         side_effect=download_input_side_effect(
             commands=commands, unblock_download_input=unblock_download_input))
 
-    handler.file_manager.upload_output = mock.MagicMock(return_value=(0, 0))
+    handler.file_manager.upload_output = mock.MagicMock(return_value=(0, 0, 0))
 
     return task_request
 
