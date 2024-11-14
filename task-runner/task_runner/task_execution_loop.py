@@ -27,7 +27,7 @@ def start_loop(
             logging.info("Waiting for requests...")
             request = task_fetcher.get_task(block_s=block_s)
 
-            if request not in HTTPResponse:
+            if not isinstance(request, HTTPResponse):
                 logging.info("Received request:")
                 logging.info(" --> %s", request)
                 request_handler(request)
