@@ -257,7 +257,7 @@ class ApiClient:
             f"/compute/group/{machine_group_name}",
         )
 
-        if resp.status_code != HTTPStatus.SUCESS.value:
+        if resp.status_code != HTTPStatus.SUCCESS.value:
             return
 
         return resp.json().get("id")
@@ -277,7 +277,7 @@ class ApiClient:
                 json=data,
             )
 
-            if resp.status_code == HTTPStatus.SUCESS.value:
+            if resp.status_code == HTTPStatus.SUCCESS.value:
                 sent = True
             else:
                 logging.error(
