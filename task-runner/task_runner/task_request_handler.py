@@ -362,11 +362,9 @@ class TaskRequestHandler:
                     ))
             except Exception as e:  # noqa: BLE001
                 safely_delete = False
-                self.task_id = None
 
         finally:
-            if safely_delete:
-                self._cleanup()
+            self._cleanup(safely_delete)
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
@@ -564,7 +562,7 @@ class TaskRequestHandler:
 
         return output_zipped_bytes
 
-    def _cleanup(self):
+    def _cleanup(self, rm_dir):
         """Cleanup after task execution.
 
         Deletes the working directory of the task.
@@ -574,7 +572,7 @@ class TaskRequestHandler:
             working_dir_local: Working directory of the executer that performed
                 the task.
         """
-        if self.task_workdir is not None:
+        if rm_dir and self.task_workdir is not None:
             logging.info("Cleaning up working directory: %s", self.task_workdir)
             shutil.rmtree(self.task_workdir, ignore_errors=True)
         self.task_workdir = None
