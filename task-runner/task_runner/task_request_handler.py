@@ -34,6 +34,7 @@ from task_runner import (
 from task_runner.utils import files, loki
 
 KILL_MESSAGE = "kill"
+INTERRUPT_MESSAGE = "interrupt"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 TASK_DONE_MESSAGE = "done"
@@ -110,6 +111,9 @@ def interrupt_task_on_kill_received(
         if was_terminated:
             task_killed.set()
             logging.info("Task killed.")
+    elif msg == INTERRUPT_MESSAGE:
+        logging.info("Received interrupt message. Interrupting task.")
+        executer.terminate()
     else:
         logging.info("Stopping kill command listener.")
 
@@ -175,6 +179,12 @@ class TaskRequestHandler:
     def set_shutting_down(self):
         logging.info("Stopping task...")
         self._shutting_down = True
+
+    def interrupt_task(self):
+        if self._kill_task_thread_queue is None:
+            raise RuntimeError("Failed to interrupt task.")
+
+        self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
 
     def save_output(self, new_task_status=None):
         output_size = self._pack_output()
