@@ -9,6 +9,8 @@ Task Runner allows you to run simulations locally via the Inductiva API.
 - **docker** -- user should already have been added to the docker group, or have admin rights to do it
 - **git** -- (optional) to clone this repository, alternatively download the zip file.
 - **make** (optional) -- to launch the commands easily, alternatively run them explicitely on the terminal.
+- **nvidia container toolkit** -- (optional) -- this is required only if you want to launch the TaskRunner with NVIDIA GPU support -- please follow the [official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) to install the libraries and then configure Docker.
+
 
 Additionally you need:
 
