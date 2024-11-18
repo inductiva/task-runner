@@ -581,6 +581,7 @@ class TaskRequestHandler:
                 self.task_dir_remote,
                 output_dir,
                 stream_zip=self.stream_zip,
+                operations_logger=self._operations_logger,
             ))
 
         logging.info("Output zipped in: %s seconds", zip_duration)

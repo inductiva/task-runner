@@ -11,6 +11,7 @@ from typing_extensions import override
 
 import task_runner
 from task_runner import utils
+from task_runner.operations_logger import OperationsLogger
 from task_runner.utils import files
 
 
@@ -31,7 +32,8 @@ class BaseFileManager(abc.ABC):
         task_id: str,
         task_dir_remote: str,
         local_path: str,
-        stream_zip: bool,
+        operations_logger: OperationsLogger,
+        stream_zip: bool = True,
     ):
         pass
 
@@ -78,6 +80,7 @@ class WebApiFileManager(BaseFileManager):
         task_id: str,
         task_dir_remote: str,
         local_path: str,
+        operations_logger: OperationsLogger,
         stream_zip: bool = True,
     ):
         del task_dir_remote  # unused
@@ -86,12 +89,17 @@ class WebApiFileManager(BaseFileManager):
             data = files.get_zip_generator(local_path)
             zip_duration = None
         else:
+            operation = operations_logger.start_operation(
+                "compress_output", task_id)
             zip_path, zip_duration = files.make_zip_archive(local_path)
+            operation.end(attributes={"execution_time_s": zip_duration})
+
             data = open(zip_path, "rb")
 
         upload_info = self._api_client.get_upload_output_url(
             task_runner_id=self._task_runner_id, task_id=task_id)
 
+        operation = operations_logger.start_operation("upload_output", task_id)
         start_time = time.time()
         resp = requests.request(
             method=upload_info.method,
@@ -103,8 +111,9 @@ class WebApiFileManager(BaseFileManager):
             },
         )
         upload_time = time.time() - start_time
-
         resp.raise_for_status()
+
+        operation.end(attributes={"execution_time_s": upload_time})
 
         if stream_zip:
             size = data.total_bytes
