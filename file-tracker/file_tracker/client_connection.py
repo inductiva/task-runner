@@ -11,12 +11,6 @@ ICE_SERVERS = [{
     "urls": ["turn:34.79.246.4:3478"]
 }]
 
-INTERNAL_ICE_SERVERS = [{
-    "urls": ["stun:10.132.0.71:3478"]
-}, {
-    "urls": ["turn:10.132.0.71:3478"]
-}]
-
 
 class ClientConnection:
 
