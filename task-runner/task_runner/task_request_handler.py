@@ -371,6 +371,7 @@ class TaskRequestHandler:
                         traceback=traceback.format_exc(),
                     ))
             except Exception as e:  # noqa: BLE001
+                logging.exception("Failed to save output: %s", e)
                 safely_delete = False
 
         finally:
