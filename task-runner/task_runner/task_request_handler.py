@@ -34,6 +34,7 @@ from task_runner import (
 from task_runner.utils import files, loki
 
 KILL_MESSAGE = "kill"
+INTERRUPT_MESSAGE = "interrupt"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 TASK_DONE_MESSAGE = "done"
@@ -110,6 +111,9 @@ def interrupt_task_on_kill_received(
         if was_terminated:
             task_killed.set()
             logging.info("Task killed.")
+    elif msg == INTERRUPT_MESSAGE:
+        logging.info("Received interrupt message. Interrupting task.")
+        executer.terminate()
     else:
         logging.info("Stopping kill command listener.")
 
@@ -175,6 +179,21 @@ class TaskRequestHandler:
     def set_shutting_down(self):
         logging.info("Stopping task...")
         self._shutting_down = True
+
+    def interrupt_task(self):
+        if self._kill_task_thread_queue is None:
+            raise RuntimeError("Failed to interrupt task.")
+
+        self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
+
+    def save_output(self, new_task_status=None):
+        output_size = self._pack_output()
+        self._publish_event(
+            events.TaskOutputUploaded(id=self.task_id,
+                                      machine_id=self.executer_uuid,
+                                      new_status=new_task_status,
+                                      output_size=output_size))
+        return True
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
@@ -289,6 +308,7 @@ class TaskRequestHandler:
                 return
 
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
+            safely_delete = False
 
             if self._check_task_killed():
                 self._publish_event(
@@ -329,8 +349,6 @@ class TaskRequestHandler:
                 computation_seconds,
             )
 
-            output_size = self._pack_output()
-
             if exit_reason == TaskExitReason.KILLED:
                 new_status = task_status.TaskStatusCode.KILLED.value
             elif exit_reason == TaskExitReason.TTL_EXCEEDED:
@@ -340,27 +358,27 @@ class TaskRequestHandler:
                               if exit_code == 0 else
                               task_status.TaskStatusCode.FAILED.value)
 
-            self._publish_event(
-                events.TaskOutputUploaded(
-                    id=self.task_id,
-                    machine_id=self.executer_uuid,
-                    new_status=new_status,
-                    output_size=output_size,
-                ))
+            safely_delete = self.save_output(new_task_status=new_status)
 
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
             message = utils.get_exception_root_cause_message(e)
-            self._publish_event(
-                events.TaskExecutionFailed(
-                    id=self.task_id,
-                    machine_id=self.executer_uuid,
-                    error_message=message,
-                    traceback=traceback.format_exc(),
-                ))
+            try:
+                safely_delete = self.save_output()
+
+                self._publish_event(
+                    events.TaskExecutionFailed(
+                        id=self.task_id,
+                        machine_id=self.executer_uuid,
+                        error_message=message,
+                        traceback=traceback.format_exc(),
+                    ))
+            except Exception as e:  # noqa: BLE001
+                logging.exception("Failed to save output: %s", e)
+                safely_delete = False
 
         finally:
-            self._cleanup()
+            self._cleanup(safely_delete)
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
@@ -568,7 +586,7 @@ class TaskRequestHandler:
 
         return output_zipped_bytes
 
-    def _cleanup(self):
+    def _cleanup(self, rm_dir):
         """Cleanup after task execution.
 
         Deletes the working directory of the task.
@@ -578,7 +596,7 @@ class TaskRequestHandler:
             working_dir_local: Working directory of the executer that performed
                 the task.
         """
-        if self.task_workdir is not None:
+        if rm_dir and self.task_workdir is not None:
             logging.info("Cleaning up working directory: %s", self.task_workdir)
             shutil.rmtree(self.task_workdir, ignore_errors=True)
         self.task_workdir = None
