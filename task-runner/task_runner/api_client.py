@@ -4,6 +4,7 @@ import enum
 import os
 import time
 import uuid
+from collections import namedtuple
 from typing import Dict, Optional
 
 import requests
@@ -20,6 +21,17 @@ class HTTPMethod(enum.Enum):
     POST = "POST"
     PUT = "PUT"
     DELETE = "DELETE"
+
+
+class HTTPStatus(enum.Enum):
+    SUCCESS = 200
+    ACCEPTED = 202
+    NO_CONTENT = 204
+    CLIENT_ERROR = 400
+    INTERNAL_SERVER_ERROR = 500
+
+
+HTTPResponse = namedtuple("HTTPResponse", ["status", "data"])
 
 
 @dataclasses.dataclass
@@ -105,7 +117,7 @@ class ApiClient:
             "/register",
             json=data,
         )
-        if resp.status_code != 202:
+        if resp.status_code != HTTPStatus.ACCEPTED.value:
             raise RuntimeError(f"Failed to register task runner: {resp.text}")
 
         resp_body = resp.json()
@@ -133,13 +145,18 @@ class ApiClient:
             "GET",
             f"/{task_runner_id}/task?block_s={block_s}",
         )
-        if resp.status_code == 204:
-            return None
-        if resp.status_code >= 400:
+        if resp.status_code == HTTPStatus.NO_CONTENT.value:
+            return HTTPResponse(HTTPStatus.NO_CONTENT, None)
+
+        if resp.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR.value:
+            return HTTPResponse(HTTPStatus.INTERNAL_SERVER_ERROR, None)
+
+        if resp.status_code >= HTTPStatus.CLIENT_ERROR.value:
             raise ExecuterTerminationError(
                 ExecuterTerminationReason.INTERRUPTED,
                 detail=resp.json()["detail"])
-        return resp.json()
+
+        return HTTPResponse(HTTPStatus.SUCCESS, resp.json())
 
     def log_event(
         self,
@@ -162,10 +179,13 @@ class ApiClient:
             "GET",
             f"/{task_runner_id}/task/{task_id}/message?block_s={block_s}",
         )
-        if resp.status_code == 204:
-            return None
+        if resp.status_code == HTTPStatus.NO_CONTENT.value:
+            return HTTPResponse(HTTPStatus.NO_CONTENT, None)
 
-        return resp.json()
+        if resp.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR.value:
+            return HTTPResponse(HTTPStatus.INTERNAL_SERVER_ERROR, None)
+
+        return HTTPResponse(HTTPStatus.SUCCESS, resp.json())
 
     def unblock_task_message_listeners(
         self,
@@ -237,7 +257,7 @@ class ApiClient:
             f"/compute/group/{machine_group_name}",
         )
 
-        if resp.status_code != 200:
+        if resp.status_code != HTTPStatus.SUCCESS.value:
             return
 
         return resp.json().get("id")
@@ -257,7 +277,7 @@ class ApiClient:
                 json=data,
             )
 
-            if resp.status_code == 202:
+            if resp.status_code == HTTPStatus.ACCEPTED.value:
                 sent = True
             else:
                 logging.error(
