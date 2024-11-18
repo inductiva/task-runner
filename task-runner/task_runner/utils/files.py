@@ -2,6 +2,7 @@
 import os
 import stat
 import subprocess
+import tempfile
 import zipfile
 import zlib
 from typing import Optional
@@ -9,7 +10,7 @@ from typing import Optional
 import stream_zip
 from absl import logging
 
-from task_runner.utils import execution_time, now_utc
+from task_runner import utils
 
 DIR_NOT_FOUND_ERROR = "Directory does not exist."
 PERMISSION_ERROR = "Insufficient permissions."
@@ -22,7 +23,7 @@ DEFAULT_ZIP_CHUNK_SIZE_BYTES = 65536  # 64 KiB
 DEFAULT_ZIP_COMPRESS_LEVEL = 1
 
 
-@execution_time
+@utils.execution_time
 def extract_zip_archive(zip_path: str, dest_dir: str) -> float:
     """Extract ZIP archive.
 
@@ -157,7 +158,7 @@ def get_zip_files(paths, chunk_size):
     Input examples:
         https://stream-zip.docs.trade.gov.uk/input-examples/
     """
-    now = now_utc()
+    now = utils.now_utc()
 
     permissions = {
         # Read, write and execute permissions for the owner
@@ -225,3 +226,43 @@ def get_zip_generator(
             chunk_size=zip_chunk_size,
             get_compressobj=get_compressobj,
         ))
+
+
+@utils.execution_time_with_result
+def make_zip_archive(
+    local_path: str,
+    compress_level: int = DEFAULT_ZIP_COMPRESS_LEVEL,
+) -> str:
+    """
+    Returns a zip of the local_path with compression level.
+
+    Args:
+        - local_path: str, path to the folder to compress
+        - compress_level: int, compression level (0-9)
+
+    Returns:
+        - str: Path to the generated ZIP file
+    """
+
+    with tempfile.NamedTemporaryFile(suffix=".zip",
+                                     delete=False) as temp_zip_file:
+        output_zip = temp_zip_file.name
+
+        with zipfile.ZipFile(output_zip,
+                             "w",
+                             zipfile.ZIP_DEFLATED,
+                             compresslevel=compress_level) as zip_file:
+            for foldername, _, filenames in os.walk(local_path):
+                # Add directory (including empty folders) to the archive
+                relative_folder_path = os.path.relpath(foldername, local_path)
+                if relative_folder_path != ".":
+                    zip_file.write(foldername,
+                                   arcname=relative_folder_path + '/')
+
+                # Add each file to the archive
+                for filename in filenames:
+                    file_path = os.path.join(foldername, filename)
+                    arcname = os.path.relpath(file_path, local_path)
+                    zip_file.write(file_path, arcname=arcname)
+
+    return output_zip

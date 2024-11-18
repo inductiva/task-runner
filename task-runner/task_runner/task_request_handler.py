@@ -8,6 +8,7 @@ Note that, currently, request consumption is blocking.
 import copy
 import datetime
 import enum
+import json
 import os
 import queue
 import shutil
@@ -246,6 +247,10 @@ class TaskRequestHandler:
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
         self.submitted_timestamp = request.get("submitted_timestamp")
+        self.input_resources = json.loads(request.get("input_resources", "[]"))
+        # convert to bool because stream_zip is either 't' or 'f'
+        self.stream_zip = True if request.get("stream_zip",
+                                              "t") == "t" else False
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -386,6 +391,7 @@ class TaskRequestHandler:
             "'_setup_working_dir' called without a task ID.")
 
         task_workdir = os.path.join(self.workdir, self.task_id)
+        sim_workdir = os.path.join(task_workdir, "sim_dir")
 
         if os.path.exists(task_workdir):
             logging.info("Working directory already existed: %s", task_workdir)
@@ -393,6 +399,13 @@ class TaskRequestHandler:
             shutil.rmtree(task_workdir)
 
         os.makedirs(task_workdir)
+        os.makedirs(sim_workdir)
+
+        # Download input resources first so they can be overwriten
+        # by the task files
+        if self.input_resources:
+            download_duration = self.file_manager.download_input_resources(
+                self.input_resources, sim_workdir, self.executer_uuid)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -430,6 +443,7 @@ class TaskRequestHandler:
             zip_path=tmp_zip_path,
             dest_dir=task_workdir,
         )
+
         os.remove(tmp_zip_path)
         operation.end(attributes={"execution_time_s": unzip_duration})
 
@@ -543,16 +557,21 @@ class TaskRequestHandler:
         if output_total_files is not None:
             self._post_task_metric(utils.OUTPUT_TOTAL_FILES, output_total_files)
 
-        operation = self._operations_logger.start_operation(
-            "upload_output",
-            self.task_id,
-        )
-        output_zipped_bytes, upload_duration = self.file_manager.upload_output(
-            self.task_id,
-            self.task_dir_remote,
-            output_dir,
-        )
-        operation.end(attributes={"execution_time_s": upload_duration})
+        output_zipped_bytes, zip_duration, upload_duration = (
+            self.file_manager.upload_output(
+                self.task_id,
+                self.task_dir_remote,
+                output_dir,
+                stream_zip=self.stream_zip,
+            ))
+
+        logging.info("Output zipped in: %s seconds", zip_duration)
+
+        if zip_duration:
+            self._post_task_metric(
+                utils.OUTPUT_COMPRESSION_SECONDS,
+                zip_duration,
+            )
 
         logging.info("Output zipped size: %s bytes", output_zipped_bytes)
 

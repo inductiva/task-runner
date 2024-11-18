@@ -1,5 +1,8 @@
 # noqa: D104
-from task_runner.api_client import ApiClient
+from task_runner.api_client import (
+    ApiClient,
+    HTTPStatus,
+)
 from task_runner.event_logger import (
     BaseEventLogger,
     WebApiLogger,

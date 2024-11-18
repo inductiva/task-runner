@@ -94,7 +94,7 @@ class BaseExecuter(ABC):
         self.stderr_logs_path = os.path.join(self.artifacts_dir,
                                              self.STDERR_LOGS_FILENAME)
 
-        self.on_gpu = os.getenv("LOCAL_MODE",
+        self.on_gpu = os.getenv("ON_GPU",
                                 "false").lower() in ("true", "t", "yes", "y", 1)
 
     def _create_output_json_file(self):
