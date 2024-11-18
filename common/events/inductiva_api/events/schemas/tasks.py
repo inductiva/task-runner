@@ -24,8 +24,8 @@ class TaskWorkFinished(TaskEvent):
 
 
 class TaskOutputUploaded(TaskEvent):
-    new_status: str
     machine_id: uuid.UUID
+    new_status: Optional[str] = None
     # Output size in bytes, it's optional because the output may not be
     # available when the event is emitted by the executer tracker
     output_size: Optional[int] = None
