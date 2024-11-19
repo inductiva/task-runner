@@ -32,7 +32,7 @@ class ClientConnection:
                 elif message.startswith("tail:"):
                     filename = message.split(":")[1]
                     content = await tail(self.path + filename)
-                    channel.send(content)
+                    channel.send(json.dumps(content))
 
             @channel.on("close")
             async def on_close():

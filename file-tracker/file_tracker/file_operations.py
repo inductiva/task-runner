@@ -34,5 +34,5 @@ async def tail(filename, lines=10):
             if read_lines > lines:
                 break
 
-        content = b''.join(blocks)
-        return b'\n'.join(content.split(b'\n')[-lines:])
+        content = b''.join(blocks).decode()
+        return content.split('\n')[-lines:]
