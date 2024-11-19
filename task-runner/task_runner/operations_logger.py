@@ -13,6 +13,11 @@ def _start_operation(
     attributes: Dict[str, Any],
     timestamp: datetime.datetime,
 ):
+    """Registers a new operation in the API and returns its ID.
+
+    If an exception is raised, the operation is retried until
+    it's successful.
+    """
     return api_client.create_operation(
         operation_name=name,
         task_id=task_id,
@@ -30,6 +35,7 @@ def _end_operation(
     attributes: Dict[str, Any],
     timestamp: datetime.datetime,
 ):
+    """Marks an operation as finished in the API."""
     return api_client.end_operation(
         operation_name=name,
         operation_id=operation_id,
@@ -40,6 +46,7 @@ def _end_operation(
 
 
 class Operation:
+    """Represents an operation, exposing a method to mark it as done."""
 
     def __init__(
         self,
@@ -71,6 +78,31 @@ class Operation:
 
 
 class OperationsLogger:
+    """Util class to log operations to the API.
+
+    It provides a method to start a new operation, which returns an
+    Operation instance. This istance can be used to mark the operation
+    as done.
+
+    Example:
+        operations_logger = OperationsLogger(api_client)
+
+        operation = operations_logger.start_operation(
+            name="my_operation",
+            task_id="my_task",
+            attributes={
+                "key": "value",
+            },
+        )
+        # code that performs the operation
+        ...
+        #
+        operation.end(
+            attributes={
+                "key": "value",
+            },
+        )
+    """
 
     def __init__(
         self,

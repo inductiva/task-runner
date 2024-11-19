@@ -1,8 +1,9 @@
+"""Util class to log executed commands."""
 from task_runner.operations_logger import OperationsLogger
 
 
 class ExecCommandLogger:
-    """Util class to log operations related to command execution."""
+    """Class that wraps the OperationsLogger to log executed commands."""
 
     def __init__(
         self,

@@ -298,6 +298,7 @@ class ApiClient:
         attributes: Dict[str, Any],
         timestamp: Optional[datetime.datetime] = None,
     ) -> str:
+        """Register a new operation for a given task."""
         timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
 
         resp = self._request_task_runner_api(
@@ -322,6 +323,7 @@ class ApiClient:
         attributes: Dict[str, Any],
         timestamp: Optional[datetime.datetime] = None,
     ):
+        """Mark an operation as done."""
         timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
 
         resp = self._request_task_runner_api(
