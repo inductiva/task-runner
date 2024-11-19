@@ -326,9 +326,8 @@ class ApiClient:
 
         resp = self._request_task_runner_api(
             "POST",
-            f"{self._executer_uuid}/task/{task_id}/operation/done",
+            f"{self._executer_uuid}/task/{task_id}/operation/{operation_id}/done",
             json={
-                "operation_id": operation_id,
                 "time": timestamp.isoformat(),
                 "name": operation_name,
                 "attributes": {
