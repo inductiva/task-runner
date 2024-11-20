@@ -119,9 +119,15 @@ def fixture_task_request_handler(
     id_ = uuid.uuid4()
     workdir = tmp_path.joinpath("workdir")
     workdir.mkdir()
+    container_path = workdir.joinpath("container.sif")
+    container_path.touch()
 
     apptainer_images_manager = mock.MagicMock()
-    apptainer_images_manager.get.return_value = ("docker://alpine:latest", 0.0)
+    apptainer_images_manager.get.return_value = (
+        container_path,
+        0.0,
+        'docker-hub',
+    )
 
     event_logger = mock.MagicMock()
 
@@ -208,11 +214,16 @@ def test_task_request_handler_ttl_not_exceeded(handler):
         time_to_live_seconds=time_to_live_seconds,
     )
 
-    start = time.time()
+    start = time.perf_counter()
     handler(task_request)
-    end = time.time()
+    end = time.perf_counter()
 
-    assert end - start == pytest.approx(task_duration_seconds, abs=0.5)
+    assert end - start >= task_duration_seconds
+
+    # Our subprocess runner polls the subprocess every second, so a 1 second
+    # task can take slightly more than 2 seconds to complete.
+    assert end - start < task_duration_seconds + 1.2
+
     # Check if last published event includes status 'success'
     assert handler.event_logger.log.call_args_list[-1][0][
         0].new_status == 'success'
