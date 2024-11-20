@@ -11,7 +11,7 @@ from typing_extensions import override
 
 import task_runner
 from task_runner import utils
-from task_runner.operations_logger import OperationsLogger
+from task_runner.operations_logger import OperationName, OperationsLogger
 from task_runner.utils import files
 
 
@@ -90,7 +90,7 @@ class WebApiFileManager(BaseFileManager):
             zip_duration = None
         else:
             operation = operations_logger.start_operation(
-                "compress_output", task_id)
+                OperationName.COMPRESS_OUTPUT, task_id)
             zip_path, zip_duration = files.make_zip_archive(local_path)
             operation.end(attributes={"execution_time_s": zip_duration})
 
@@ -99,7 +99,8 @@ class WebApiFileManager(BaseFileManager):
         upload_info = self._api_client.get_upload_output_url(
             task_runner_id=self._task_runner_id, task_id=task_id)
 
-        operation = operations_logger.start_operation("upload_output", task_id)
+        operation = operations_logger.start_operation(
+            OperationName.UPLOAD_OUTPUT, task_id)
         start_time = time.time()
         resp = requests.request(
             method=upload_info.method,

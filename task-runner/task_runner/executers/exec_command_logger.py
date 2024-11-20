@@ -1,5 +1,5 @@
 """Util class to log executed commands."""
-from task_runner.operations_logger import OperationsLogger
+from task_runner.operations_logger import OperationName, OperationsLogger
 
 
 class ExecCommandLogger:
@@ -20,7 +20,7 @@ class ExecCommandLogger:
         container_command: str,
     ):
         self._operation = self._operations_logger.start_operation(
-            name="exec_command",
+            name=OperationName.EXEC_COMMAND,
             task_id=self._task_id,
             attributes={
                 "command": command,

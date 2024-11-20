@@ -297,6 +297,7 @@ class ApiClient:
         task_id: str,
         attributes: Dict[str, Any],
         timestamp: Optional[datetime.datetime] = None,
+        elapsed_time_s: Optional[float] = None,
     ) -> str:
         """Register a new operation for a given task."""
         timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
@@ -306,6 +307,7 @@ class ApiClient:
             f"{self._executer_uuid}/task/{task_id}/operation",
             json={
                 "time": timestamp.isoformat(),
+                "elapsed_time_s": elapsed_time_s,
                 "name": operation_name,
                 "attributes": {
                     **attributes,
@@ -317,11 +319,11 @@ class ApiClient:
 
     def end_operation(
         self,
-        operation_name: str,
         operation_id: str,
         task_id: str,
         attributes: Dict[str, Any],
         timestamp: Optional[datetime.datetime] = None,
+        elapsed_time_s: Optional[float] = None,
     ):
         """Mark an operation as done."""
         timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
@@ -331,7 +333,7 @@ class ApiClient:
             f"{self._executer_uuid}/task/{task_id}/operation/{operation_id}/done",
             json={
                 "time": timestamp.isoformat(),
-                "name": operation_name,
+                "elapsed_time_s": elapsed_time_s,
                 "attributes": {
                     **attributes,
                 },

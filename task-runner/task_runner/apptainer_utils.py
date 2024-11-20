@@ -136,7 +136,7 @@ class ApptainerImagesManager:
 
         return False
 
-    def get(self, image: str) -> Tuple[str, Optional[float]]:
+    def get(self, image: str) -> Tuple[str, float, str]:
         """Makes the requested Apptainer image available locally.
 
         If the image is not available in the local directory, it is attempted
@@ -170,7 +170,7 @@ class ApptainerImagesManager:
 
         if os.path.exists(sif_local_path):
             logging.info("SIF image found locally: %s", sif_image_name)
-            return sif_local_path, None
+            return sif_local_path, 0, "local-filesystem"
 
         logging.info("SIF image not found locally: %s", sif_image_name)
 
@@ -180,11 +180,13 @@ class ApptainerImagesManager:
             sif_image_name,
             sif_local_path,
         )
+        source = "inductiva-apptainer-cache"
 
         if not downloaded:
             self._apptainer_pull(image_uri, sif_local_path)
+            source = "docker-hub"
 
         download_time = time.time() - donwload_start
         logging.info("Apptainer image downloaded in %s seconds", download_time)
 
-        return sif_local_path, download_time
+        return sif_local_path, download_time, source

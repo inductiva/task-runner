@@ -1,14 +1,24 @@
 """Utils for logging operations to the API."""
 import datetime
+import enum
 from typing import Any, Dict, Optional
 
 from task_runner import ApiClient, utils
 
 
+class OperationName(enum.Enum):
+    EXEC_COMMAND = "exec_command"
+    DOWNLOAD_CONTAINER = "download_container"
+    DOWNLOAD_INPUT = "download_input"
+    UNCOMPRESS_INPUT = "uncompress_input"
+    COMPRESS_OUTPUT = "compress_output"
+    UPLOAD_OUTPUT = "upload_output"
+
+
 @utils.retry()
 def _start_operation(
     api_client: ApiClient,
-    name: str,
+    name: OperationName,
     task_id: str,
     attributes: Dict[str, Any],
     timestamp: datetime.datetime,
@@ -18,30 +28,38 @@ def _start_operation(
     If an exception is raised, the operation is retried until
     it's successful.
     """
+    # Since the timestamp that is used is the retrieved by the API,
+    # we calculate the elapsed time since the first try of the request,
+    # and the API subtracts it from the current time to get the correct
+    # timestamp.
+    elapsed_since_first_try = (utils.now_utc() - timestamp).total_seconds()
+
     return api_client.create_operation(
-        operation_name=name,
+        operation_name=name.value,
         task_id=task_id,
         attributes=attributes,
         timestamp=timestamp,
+        elapsed_time_s=elapsed_since_first_try,
     )
 
 
 @utils.retry()
 def _end_operation(
     api_client: ApiClient,
-    name: str,
     operation_id: str,
     task_id: str,
     attributes: Dict[str, Any],
     timestamp: datetime.datetime,
 ):
     """Marks an operation as finished in the API."""
+    elapsed_since_first_try = (utils.now_utc() - timestamp).total_seconds()
+
     return api_client.end_operation(
-        operation_name=name,
         operation_id=operation_id,
         task_id=task_id,
         attributes=attributes,
         timestamp=timestamp,
+        elapsed_time_s=elapsed_since_first_try,
     )
 
 
@@ -51,7 +69,7 @@ class Operation:
     def __init__(
         self,
         api_client: ApiClient,
-        name: str,
+        name: OperationName,
         task_id: str,
         operation_id: str,
     ):
@@ -69,7 +87,6 @@ class Operation:
 
         _end_operation(
             self._api_client,
-            self._name,
             self._operation_id,
             self._task_id,
             attributes,
@@ -112,7 +129,7 @@ class OperationsLogger:
 
     def start_operation(
         self,
-        name: str,
+        name: OperationName,
         task_id: str,
         attributes: Optional[Dict[str, Any]] = None,
     ) -> Operation:

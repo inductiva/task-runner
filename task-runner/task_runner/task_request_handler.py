@@ -31,7 +31,7 @@ from task_runner import (
     task_message_listener,
     utils,
 )
-from task_runner.operations_logger import OperationsLogger
+from task_runner.operations_logger import OperationName, OperationsLogger
 from task_runner.utils import files, loki
 
 KILL_MESSAGE = "kill"
@@ -296,19 +296,20 @@ class TaskRequestHandler:
             image_uri = request["container_image"]
 
             operation = self._operations_logger.start_operation(
-                "download_container",
+                OperationName.DOWNLOAD_CONTAINER,
                 self.task_id,
                 attributes={
                     "image_uri": image_uri,
                 },
             )
 
-            image_path, download_time = self.apptainer_images_manager.get(
-                image_uri)
+            image_path, download_time, container_source = (
+                self.apptainer_images_manager.get(image_uri))
 
             operation.end(attributes={
                 "execution_time_s": download_time,
-                "cached": download_time is None,
+                "source": container_source,
+                "size_bytes": os.path.getsize(image_path),
             },)
 
             self.apptainer_image_path = image_path
@@ -428,7 +429,7 @@ class TaskRequestHandler:
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
         operation = self._operations_logger.start_operation(
-            "download_input",
+            OperationName.DOWNLOAD_INPUT,
             self.task_id,
         )
         download_duration = self.file_manager.download_input(
@@ -454,7 +455,7 @@ class TaskRequestHandler:
         )
 
         operation = self._operations_logger.start_operation(
-            "uncompress_input",
+            OperationName.UNCOMPRESS_INPUT,
             self.task_id,
         )
         unzip_duration = files.extract_zip_archive(
