@@ -308,7 +308,7 @@ class TaskRequestHandler:
 
             operation.end(attributes={
                 "execution_time_s": download_time,
-                "source": container_source,
+                "source": container_source.value,
                 "size_bytes": os.path.getsize(image_path),
             },)
 

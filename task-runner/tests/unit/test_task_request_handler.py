@@ -13,6 +13,7 @@ from unittest import mock
 import pytest
 from inductiva_api import events
 from task_runner import (
+    apptainer_utils,
     executers,
     task_message_listener,
     task_request_handler,
@@ -126,7 +127,7 @@ def fixture_task_request_handler(
     apptainer_images_manager.get.return_value = (
         container_path,
         0.0,
-        'docker-hub',
+        apptainer_utils.ApptainerImageSource.LOCAL_FILESYSTEM,
     )
 
     event_logger = mock.MagicMock()
