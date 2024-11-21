@@ -31,6 +31,7 @@ from task_runner import (
     task_message_listener,
     utils,
 )
+from task_runner.operations_logger import OperationName, OperationsLogger
 from task_runner.utils import files, loki
 
 KILL_MESSAGE = "kill"
@@ -171,6 +172,7 @@ class TaskRequestHandler:
         self._kill_task_thread_queue = None
         self._logger_enabled = threading.Event()
         self._shutting_down = False
+        self._operations_logger = OperationsLogger(self.api_client)
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -291,8 +293,25 @@ class TaskRequestHandler:
             )
             self._message_listener_thread.start()
 
-            image_path, download_time = self.apptainer_images_manager.get(
-                request["container_image"])
+            image_uri = request["container_image"]
+
+            operation = self._operations_logger.start_operation(
+                OperationName.DOWNLOAD_CONTAINER,
+                self.task_id,
+                attributes={
+                    "image_uri": image_uri,
+                },
+            )
+
+            image_path, download_time, container_source = (
+                self.apptainer_images_manager.get(image_uri))
+
+            operation.end(attributes={
+                "execution_time_s": download_time,
+                "source": container_source.value,
+                "size_bytes": os.path.getsize(image_path),
+            },)
+
             self.apptainer_image_path = image_path
 
             if download_time is not None:
@@ -409,12 +428,16 @@ class TaskRequestHandler:
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
+        operation = self._operations_logger.start_operation(
+            OperationName.DOWNLOAD_INPUT,
+            self.task_id,
+        )
         download_duration = self.file_manager.download_input(
             self.task_id,
             task_dir_remote,
             tmp_zip_path,
         )
-
+        operation.end(attributes={"execution_time_s": download_duration})
         logging.info(
             "Downloaded zip to: %s, in %s seconds.",
             tmp_zip_path,
@@ -431,12 +454,17 @@ class TaskRequestHandler:
             input_zipped_size_bytes,
         )
 
+        operation = self._operations_logger.start_operation(
+            OperationName.UNCOMPRESS_INPUT,
+            self.task_id,
+        )
         unzip_duration = files.extract_zip_archive(
             zip_path=tmp_zip_path,
             dest_dir=task_workdir,
         )
 
         os.remove(tmp_zip_path)
+        operation.end(attributes={"execution_time_s": unzip_duration})
 
         logging.info(
             "Extracted zip to: %s, in %s seconds",
@@ -554,6 +582,7 @@ class TaskRequestHandler:
                 self.task_dir_remote,
                 output_dir,
                 stream_zip=self.stream_zip,
+                operations_logger=self._operations_logger,
             ))
 
         logging.info("Output zipped in: %s seconds", zip_duration)
@@ -630,4 +659,8 @@ class TaskRequestHandler:
             self.apptainer_image_path,
             copy.deepcopy(self.mpi_config),
             self.loki_logger,
+            executers.ExecCommandLogger(
+                self.task_id,
+                self._operations_logger,
+            ),
         )

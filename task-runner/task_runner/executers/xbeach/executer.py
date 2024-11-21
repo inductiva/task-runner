@@ -12,10 +12,12 @@ class XBeachExecuter(executers.MPIExecuter):
         container_image,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
         loki_logger: loki.LokiLogger,
+        exec_command_logger: executers.ExecCommandLogger,
     ):
         super().__init__(working_dir=working_dir,
                          container_image=container_image,
                          loki_logger=loki_logger,
+                         exec_command_logger=exec_command_logger,
                          mpi_config=mpi_config,
                          sim_binary="xbeach",
                          file_type="txt",
