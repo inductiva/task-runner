@@ -89,6 +89,16 @@ class ApptainerImagesManager:
         logging.info("Pulling image ...")
 
         try:
+            subprocess_env = os.environ.copy(
+            )  # Copy the current environment to preserve it
+
+            socks_proxy_host = os.getenv('SOCKS_PROXY_HOST', None)
+            socks_proxy_port = os.getenv('SOCKS_PROXY_PORT', None)
+            if socks_proxy_host and socks_proxy_port:
+                subprocess_env[
+                    'HTTP_PROXY'] = f"socks5://{socks_proxy_host}:{socks_proxy_port}"
+                subprocess_env[
+                    'HTTPS_PROXY'] = f"socks5://{socks_proxy_host}:{socks_proxy_port}"
             subprocess.run(
                 [
                     "apptainer",
@@ -97,7 +107,7 @@ class ApptainerImagesManager:
                     image_uri,
                 ],
                 check=True,
-                env=os.environ,  # subprocess should inherit the environment
+                env=subprocess_env,  # subprocess should inherit the environment
                 # because of APPTAINER environment variables
             )
         except subprocess.CalledProcessError:
