@@ -168,7 +168,7 @@ class TaskRequestHandler:
         self.task_workdir = None
         self.apptainer_image_path = None
         self.threads = []
-        self.caught_exception = False
+        self.cleaning_up = False
         self._message_listener_thread = None
         self._kill_task_thread_queue = None
         self._logger_enabled = threading.Event()
@@ -200,7 +200,7 @@ class TaskRequestHandler:
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
-        return self.task_id is not None
+        return self.task_id is not None and not self.cleaning_up
 
     def _publish_event(self, event: events.Event):
         if not self._shutting_down:
@@ -271,7 +271,7 @@ class TaskRequestHandler:
         # convert to bool because stream_zip is either 't' or 'f'
         self.stream_zip = True if request.get("stream_zip",
                                               "t") == "t" else False
-        self.caught_exception = False
+        self.cleaning_up = False
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -383,7 +383,6 @@ class TaskRequestHandler:
 
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
-            self.caught_exception = True
             message = utils.get_exception_root_cause_message(e)
             try:
                 safely_delete = self.save_output()
@@ -400,6 +399,7 @@ class TaskRequestHandler:
                 safely_delete = False
 
         finally:
+            self.cleaning_up = True
             self._cleanup(safely_delete)
 
     def _setup_working_dir(self, task_dir_remote) -> str:
