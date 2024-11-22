@@ -73,6 +73,8 @@ class TerminationHandler:
         stopped_tasks = []
         if self.request_handler.is_task_running(
         ) and not self.request_handler.caught_exception:
+            # Check if the task has not caused an exception and is trying
+            # to terminate before assocating it to the ExecuterTerminated event.
             logging.info("Task was being executed: %s.",
                          self.request_handler.task_id)
             self.request_handler.interrupt_task()
