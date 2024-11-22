@@ -168,6 +168,7 @@ class TaskRequestHandler:
         self.task_workdir = None
         self.apptainer_image_path = None
         self.threads = []
+        self.caught_exception = False
         self._message_listener_thread = None
         self._kill_task_thread_queue = None
         self._logger_enabled = threading.Event()
@@ -270,6 +271,7 @@ class TaskRequestHandler:
         # convert to bool because stream_zip is either 't' or 'f'
         self.stream_zip = True if request.get("stream_zip",
                                               "t") == "t" else False
+        self.caught_exception = False
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -381,6 +383,7 @@ class TaskRequestHandler:
 
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
+            self.caught_exception = True
             message = utils.get_exception_root_cause_message(e)
             try:
                 safely_delete = self.save_output()
