@@ -379,6 +379,11 @@ class TaskRequestHandler:
 
             safely_delete = self.save_output(new_task_status=new_status)
 
+            self.message_listener.unblock(self.task_id)
+            if self._message_listener_thread:
+                self._message_listener_thread.join()
+                logging.info("Message listener thread stopped.")
+
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
             message = utils.get_exception_root_cause_message(e)
@@ -530,11 +535,6 @@ class TaskRequestHandler:
 
         exit_code = executer.run()
         logging.info("Executer finished running.")
-
-        self.message_listener.unblock(self.task_id)
-        if self._message_listener_thread:
-            self._message_listener_thread.join()
-            logging.info("Message listener thread stopped.")
 
         self._kill_task_thread_queue.put(TASK_DONE_MESSAGE)
         kill_task_thread.join()
