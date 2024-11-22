@@ -562,6 +562,10 @@ class TaskRequestHandler:
 
     def _pack_output(self) -> int:
         """Compress outputs and store them in the shared drive."""
+        if self.task_workdir is None:
+            logging.error("Working directory not found.")
+            return
+
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
             logging.error("Output directory not found: %s", output_dir)
