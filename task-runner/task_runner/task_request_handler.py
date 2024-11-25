@@ -168,6 +168,7 @@ class TaskRequestHandler:
         self.task_workdir = None
         self.apptainer_image_path = None
         self.threads = []
+        self.cleaning_up = False
         self._message_listener_thread = None
         self._kill_task_thread_queue = None
         self._logger_enabled = threading.Event()
@@ -199,7 +200,7 @@ class TaskRequestHandler:
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
-        return self.task_id is not None
+        return self.task_id is not None and not self.cleaning_up
 
     def _publish_event(self, event: events.Event):
         if not self._shutting_down:
@@ -270,6 +271,7 @@ class TaskRequestHandler:
         # convert to bool because stream_zip is either 't' or 'f'
         self.stream_zip = True if request.get("stream_zip",
                                               "t") == "t" else False
+        self.cleaning_up = False
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -402,6 +404,7 @@ class TaskRequestHandler:
                 safely_delete = False
 
         finally:
+            self.cleaning_up = True
             self._cleanup(safely_delete)
 
     def _setup_working_dir(self, task_dir_remote) -> str:
@@ -559,6 +562,10 @@ class TaskRequestHandler:
 
     def _pack_output(self) -> int:
         """Compress outputs and store them in the shared drive."""
+        if self.task_workdir is None:
+            logging.error("Working directory not found.")
+            return
+
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
             logging.error("Output directory not found: %s", output_dir)
