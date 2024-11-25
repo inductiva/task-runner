@@ -168,6 +168,7 @@ class ApiClient:
             "POST",
             f"/{task_runner_id}/event",
             json=events.parse.to_dict(event),
+            raise_exception=True,
         )
 
     def receive_task_message(
