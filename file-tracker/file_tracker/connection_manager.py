@@ -24,7 +24,7 @@ class ConnectionManager:
     async def _listen_loop(self, task_id):
         async with aiohttp.ClientSession() as session:
             await session.post(f"{SIGNALING_SERVER}/tasks/{task_id}/register",
-                               json={"clientId": task_id},
+                               json={"sender_id": task_id},
                                headers=self._headers)
 
             while self.running:
@@ -40,17 +40,20 @@ class ConnectionManager:
                             await session.post(
                                 f"{SIGNALING_SERVER}/tasks/{task_id}/offer",
                                 json={
-                                    "receiverId": data['senderId'],
+                                    "sender_id": task_id,
+                                    "receiver_id": data['sender_id'],
                                     "type": "answer",
                                     "sdp": pc.localDescription.sdp
                                 },
                                 headers=self._headers)
                             self.connections.append(client_connection)
+                    elif resp.status == 204:
+                        logging.info("No messages.")
                     else:
-                        logging.error("Failed to get message: %s", resp.status)
-                        logging.error(await resp.text())
-                        await asyncio.sleep(10)
-            logging.info("Stopped listening for messages")
+                        logging.error("Failed to get messages: %s", await
+                                      resp.text())
+                        asyncio.sleep(5)
+            logging.info("Stopped listening for messages.")
 
     async def close(self):
         self.running = False
