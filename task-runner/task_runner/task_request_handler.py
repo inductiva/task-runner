@@ -281,6 +281,7 @@ class TaskRequestHandler:
         self._kill_task_thread_queue = queue.Queue()
 
         self._log_task_picked_up()
+        safely_delete = False
 
         try:
             self._message_listener_thread = threading.Thread(
@@ -329,7 +330,6 @@ class TaskRequestHandler:
                 return
 
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
-            safely_delete = False
 
             if self._check_task_killed():
                 self._publish_event(
