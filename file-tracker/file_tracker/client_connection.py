@@ -6,9 +6,9 @@ from file_operations import ls, tail
 
 # STUN/TURN server configuration
 ICE_SERVERS = [{
-    "urls": ["stun:34.79.246.4:3478"]
+    "urls": ["stun:ice.inductiva.ai"]
 }, {
-    "urls": ["turn:34.79.246.4:3478"]
+    "urls": ["turn:ice.inductiva.ai"],
 }]
 
 
