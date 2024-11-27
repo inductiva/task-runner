@@ -31,9 +31,11 @@ from task_runner import (
     task_message_listener,
     utils,
 )
+from task_runner.operations_logger import OperationName, OperationsLogger
 from task_runner.utils import files, loki
 
 KILL_MESSAGE = "kill"
+INTERRUPT_MESSAGE = "interrupt"
 ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 TASK_DONE_MESSAGE = "done"
@@ -110,6 +112,9 @@ def interrupt_task_on_kill_received(
         if was_terminated:
             task_killed.set()
             logging.info("Task killed.")
+    elif msg == INTERRUPT_MESSAGE:
+        logging.info("Received interrupt message. Interrupting task.")
+        executer.terminate()
     else:
         logging.info("Stopping kill command listener.")
 
@@ -163,10 +168,12 @@ class TaskRequestHandler:
         self.task_workdir = None
         self.apptainer_image_path = None
         self.threads = []
+        self.cleaning_up = False
         self._message_listener_thread = None
         self._kill_task_thread_queue = None
         self._logger_enabled = threading.Event()
         self._shutting_down = False
+        self._operations_logger = OperationsLogger(self.api_client)
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -176,9 +183,24 @@ class TaskRequestHandler:
         logging.info("Stopping task...")
         self._shutting_down = True
 
+    def interrupt_task(self):
+        if self._kill_task_thread_queue is None:
+            raise RuntimeError("Failed to interrupt task.")
+
+        self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
+
+    def save_output(self, new_task_status=None):
+        output_size = self._pack_output()
+        self._publish_event(
+            events.TaskOutputUploaded(id=self.task_id,
+                                      machine_id=self.executer_uuid,
+                                      new_status=new_task_status,
+                                      output_size=output_size))
+        return True
+
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
-        return self.task_id is not None
+        return self.task_id is not None and not self.cleaning_up
 
     def _publish_event(self, event: events.Event):
         if not self._shutting_down:
@@ -246,6 +268,10 @@ class TaskRequestHandler:
         self.task_dir_remote = request["task_dir"]
         self.submitted_timestamp = request.get("submitted_timestamp")
         self.input_resources = json.loads(request.get("input_resources", "[]"))
+        # convert to bool because stream_zip is either 't' or 'f'
+        self.stream_zip = True if request.get("stream_zip",
+                                              "t") == "t" else False
+        self.cleaning_up = False
         self.loki_logger = loki.LokiLogger(
             task_id=self.task_id,
             project_id=self.project_id,
@@ -255,6 +281,7 @@ class TaskRequestHandler:
         self._kill_task_thread_queue = queue.Queue()
 
         self._log_task_picked_up()
+        safely_delete = False
 
         try:
             self._message_listener_thread = threading.Thread(
@@ -269,8 +296,25 @@ class TaskRequestHandler:
             )
             self._message_listener_thread.start()
 
-            image_path, download_time = self.apptainer_images_manager.get(
-                request["container_image"])
+            image_uri = request["container_image"]
+
+            operation = self._operations_logger.start_operation(
+                OperationName.DOWNLOAD_CONTAINER,
+                self.task_id,
+                attributes={
+                    "image_uri": image_uri,
+                },
+            )
+
+            image_path, download_time, container_source = (
+                self.apptainer_images_manager.get(image_uri))
+
+            operation.end(attributes={
+                "execution_time_s": download_time,
+                "source": container_source.value,
+                "size_bytes": os.path.getsize(image_path),
+            },)
+
             self.apptainer_image_path = image_path
 
             if download_time is not None:
@@ -326,8 +370,6 @@ class TaskRequestHandler:
                 computation_seconds,
             )
 
-            output_size = self._pack_output()
-
             if exit_reason == TaskExitReason.KILLED:
                 new_status = task_status.TaskStatusCode.KILLED.value
             elif exit_reason == TaskExitReason.TTL_EXCEEDED:
@@ -337,27 +379,33 @@ class TaskRequestHandler:
                               if exit_code == 0 else
                               task_status.TaskStatusCode.FAILED.value)
 
-            self._publish_event(
-                events.TaskOutputUploaded(
-                    id=self.task_id,
-                    machine_id=self.executer_uuid,
-                    new_status=new_status,
-                    output_size=output_size,
-                ))
+            safely_delete = self.save_output(new_task_status=new_status)
+
+            self.message_listener.unblock(self.task_id)
+            if self._message_listener_thread:
+                self._message_listener_thread.join()
+                logging.info("Message listener thread stopped.")
 
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
             message = utils.get_exception_root_cause_message(e)
-            self._publish_event(
-                events.TaskExecutionFailed(
-                    id=self.task_id,
-                    machine_id=self.executer_uuid,
-                    error_message=message,
-                    traceback=traceback.format_exc(),
-                ))
+            try:
+                safely_delete = self.save_output()
+
+                self._publish_event(
+                    events.TaskExecutionFailed(
+                        id=self.task_id,
+                        machine_id=self.executer_uuid,
+                        error_message=message,
+                        traceback=traceback.format_exc(),
+                    ))
+            except Exception as e:  # noqa: BLE001
+                logging.exception("Failed to save output: %s", e)
+                safely_delete = False
 
         finally:
-            self._cleanup()
+            self.cleaning_up = True
+            self._cleanup(safely_delete)
 
     def _setup_working_dir(self, task_dir_remote) -> str:
         """Setup the working directory for the task.
@@ -388,12 +436,16 @@ class TaskRequestHandler:
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
+        operation = self._operations_logger.start_operation(
+            OperationName.DOWNLOAD_INPUT,
+            self.task_id,
+        )
         download_duration = self.file_manager.download_input(
             self.task_id,
             task_dir_remote,
             tmp_zip_path,
         )
-
+        operation.end(attributes={"execution_time_s": download_duration})
         logging.info(
             "Downloaded zip to: %s, in %s seconds.",
             tmp_zip_path,
@@ -410,12 +462,17 @@ class TaskRequestHandler:
             input_zipped_size_bytes,
         )
 
+        operation = self._operations_logger.start_operation(
+            OperationName.UNCOMPRESS_INPUT,
+            self.task_id,
+        )
         unzip_duration = files.extract_zip_archive(
             zip_path=tmp_zip_path,
             dest_dir=task_workdir,
         )
 
         os.remove(tmp_zip_path)
+        operation.end(attributes={"execution_time_s": unzip_duration})
 
         logging.info(
             "Extracted zip to: %s, in %s seconds",
@@ -482,11 +539,6 @@ class TaskRequestHandler:
         exit_code = executer.run()
         logging.info("Executer finished running.")
 
-        self.message_listener.unblock(self.task_id)
-        if self._message_listener_thread:
-            self._message_listener_thread.join()
-            logging.info("Message listener thread stopped.")
-
         self._kill_task_thread_queue.put(TASK_DONE_MESSAGE)
         kill_task_thread.join()
         logging.info("Kill command listener thread stopped.")
@@ -510,6 +562,10 @@ class TaskRequestHandler:
 
     def _pack_output(self) -> int:
         """Compress outputs and store them in the shared drive."""
+        if self.task_workdir is None:
+            logging.error("Working directory not found.")
+            return
+
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
             logging.error("Output directory not found: %s", output_dir)
@@ -527,11 +583,22 @@ class TaskRequestHandler:
         if output_total_files is not None:
             self._post_task_metric(utils.OUTPUT_TOTAL_FILES, output_total_files)
 
-        output_zipped_bytes, upload_duration = self.file_manager.upload_output(
-            self.task_id,
-            self.task_dir_remote,
-            output_dir,
-        )
+        output_zipped_bytes, zip_duration, upload_duration = (
+            self.file_manager.upload_output(
+                self.task_id,
+                self.task_dir_remote,
+                output_dir,
+                stream_zip=self.stream_zip,
+                operations_logger=self._operations_logger,
+            ))
+
+        logging.info("Output zipped in: %s seconds", zip_duration)
+
+        if zip_duration:
+            self._post_task_metric(
+                utils.OUTPUT_COMPRESSION_SECONDS,
+                zip_duration,
+            )
 
         logging.info("Output zipped size: %s bytes", output_zipped_bytes)
 
@@ -555,7 +622,7 @@ class TaskRequestHandler:
 
         return output_zipped_bytes
 
-    def _cleanup(self):
+    def _cleanup(self, rm_dir):
         """Cleanup after task execution.
 
         Deletes the working directory of the task.
@@ -565,7 +632,7 @@ class TaskRequestHandler:
             working_dir_local: Working directory of the executer that performed
                 the task.
         """
-        if self.task_workdir is not None:
+        if rm_dir and self.task_workdir is not None:
             logging.info("Cleaning up working directory: %s", self.task_workdir)
             shutil.rmtree(self.task_workdir, ignore_errors=True)
         self.task_workdir = None
@@ -599,4 +666,8 @@ class TaskRequestHandler:
             self.apptainer_image_path,
             copy.deepcopy(self.mpi_config),
             self.loki_logger,
+            executers.ExecCommandLogger(
+                self.task_id,
+                self._operations_logger,
+            ),
         )

@@ -11,6 +11,8 @@ import datetime
 import time
 from functools import wraps
 
+from task_runner.utils.retries import retry
+
 INPUT_JSON_FILENAME = "input.json"
 INPUT_ZIP_FILENAME = "input.zip"
 OUTPUT_ZIP_FILENAME = "output.zip"
@@ -28,6 +30,7 @@ INPUT_SIZE = "input_size_bytes"
 OUTPUT_SIZE = "output_size_bytes"
 OUTPUT_ZIPPED_SIZE = "output_zipped_size_bytes"
 OUTPUT_TOTAL_FILES = "output_total_files"
+OUTPUT_COMPRESSION_SECONDS = "output_compression_seconds"
 
 
 def bool_string_to_bool(s: str) -> bool:

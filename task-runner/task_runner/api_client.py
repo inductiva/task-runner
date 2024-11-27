@@ -1,10 +1,12 @@
 """Client for the Inductiva API."""
 import dataclasses
+import datetime
 import enum
 import os
 import time
 import uuid
-from typing import Dict, Optional
+from collections import namedtuple
+from typing import Any, Dict, Optional
 
 import requests
 from absl import logging
@@ -20,6 +22,17 @@ class HTTPMethod(enum.Enum):
     POST = "POST"
     PUT = "PUT"
     DELETE = "DELETE"
+
+
+class HTTPStatus(enum.Enum):
+    SUCCESS = 200
+    ACCEPTED = 202
+    NO_CONTENT = 204
+    CLIENT_ERROR = 400
+    INTERNAL_SERVER_ERROR = 500
+
+
+HTTPResponse = namedtuple("HTTPResponse", ["status", "data"])
 
 
 @dataclasses.dataclass
@@ -105,7 +118,7 @@ class ApiClient:
             "/register",
             json=data,
         )
-        if resp.status_code != 202:
+        if resp.status_code != HTTPStatus.ACCEPTED.value:
             raise RuntimeError(f"Failed to register task runner: {resp.text}")
 
         resp_body = resp.json()
@@ -133,13 +146,18 @@ class ApiClient:
             "GET",
             f"/{task_runner_id}/task?block_s={block_s}",
         )
-        if resp.status_code == 204:
-            return None
-        if resp.status_code >= 400:
+        if resp.status_code == HTTPStatus.NO_CONTENT.value:
+            return HTTPResponse(HTTPStatus.NO_CONTENT, None)
+
+        if resp.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR.value:
+            return HTTPResponse(HTTPStatus.INTERNAL_SERVER_ERROR, None)
+
+        if resp.status_code >= HTTPStatus.CLIENT_ERROR.value:
             raise ExecuterTerminationError(
                 ExecuterTerminationReason.INTERRUPTED,
                 detail=resp.json()["detail"])
-        return resp.json()
+
+        return HTTPResponse(HTTPStatus.SUCCESS, resp.json())
 
     def log_event(
         self,
@@ -150,6 +168,7 @@ class ApiClient:
             "POST",
             f"/{task_runner_id}/event",
             json=events.parse.to_dict(event),
+            raise_exception=True,
         )
 
     def receive_task_message(
@@ -162,10 +181,13 @@ class ApiClient:
             "GET",
             f"/{task_runner_id}/task/{task_id}/message?block_s={block_s}",
         )
-        if resp.status_code == 204:
-            return None
+        if resp.status_code == HTTPStatus.NO_CONTENT.value:
+            return HTTPResponse(HTTPStatus.NO_CONTENT, None)
 
-        return resp.json()
+        if resp.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR.value:
+            return HTTPResponse(HTTPStatus.INTERNAL_SERVER_ERROR, None)
+
+        return HTTPResponse(HTTPStatus.SUCCESS, resp.json())
 
     def unblock_task_message_listeners(
         self,
@@ -237,7 +259,7 @@ class ApiClient:
             f"/compute/group/{machine_group_name}",
         )
 
-        if resp.status_code != 200:
+        if resp.status_code != HTTPStatus.SUCCESS.value:
             return
 
         return resp.json().get("id")
@@ -257,7 +279,7 @@ class ApiClient:
                 json=data,
             )
 
-            if resp.status_code == 202:
+            if resp.status_code == HTTPStatus.ACCEPTED.value:
                 sent = True
             else:
                 logging.error(
@@ -269,6 +291,56 @@ class ApiClient:
                 time.sleep(retry_interval)
 
             max_retries -= 1
+
+    def create_operation(
+        self,
+        operation_name: str,
+        task_id: str,
+        attributes: Dict[str, Any],
+        timestamp: Optional[datetime.datetime] = None,
+        elapsed_time_s: Optional[float] = None,
+    ) -> str:
+        """Register a new operation for a given task."""
+        timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
+
+        resp = self._request_task_runner_api(
+            "POST",
+            f"{self._executer_uuid}/task/{task_id}/operation",
+            json={
+                "time": timestamp.isoformat(),
+                "elapsed_time_s": elapsed_time_s,
+                "name": operation_name,
+                "attributes": {
+                    **attributes,
+                },
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["operation_id"]
+
+    def end_operation(
+        self,
+        operation_id: str,
+        task_id: str,
+        attributes: Dict[str, Any],
+        timestamp: Optional[datetime.datetime] = None,
+        elapsed_time_s: Optional[float] = None,
+    ):
+        """Mark an operation as done."""
+        timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
+
+        resp = self._request_task_runner_api(
+            "POST",
+            f"{self._executer_uuid}/task/{task_id}/operation/{operation_id}/done",
+            json={
+                "time": timestamp.isoformat(),
+                "elapsed_time_s": elapsed_time_s,
+                "attributes": {
+                    **attributes,
+                },
+            },
+        )
+        resp.raise_for_status()
 
     def get_download_urls(self, input_resources: list[str],
                           task_runner_id: uuid.UUID) -> str:

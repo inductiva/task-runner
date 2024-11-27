@@ -1,22 +1,24 @@
 DOCKER_COMPOSE_ENV_FILE=.env
+UID=$$(id -u)
+HOSTNAME:=$(shell uname -n)
 
 DOCKER_COMPOSE_COMMAND=\
-	docker compose \
+	HOSTNAME=$(HOSTNAME) docker compose \
 	--env-file $(DOCKER_COMPOSE_ENV_FILE)
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER=\
 	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner \
+	-p task-runner-$(UID) \
 	-f docker-compose.yml
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER_CUDA=\
 	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner-cuda \
+	-p task-runner-cuda-$(UID) \
 	-f docker-compose.cuda.yml
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE=\
 	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner-lite \
+	-p task-runner-lite-$(UID) \
 	-f docker-compose.lite.yml
 
 .PHONY: %
