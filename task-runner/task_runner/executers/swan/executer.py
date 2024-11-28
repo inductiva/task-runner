@@ -31,6 +31,13 @@ class SWANExecuter(executers.BaseExecuter):
         # Swanrun uses internal MPI
         # we call apptainer run ... swanrun ... -mpi np
         if sim_binary == "swanrun":
+            machinefile_path = os.path.join(self.artifacts_dir, "machinefile")
+
+            if not os.path.exists(machinefile_path):
+                available_n_vcpus = self.count_vcpus(self.args.use_hwthread)
+                with open(machinefile_path, "w", encoding="UTF-8") as f:
+                    f.write(f"localhost slots={available_n_vcpus}\n")
+
             cmd = self._create_command(sim_binary,
                                        input_filename,
                                        np,
