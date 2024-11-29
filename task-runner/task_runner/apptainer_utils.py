@@ -3,6 +3,7 @@
 Includes the ApptainerImagesManager class, which is used to fetch Apptainer
 images from a remote storage and cache them locally.
 """
+import enum
 import os
 import re
 import subprocess
@@ -11,6 +12,12 @@ from typing import Optional, Tuple
 
 import fsspec
 from absl import logging
+
+
+class ApptainerImageSource(enum.Enum):
+    LOCAL_FILESYSTEM = "local-filesystem"
+    INDUCTIVA_APPTAINER_CACHE = "inductiva-apptainer-cache"
+    DOCKER_HUB = "docker-hub"
 
 
 class ApptainerImageNotFoundError(Exception):
@@ -136,7 +143,7 @@ class ApptainerImagesManager:
 
         return False
 
-    def get(self, image: str) -> Tuple[str, Optional[float]]:
+    def get(self, image: str) -> Tuple[str, float, ApptainerImageSource]:
         """Makes the requested Apptainer image available locally.
 
         If the image is not available in the local directory, it is attempted
@@ -170,7 +177,7 @@ class ApptainerImagesManager:
 
         if os.path.exists(sif_local_path):
             logging.info("SIF image found locally: %s", sif_image_name)
-            return sif_local_path, None
+            return sif_local_path, 0, ApptainerImageSource.LOCAL_FILESYSTEM
 
         logging.info("SIF image not found locally: %s", sif_image_name)
 
@@ -180,11 +187,13 @@ class ApptainerImagesManager:
             sif_image_name,
             sif_local_path,
         )
+        source = ApptainerImageSource.INDUCTIVA_APPTAINER_CACHE
 
         if not downloaded:
             self._apptainer_pull(image_uri, sif_local_path)
+            source = ApptainerImageSource.DOCKER_HUB
 
         download_time = time.time() - donwload_start
         logging.info("Apptainer image downloaded in %s seconds", download_time)
 
-        return sif_local_path, download_time
+        return sif_local_path, download_time, source

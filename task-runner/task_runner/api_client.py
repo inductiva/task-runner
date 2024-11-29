@@ -1,11 +1,12 @@
 """Client for the Inductiva API."""
 import dataclasses
+import datetime
 import enum
 import os
 import time
 import uuid
 from collections import namedtuple
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import requests
 from absl import logging
@@ -167,6 +168,7 @@ class ApiClient:
             "POST",
             f"/{task_runner_id}/event",
             json=events.parse.to_dict(event),
+            raise_exception=True,
         )
 
     def receive_task_message(
@@ -289,6 +291,56 @@ class ApiClient:
                 time.sleep(retry_interval)
 
             max_retries -= 1
+
+    def create_operation(
+        self,
+        operation_name: str,
+        task_id: str,
+        attributes: Dict[str, Any],
+        timestamp: Optional[datetime.datetime] = None,
+        elapsed_time_s: Optional[float] = None,
+    ) -> str:
+        """Register a new operation for a given task."""
+        timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
+
+        resp = self._request_task_runner_api(
+            "POST",
+            f"{self._executer_uuid}/task/{task_id}/operation",
+            json={
+                "time": timestamp.isoformat(),
+                "elapsed_time_s": elapsed_time_s,
+                "name": operation_name,
+                "attributes": {
+                    **attributes,
+                },
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["operation_id"]
+
+    def end_operation(
+        self,
+        operation_id: str,
+        task_id: str,
+        attributes: Dict[str, Any],
+        timestamp: Optional[datetime.datetime] = None,
+        elapsed_time_s: Optional[float] = None,
+    ):
+        """Mark an operation as done."""
+        timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
+
+        resp = self._request_task_runner_api(
+            "POST",
+            f"{self._executer_uuid}/task/{task_id}/operation/{operation_id}/done",
+            json={
+                "time": timestamp.isoformat(),
+                "elapsed_time_s": elapsed_time_s,
+                "attributes": {
+                    **attributes,
+                },
+            },
+        )
+        resp.raise_for_status()
 
     def get_download_urls(self, input_resources: list[str],
                           task_runner_id: uuid.UUID) -> str:
