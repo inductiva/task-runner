@@ -37,13 +37,13 @@ class ConnectionManager:
         url = f"{self._signaling_server}/tasks/{task_id}/"
         async with aiohttp.ClientSession() as session:
 
-            await session.post(url + "/register",
+            await session.post(url + "register",
                                json=self._request_data(task_id),
                                headers=self._headers)
 
             while self.running:
                 logging.info("Listening for connections")
-                async with session.get(url + f"/message?client={task_id}",
+                async with session.get(url + f"message?client={task_id}",
                                        headers=self._headers) as resp:
                     if resp.status == 200:
                         data = await resp.json()
@@ -51,7 +51,7 @@ class ConnectionManager:
                             client_connection = ClientConnection(task_id)
                             pc = await client_connection.setup_connection(data)
                             await session.post(
-                                url + "/offer",
+                                url + "offer",
                                 json=self._request_data(
                                     task_id,
                                     receiver_id=data['sender_id'],
