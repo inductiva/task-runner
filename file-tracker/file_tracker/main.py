@@ -9,7 +9,7 @@ from task_listener import TaskListener
 async def main():
     os.chdir('/workdir')
 
-    connection_manager = ConnectionManager()
+    connection_manager = ConnectionManager.from_env()
     task_listener = TaskListener(connection_manager)
     logging.info("Starting task listener")
     await task_listener.start()

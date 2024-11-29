@@ -10,6 +10,7 @@ from aiortc import (
 from file_operations import ls, tail
 
 # STUN/TURN server configuration
+#
 ICE_SERVERS = [
     RTCIceServer("stun:34.79.246.4:3478"),
     RTCIceServer("turn:34.79.246.4:3478")
@@ -18,8 +19,8 @@ ICE_SERVERS = [
 
 class ClientConnection:
 
-    def __init__(self, task_id):
-        self.pc = RTCPeerConnection(RTCConfiguration(iceServers=ICE_SERVERS))
+    def __init__(self, task_id, ice_servers=ICE_SERVERS):
+        self.pc = RTCPeerConnection(RTCConfiguration(iceServers=ice_servers))
         self.path = task_id + "/output/artifacts/"
 
     async def setup_connection(self, data):
