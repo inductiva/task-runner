@@ -1,21 +1,25 @@
 import json
 import logging
 
-from aiortc import RTCPeerConnection, RTCSessionDescription
+from aiortc import (
+    RTCConfiguration,
+    RTCIceServer,
+    RTCPeerConnection,
+    RTCSessionDescription,
+)
 from file_operations import ls, tail
 
 # STUN/TURN server configuration
-ICE_SERVERS = [{
-    "urls": ["stun:34.79.246.4:3478"]
-}, {
-    "urls": ["turn:34.79.246.4:3478"]
-}]
+ICE_SERVERS = [
+    RTCIceServer("stun:34.79.246.4:3478"),
+    RTCIceServer("turn:34.79.246.4:3478")
+]
 
 
 class ClientConnection:
 
     def __init__(self, task_id):
-        self.pc = RTCPeerConnection()
+        self.pc = RTCPeerConnection(RTCConfiguration(iceServers=ICE_SERVERS))
         self.path = task_id + "/output/artifacts/"
 
     async def setup_connection(self, data):
@@ -39,7 +43,6 @@ class ClientConnection:
                 await self.close()
                 logging.info("PeerConnection closed")
 
-        self.pc.configuration = {"iceServers": ICE_SERVERS}
         await self.pc.setRemoteDescription(
             RTCSessionDescription(sdp=data['sdp'], type=data['type']))
         answer = await self.pc.createAnswer()
