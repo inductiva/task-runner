@@ -64,7 +64,7 @@ class ConnectionManager:
                     else:
                         logging.error("Failed to get messages: %s", await
                                       resp.text())
-                        asyncio.sleep(5)
+                        await asyncio.sleep(5)
             logging.info("Stopped listening for messages.")
 
     async def close(self):
