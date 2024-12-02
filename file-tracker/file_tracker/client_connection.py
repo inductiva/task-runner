@@ -10,7 +10,10 @@ from aiortc import (
 from file_operations import ls, tail
 
 # STUN/TURN server configuration
-#
+# ICE (Interactive Connectivity Establishment) server helps establish a
+# peer-to-peer connection by discovering and negotiating network paths, including
+# handling NAT traversal and firewall issues, using STUN and TURN protocols.
+# https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols
 ICE_SERVERS = [
     RTCIceServer("stun:34.79.246.4:3478"),
     RTCIceServer("turn:34.79.246.4:3478")
