@@ -18,6 +18,7 @@ from . import (
     openfast,
     openfoam,
     security,
+    seissol,
     fenicsx,
     gromacs,
     simsopt,
