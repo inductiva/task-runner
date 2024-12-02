@@ -17,7 +17,7 @@ class SeisSolExecuter(BaseExecuter):
 
         input_file_path = os.path.join(self.artifacts_dir, self.args.input_filename)
 
-        simulator_binary = "SeisSol_Release_dhsw_4_elastic"
+        simulator_binary = "SeisSol_proxy_Release_dhsw_4_elastic"
 
         if self.args.n_vcpus:
             self.mpi_config.extra_args.extend(["-np", f"{self.args.n_vcpus}"])
@@ -29,4 +29,5 @@ class SeisSolExecuter(BaseExecuter):
             is_mpi=True,
             mpi_config=self.mpi_config,
         )
-        self.run_subprocess(cmd)
+
+        self.run_subprocess(cmd, working_dir=self.artifacts_dir)
