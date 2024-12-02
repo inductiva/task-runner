@@ -1,33 +1,32 @@
-from task_runner.executers import ExecCommandLogger, MPIExecuter, mpi_configuration
-from task_runner.utils import loki
+import os
+import shutil
+
+from task_runner.executers import BaseExecuter, command
 
 
-class SeisSolExecuter(MPIExecuter):
-    def __init__(
-        self,
-        working_dir,
-        container_image,
-        mpi_config: mpi_configuration.MPIClusterConfiguration,
-        loki_logger: loki.LokiLogger,
-        exec_command_logger: ExecCommandLogger,
-    ):
+class SeisSolExecuter(BaseExecuter):
+    def execute(self):
         """
-        Initialize the SeisSolExecuter.
+        Execute the SeisSol simulation.
 
-        Args:
-            working_dir (str): Working directory for the simulation.
-            container_image (str): Container image to use for the simulation.
-            mpi_config (MPIClusterConfiguration): MPI configuration details.
-            loki_logger (LokiLogger): Logger for structured logs.
-            exec_command_logger (ExecCommandLogger): Logger for command outputs.
+        This method runs the SeisSol simulator using the specified input configuration
+        and stores the output in the artifacts directory.
         """
-        super().__init__(
-            working_dir=working_dir,
-            container_image=container_image,
-            loki_logger=loki_logger,
-            exec_command_logger=exec_command_logger,
-            mpi_config=mpi_config,
-            sim_binary="SeisSol_Release_dhsw_4_elastic",
-            file_type="par",
-            sim_specific_input_filename="parameters.par",
+        input_dir = os.path.join(self.working_dir, self.args.sim_dir)
+        shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
+
+        input_file_path = os.path.join(self.artifacts_dir, self.args.input_filename)
+
+        simulator_binary = "SeisSol_Release_dhsw_4_elastic"
+
+        if self.args.n_vcpus:
+            self.mpi_config.extra_args.extend(["-np", f"{self.args.n_vcpus}"])
+        if self.args.use_hwthread:
+            self.mpi_config.extra_args.append("--use-hwthread-cpus")
+
+        cmd = command.Command(
+            cmd=f"{simulator_binary} {input_file_path}",
+            is_mpi=True,
+            mpi_config=self.mpi_config,
         )
+        self.run_subprocess(cmd)
