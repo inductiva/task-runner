@@ -2,7 +2,6 @@
 
 import math
 from abc import ABC, abstractmethod
-from typing import Tuple
 
 import gmsh
 
@@ -115,7 +114,7 @@ class CircularHole(Hole):
                                            ry=self.radius)
         return hole_gmsh
 
-    def get_hole_mesh_params(self) -> Tuple[float, float]:
+    def get_hole_mesh_params(self) -> tuple[float, float]:
         """Gets the mesh generation parameters for the hole.
 
         Metrics:
@@ -127,7 +126,7 @@ class CircularHole(Hole):
             size, defined as the diameter.
 
         Returns:
-            Tuple[float, float]: The mesh offset and the predefined element mesh
+            tuple[float, float]: The mesh offset and the predefined element mesh
               size for the hole.
         """
         mesh_offset = self.radius
@@ -221,7 +220,7 @@ class RectangularHole(Hole):
                               angle=math.radians(self.angle))
         return hole_gmsh
 
-    def get_hole_mesh_params(self) -> Tuple[float, float]:
+    def get_hole_mesh_params(self) -> tuple[float, float]:
         """Gets the mesh generation parameters for the hole.
 
         Metrics:
@@ -235,7 +234,7 @@ class RectangularHole(Hole):
             both the x and y directions
 
         Returns:
-            Tuple[float, float]: The mesh offset and the predefined element mesh
+            tuple[float, float]: The mesh offset and the predefined element mesh
               size for the hole.
         """
         mesh_offset = (self.half_size_x + self.half_size_y) / 2
@@ -345,7 +344,7 @@ class EllipticalHole(Hole):
 
         return hole_gmsh
 
-    def get_hole_mesh_params(self) -> Tuple[float, float]:
+    def get_hole_mesh_params(self) -> tuple[float, float]:
         """Gets the mesh generation parameters for the hole.
 
         Metrics:
@@ -357,7 +356,7 @@ class EllipticalHole(Hole):
             size, defined as the total of the semi-axis values.
 
         Returns:
-            Tuple[float, float]: The mesh offset and the predefined element mesh
+            tuple[float, float]: The mesh offset and the predefined element mesh
               size for the hole.
         """
         mesh_offset = (self.semi_axis_x + self.semi_axis_y) / 2

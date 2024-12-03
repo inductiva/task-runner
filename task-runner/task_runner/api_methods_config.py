@@ -1,6 +1,6 @@
 """Mapping of API simulators to the Executer classes that 
 perform those simulations."""
-from typing import Optional, Type
+from typing import Optional
 
 from task_runner import executers
 
@@ -48,7 +48,7 @@ simulator_to_executer = {
 }
 
 
-def get_executer(simulator: str) -> Optional[Type[executers.BaseExecuter]]:
+def get_executer(simulator: str) -> Optional[type[executers.BaseExecuter]]:
     """Get the Executer class for the given API method.
 
     Args:

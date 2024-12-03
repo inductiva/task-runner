@@ -1,10 +1,8 @@
 """Utils to create the mesh."""
-from typing import List
-
 import gmsh
 
 
-def add_mesh_field_distance(mesh_field_id: int, curves_list: List[int],
+def add_mesh_field_distance(mesh_field_id: int, curves_list: list[int],
                             num_points: int) -> None:
     """Add a distance-based mesh size field to control element size in Gmsh.
 
@@ -21,7 +19,7 @@ def add_mesh_field_distance(mesh_field_id: int, curves_list: List[int],
     Args:
         mesh_field_id (int): A unique identifier for the distance-based
           mesh size field.
-        curves_list (List[int]): List of curve IDs where the
+        curves_list (list[int]): List of curve IDs where the
           distance-based field will be applied.
         num_points (int): Number of points to use along curves to adjust
           the field size.

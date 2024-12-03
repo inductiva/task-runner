@@ -1,8 +1,8 @@
-"""Definition of constants related to the executers."""
+"""Definition of constants related to the task-runner."""
 from enum import Enum
 
 
-class ExecuterTerminationReason(Enum):
+class TaskRunnerTerminationReason(Enum):
     INTERRUPTED = "interrupted"
     VM_PREEMPTED = "preempted"
     ERROR = "error"

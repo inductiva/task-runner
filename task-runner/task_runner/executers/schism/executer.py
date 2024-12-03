@@ -1,4 +1,4 @@
-"""Executer tracker for schim"""
+"""Task-Runner for schim"""
 import os
 import shutil
 

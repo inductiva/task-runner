@@ -1,4 +1,4 @@
-"""Utilities to get information about the host machine the executer is on."""
+"""Utilities to get information about the host machine the task-runner is on."""
 from dataclasses import dataclass
 
 import psutil

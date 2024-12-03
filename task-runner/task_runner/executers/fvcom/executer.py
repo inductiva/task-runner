@@ -1,4 +1,4 @@
-"""Executer tracker for FVCOM"""
+"""Task-Runner for FVCOM"""
 import os
 import shutil
 

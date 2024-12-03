@@ -1,14 +1,14 @@
 """Utils to create the geometric case."""
 
 import json
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import gmsh
 
 from . import holes_utils, plate_utils
 
 
-def get_boundary_ids(entity_gmsh: int) -> List[int]:
+def get_boundary_ids(entity_gmsh: int) -> list[int]:
     """Gets the IDs of the plate or hole boundaries.
 
     This function retrieves a list of boundary IDs that correspond to the
@@ -35,7 +35,7 @@ def get_boundary_ids(entity_gmsh: int) -> List[int]:
           hole's OpenCASCADE CAD representation.
 
     Returns:
-        List[int]: A list of boundary IDs corresponding to the entity's
+        list[int]: A list of boundary IDs corresponding to the entity's
           boundaries.
     """
     boundary_dimtags = gmsh.model.getBoundary([(2, entity_gmsh)])
@@ -50,12 +50,12 @@ class GeometricCase:
 
     Attributes:
         plate (RectangularPlate): Rectangular plate object.
-        holes_list (List[Hole]): The holes objects.
+        holes_list (list[Hole]): The holes objects.
     """
 
     def __init__(self,
                  plate: plate_utils.RectangularPlate,
-                 holes_list: Optional[List[holes_utils.Hole]] = None) -> None:
+                 holes_list: Optional[list[holes_utils.Hole]] = None) -> None:
         """Initializes a GeometricCase object."""
         self.plate = plate
         self.holes_list = holes_list
@@ -121,7 +121,7 @@ class GeometricCase:
         with open(json_path, "w", encoding="utf-8") as write_file:
             json.dump(geom_case_dict, write_file, indent=4)
 
-    def _get_holes_mesh_params(self) -> Tuple[List[float], List[float]]:
+    def _get_holes_mesh_params(self) -> tuple[list[float], list[float]]:
         """Gets the mesh generation parameters for all the hole.
 
         Metrics:
@@ -132,7 +132,7 @@ class GeometricCase:
             size, defined as 1/4 of the perimeter.
 
         Returns:
-            Tuple[List[float], List[float]]: A tuple containing two lists:
+            tuple[list[float], list[float]]: A tuple containing two lists:
             - List of mesh offsets for each hole.
             - List of predefined element mesh sizes for each hole.
         """
@@ -148,11 +148,11 @@ class GeometricCase:
         return holes_mesh_offset, holes_predefined_element_size
 
     def _holes_to_occ_and_get_boundary_ids(
-            self) -> Tuple[List[int], List[List[int]]]:
+            self) -> tuple[list[int], list[list[int]]]:
         """Converts list of holes to OpenCASCADE CAD, gets boundary IDs.
 
         Returns:
-            Tuple[List[int], List[List[int]]]: A tuple containing two lists:
+            tuple[list[int], list[list[int]]]: A tuple containing two lists:
             - List of the Gmsh entity ID representing the hole's OpenCASCADE
             CAD representation for each hole.
             - List of lists, where each inner list contains the boundary IDs
@@ -174,7 +174,7 @@ class GeometricCase:
         return holes_gmsh, holes_boundary_ids
 
     def plate_with_holes_to_occ_and_get_boundary_ids(
-            self) -> Tuple[List[int], List[List[int]]]:
+            self) -> tuple[list[int], list[list[int]]]:
         """Converts plate with holes to OpenCASCADE CAD, gets boundary IDs.
 
         The process of generating the plate with holes is divided into 3 steps:
@@ -189,7 +189,7 @@ class GeometricCase:
         will be used.
 
         Returns:
-            Tuple[List[int], List[List[int]]]:
+            tuple[list[int], list[list[int]]]:
                 A tuple containing the following:
                 - List of IDs of the plate's boundaries.
                 - List of lists, where each inner list contains the IDs of the
@@ -214,11 +214,11 @@ class GeometricCase:
 
         return plate_boundary_ids, holes_boundary_ids
 
-    def get_mesh_params(self) -> Tuple[float, float, List[float], List[float]]:
+    def get_mesh_params(self) -> tuple[float, float, list[float], list[float]]:
         """Gets the mesh generation parameters for the palte with holes.
 
         Returns:
-            Tuple[float, float, List[float], List[float]]:
+            tuple[float, float, list[float], list[float]]:
                 A tuple containing the following:
                 - Mesh offset for the plate.
                 - Predefined element mesh size for the plate.
