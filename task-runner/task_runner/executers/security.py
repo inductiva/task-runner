@@ -1,7 +1,5 @@
 """Security checks for the executers."""
 
-import re
-
 
 def check_command_elem_security(cmd_elem):
     """Checks for security issues in a command element."""
