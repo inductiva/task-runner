@@ -1,7 +1,6 @@
 """Utils to create plates."""
 
 from abc import ABC, abstractmethod
-from typing import tuple
 
 import gmsh
 
