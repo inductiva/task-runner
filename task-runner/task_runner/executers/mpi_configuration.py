@@ -3,7 +3,7 @@ import glob
 import os
 import re
 import shlex
-from typing import List, Optional
+from typing import Optional
 
 from task_runner.executers import command
 
@@ -14,7 +14,7 @@ class MPIClusterConfiguration():
     """Class for MPI configuration."""
     hostfile_path: Optional[str]
     share_path: Optional[str]
-    extra_args: List[str]
+    extra_args: list[str]
     mpirun_bin_path_template: str
     local_mode: bool
 
@@ -82,7 +82,7 @@ class MPIClusterConfiguration():
             local_mode=local_mode,
         )
 
-    def list_available_versions(self) -> List[str]:
+    def list_available_versions(self) -> list[str]:
         mpirun_bin_paths = glob.glob(
             self.mpirun_bin_path_template.format(version="*"))
 
@@ -108,7 +108,7 @@ class MPIClusterConfiguration():
     def build_command_prefix(
         self,
         command_config: Optional[command.MPICommandConfig] = None,
-    ) -> List[str]:
+    ) -> list[str]:
         version = self.default_version
 
         user_provided_args = []

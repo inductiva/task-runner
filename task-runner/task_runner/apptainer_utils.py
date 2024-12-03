@@ -8,7 +8,7 @@ import os
 import re
 import subprocess
 import time
-from typing import Optional, Tuple
+from typing import Optional
 
 import fsspec
 from absl import logging
@@ -143,7 +143,7 @@ class ApptainerImagesManager:
 
         return False
 
-    def get(self, image: str) -> Tuple[str, float, ApptainerImageSource]:
+    def get(self, image: str) -> tuple[str, float, ApptainerImageSource]:
         """Makes the requested Apptainer image available locally.
 
         If the image is not available in the local directory, it is attempted

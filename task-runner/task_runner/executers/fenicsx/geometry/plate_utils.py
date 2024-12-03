@@ -1,7 +1,7 @@
 """Utils to create plates."""
 
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import tuple
 
 import gmsh
 
@@ -80,7 +80,7 @@ class RectangularPlate(Plate):
 
         return plate_gmsh
 
-    def get_plate_mesh_params(self) -> Tuple[float, float]:
+    def get_plate_mesh_params(self) -> tuple[float, float]:
         """Gets the mesh parameters for the plate.
 
         Metrics:
@@ -92,7 +92,7 @@ class RectangularPlate(Plate):
             size, defined as the minimum size of the plate.
 
         Returns:
-          Tuple[float, float]: A tuple containing the mesh offset and the
+          tuple[float, float]: A tuple containing the mesh offset and the
             predefined element mesh size for the plate.
       """
         mesh_offset = min(self.width, self.length)
