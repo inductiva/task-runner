@@ -14,7 +14,8 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
 
         run_subprocess_dir = self.artifacts_dir
 
-        if self.args.run_subprocess_dir:
+        if hasattr(self.args,
+                   'run_subprocess_dir') and self.args.run_subprocess_dir:
             run_subprocess_dir = os.path.join(self.artifacts_dir,
                                               self.args.run_subprocess_dir)
 
