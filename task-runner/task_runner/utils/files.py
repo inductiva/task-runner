@@ -110,9 +110,13 @@ def get_dir_files_paths(directory):
 
     def _update_paths(file_name, file_type):
         full_path = os.path.join(root, file_name)
+        if os.path.islink(full_path):
+            return
+
         relative_path = os.path.relpath(full_path, directory)
         if file_type == "directory":
             relative_path += "/"
+
         paths.append({
             "fs": full_path,
             "name": relative_path,
@@ -262,6 +266,10 @@ def make_zip_archive(
                 # Add each file to the archive
                 for filename in filenames:
                     file_path = os.path.join(foldername, filename)
+
+                    if os.path.islink(file_path):
+                        continue
+
                     arcname = os.path.relpath(file_path, local_path)
                     zip_file.write(file_path, arcname=arcname)
 
