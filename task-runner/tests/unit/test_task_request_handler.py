@@ -7,7 +7,8 @@ import tempfile
 import threading
 import time
 import uuid
-from typing import Iterator, List, Optional
+from collections.abc import Iterator
+from typing import List, Optional
 from unittest import mock
 
 import pytest
