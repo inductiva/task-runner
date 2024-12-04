@@ -403,6 +403,14 @@ class TaskRequestHandler:
 
             except Exception as e:  # noqa: BLE001
                 logging.exception("Failed to save output: %s", e)
+                message = utils.get_exception_root_cause_message(e)
+                self._publish_event(
+                    events.TaskOutputUploadFailed(
+                        id=self.task_id,
+                        machine_id=self.executer_uuid,
+                        error_message=message,
+                        traceback=traceback.format_exc(),
+                    ))
                 safely_delete = False
 
         finally:
