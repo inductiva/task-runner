@@ -75,6 +75,7 @@ def download_input_side_effect(
 
     task_request_payload = {
         "sim_dir": "sim_dir",
+        "run_subprocess_dir": None,
         "container_image": "unused",
         "commands": [{
             "cmd": command,
