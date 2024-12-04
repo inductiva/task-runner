@@ -8,9 +8,10 @@ from client_connection import ClientConnection
 
 class ConnectionManager:
 
-    def __init__(self, signaling_server, user_api_key):
+    def __init__(self, signaling_server, user_api_key, ice_url):
         self._signaling_server = signaling_server
         self._user_api_key = user_api_key
+        self._ice_url = ice_url
         self._headers = {"X-API-Key": self._user_api_key}
 
     @classmethod
@@ -18,6 +19,7 @@ class ConnectionManager:
         return cls(
             signaling_server=os.getenv("API_URL", "https://api.inductiva.ai"),
             user_api_key=os.getenv("USER_API_KEY"),
+            ice_url=os.getenv("ICE_URL", "webrtc.inductiva.ai:3478"),
         )
 
     async def listen(self, task_id):
@@ -48,7 +50,8 @@ class ConnectionManager:
                     if resp.status == 200:
                         data = await resp.json()
                         if data['type'] == 'offer':
-                            client_connection = ClientConnection(task_id)
+                            client_connection = ClientConnection(
+                                task_id, self._ice_url)
                             pc = await client_connection.setup_connection(data)
                             await session.post(
                                 url + "offer",

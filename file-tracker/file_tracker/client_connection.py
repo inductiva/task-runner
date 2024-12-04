@@ -9,20 +9,20 @@ from aiortc import (
 )
 from file_operations import ls, tail
 
-# STUN/TURN server configuration
-# ICE (Interactive Connectivity Establishment) server helps establish a
-# peer-to-peer connection by discovering and negotiating network paths, including
-# handling NAT traversal and firewall issues, using STUN and TURN protocols.
-# https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols
-ICE_SERVERS = [
-    RTCIceServer("stun:34.79.246.4:3478"),
-    RTCIceServer("turn:34.79.246.4:3478")
-]
-
 
 class ClientConnection:
 
-    def __init__(self, task_id, ice_servers=ICE_SERVERS):
+    def __init__(self, task_id, ice_url):
+        # STUN/TURN server configuration
+        # ICE (Interactive Connectivity Establishment) server helps
+        # establish a peer-to-peer connection by discovering and negotiating
+        # network paths, including handling NAT traversal and firewall
+        # issues, using STUN and TURN protocols.
+        # https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols
+        ice_servers = [
+            RTCIceServer(f"stun:{ice_url}"),
+            RTCIceServer(f"turn:{ice_url}")
+        ]
         self.pc = RTCPeerConnection(RTCConfiguration(iceServers=ice_servers))
         self.path = task_id + "/output/artifacts/"
 
