@@ -7,7 +7,8 @@ from task_listener import TaskListener
 
 
 async def main():
-    os.chdir('/workdir')
+    workdir = os.getenv("WORKDIR", "/workdir")
+    os.chdir(workdir)
 
     connection_manager = ConnectionManager.from_env()
     task_listener = TaskListener(connection_manager)
