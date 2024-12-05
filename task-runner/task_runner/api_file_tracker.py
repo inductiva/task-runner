@@ -1,6 +1,7 @@
 import asyncio
+import logging
 
-SERVER_HOST = '0.0.0.0'
+SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 5000
 
 
@@ -20,11 +21,13 @@ class ApiFileTracker:
 
     async def _message(self, message):
         reader, writer = await asyncio.open_connection(self.host, self.port)
+        logging.info("Sending message: %s", message)
         writer.write(message.encode())
         await writer.drain()
 
         data = await reader.read(100)
         response = data.decode()
+        logging.info("Received response: %s", response)
         assert response == "ACK"
 
         writer.close()
