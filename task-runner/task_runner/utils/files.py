@@ -284,7 +284,7 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
 
     :param zip_path: Path to the ZIP file.
     :param subfolder: The name of the subfolder to extract.
-    :param extract_to: The final directory to copy the files to.
+    :param extract_to: The final directory to move the files to.
     """
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -293,16 +293,12 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
 
         source_folder = os.path.join(temp_dir, subfolder)
 
-        # Copy the contents of the subfolder to the target location
+        # Move the contents of the subfolder to the target location
         for item in os.listdir(source_folder):
-            source_item = os.path.join(source_folder, item)
-            target_item = os.path.join(extract_to, item)
-
-            # If the item is a file, copy it; if directory, copy recursively
-            if os.path.isfile(source_item):
-                shutil.copy2(source_item, target_item)
-            elif os.path.isdir(source_item):
-                shutil.copytree(source_item, target_item)
+            shutil.move(
+                os.path.join(source_folder, item),
+                os.path.join(extract_to, item),
+            )
 
     # Remove the original ZIP file
     os.remove(zip_path)
