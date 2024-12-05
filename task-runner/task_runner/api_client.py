@@ -355,6 +355,7 @@ class ApiClient:
         files_url = [{
             "url": item["url"],
             "file_path": item["file_path"],
+            "unzip": item.get("unzip", False)
         } for item in response_data]
 
         return files_url

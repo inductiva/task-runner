@@ -274,3 +274,50 @@ def make_zip_archive(
                     zip_file.write(file_path, arcname=arcname)
 
     return output_zip
+
+
+def extract_zip_paths(zip_file,
+                      base_path,
+                      paths_to_extract,
+                      extract_to,
+                      remove_zip=False):
+    """Extract paths from a ZIP archive.
+
+    Args:
+        zip_file: Path to the ZIP file.
+        base_path: Base path of the files to extract.
+        paths_to_extract: List of paths to extract.
+        extract_to: Directory where to write the extracted files.
+        remove_zip: Whether to remove the ZIP file after extraction.
+    """
+
+    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        all_files = zip_ref.namelist()
+
+        for path in paths_to_extract:
+            full_path = os.path.join(base_path, path)
+
+            # if the path is a directory, extract all files in the directory
+            if full_path.endswith('/'):
+                for member in all_files:
+                    if member.startswith(full_path):
+                        target_path = os.path.join(extract_to,
+                                                   member[len(base_path):])
+                        if member.endswith('/'):
+                            os.makedirs(target_path, exist_ok=True)
+                        else:
+                            os.makedirs(os.path.dirname(target_path),
+                                        exist_ok=True)
+                            with open(target_path, 'wb') as output_file:
+                                output_file.write(zip_ref.read(member))
+
+            # if the path is a file, extract the file
+            elif full_path in all_files:
+                target_path = os.path.join(extract_to,
+                                           full_path[len(base_path):])
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                with open(target_path, 'wb') as output_file:
+                    output_file.write(zip_ref.read(full_path))
+
+    if remove_zip:
+        os.remove(zip_file)
