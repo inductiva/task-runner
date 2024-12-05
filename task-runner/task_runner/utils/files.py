@@ -298,7 +298,7 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
             source_item = os.path.join(source_folder, item)
             target_item = os.path.join(extract_to, item)
 
-            # If the item is a file, copy it; if it's a directory, copy recursively
+            # If the item is a file, copy it; if directory, copy recursively
             if os.path.isfile(source_item):
                 shutil.copy2(source_item, target_item)
             elif os.path.isdir(source_item):
