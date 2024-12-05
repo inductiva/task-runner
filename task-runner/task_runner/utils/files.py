@@ -1,5 +1,6 @@
 """File related utility functions"""
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -276,48 +277,32 @@ def make_zip_archive(
     return output_zip
 
 
-def extract_zip_paths(zip_file,
-                      base_path,
-                      paths_to_extract,
-                      extract_to,
-                      remove_zip=False):
-    """Extract paths from a ZIP archive.
+def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
+    """
+    Extracts everything from the ZIP file, moves the files from the subfolder
+    to the target location, and cleans up the rest.
 
-    Args:
-        zip_file: Path to the ZIP file.
-        base_path: Base path of the files to extract.
-        paths_to_extract: List of paths to extract.
-        extract_to: Directory where to write the extracted files.
-        remove_zip: Whether to remove the ZIP file after extraction.
+    :param zip_path: Path to the ZIP file.
+    :param subfolder: The name of the subfolder to extract.
+    :param extract_to: The final directory to copy the files to.
     """
 
-    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-        all_files = zip_ref.namelist()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
 
-        for path in paths_to_extract:
-            full_path = os.path.join(base_path, path)
+        source_folder = os.path.join(temp_dir, subfolder)
 
-            # if the path is a directory, extract all files in the directory
-            if full_path.endswith('/'):
-                for member in all_files:
-                    if member.startswith(full_path):
-                        target_path = os.path.join(extract_to,
-                                                   member[len(base_path):])
-                        if member.endswith('/'):
-                            os.makedirs(target_path, exist_ok=True)
-                        else:
-                            os.makedirs(os.path.dirname(target_path),
-                                        exist_ok=True)
-                            with open(target_path, 'wb') as output_file:
-                                output_file.write(zip_ref.read(member))
+        # Copy the contents of the subfolder to the target location
+        for item in os.listdir(source_folder):
+            source_item = os.path.join(source_folder, item)
+            target_item = os.path.join(extract_to, item)
 
-            # if the path is a file, extract the file
-            elif full_path in all_files:
-                target_path = os.path.join(extract_to,
-                                           full_path[len(base_path):])
-                os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                with open(target_path, 'wb') as output_file:
-                    output_file.write(zip_ref.read(full_path))
+            # If the item is a file, copy it; if it's a directory, copy recursively
+            if os.path.isfile(source_item):
+                shutil.copy2(source_item, target_item)
+            elif os.path.isdir(source_item):
+                shutil.copytree(source_item, target_item)
 
-    if remove_zip:
-        os.remove(zip_file)
+    # Remove the original ZIP file
+    os.remove(zip_path)

@@ -146,10 +146,8 @@ class WebApiFileManager(BaseFileManager):
 
             if unzip:
                 extract_to = os.path.join(dest_path, os.path.dirname(file_path))
-                files.extract_zip_paths(
-                    zip_file=file_path,
-                    base_path="artifacts/",
-                    paths_to_extract=[""],
+                files.extract_subfolder_and_cleanup(
+                    zip_path=file_path,
+                    subfolder="artifacts/",
                     extract_to=extract_to,
-                    remove_zip=True,
                 )
