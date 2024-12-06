@@ -112,7 +112,7 @@ def main(_):
         task_runner_id=executer_uuid,
     )
 
-    api_file_tracker = task_runner.ApiFileTracker() if local_mode else None
+    api_file_tracker = task_runner.ApiFileTracker()
 
     request_handler = TaskRequestHandler(
         executer_uuid=executer_uuid,
