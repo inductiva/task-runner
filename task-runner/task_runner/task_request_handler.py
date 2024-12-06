@@ -189,21 +189,22 @@ class TaskRequestHandler:
 
         self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
 
-    def save_output(self, new_task_status=None):
+    def save_output(self, new_task_status=None, force=False):
         output_size = self._pack_output()
-        self._publish_event(
-            events.TaskOutputUploaded(id=self.task_id,
-                                      machine_id=self.executer_uuid,
-                                      new_status=new_task_status,
-                                      output_size=output_size))
+        self._publish_event(events.TaskOutputUploaded(
+            id=self.task_id,
+            machine_id=self.executer_uuid,
+            new_status=new_task_status,
+            output_size=output_size),
+                            force=force)
         return True
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
         return self.task_id is not None and not self.cleaning_up
 
-    def _publish_event(self, event: events.Event):
-        if not self._shutting_down:
+    def _publish_event(self, event: events.Event, force=False):
+        if force or not self._shutting_down:
             self.event_logger.log(event)
 
     def _post_task_metric(self, metric: str, value: float):
@@ -390,8 +391,6 @@ class TaskRequestHandler:
         except Exception as e:  # noqa: BLE001
             message = utils.get_exception_root_cause_message(e)
             try:
-                safely_delete = self.save_output()
-
                 self._publish_event(
                     events.TaskExecutionFailed(
                         id=self.task_id,
@@ -399,8 +398,19 @@ class TaskRequestHandler:
                         error_message=message,
                         traceback=traceback.format_exc(),
                     ))
+
+                safely_delete = self.save_output()
+
             except Exception as e:  # noqa: BLE001
                 logging.exception("Failed to save output: %s", e)
+                message = utils.get_exception_root_cause_message(e)
+                self._publish_event(
+                    events.TaskOutputUploadFailed(
+                        id=self.task_id,
+                        machine_id=self.executer_uuid,
+                        error_message=message,
+                        traceback=traceback.format_exc(),
+                    ))
                 safely_delete = False
 
         finally:

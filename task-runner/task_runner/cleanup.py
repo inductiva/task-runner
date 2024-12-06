@@ -75,7 +75,6 @@ class TerminationHandler:
             logging.info("Task was being executed: %s.",
                          self.request_handler.task_id)
             self.request_handler.interrupt_task()
-            self.request_handler.save_output()
             stopped_tasks.append(self.request_handler.task_id)
 
         self.request_handler.set_shutting_down()
@@ -89,6 +88,9 @@ class TerminationHandler:
             traceback=traceback_str,
         )
         self.event_logger.log(event)
+
+        if self.request_handler.is_task_running():
+            self.request_handler.save_output(force=True)
 
         logging.info("Successfully logged executer tracker termination.")
 
