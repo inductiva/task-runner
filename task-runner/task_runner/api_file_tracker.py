@@ -12,10 +12,12 @@ class ApiFileTracker:
         self.port = port
 
     def start(self, task_id):
+        logging.info("Starting task streaming: %s", task_id)
         message = "start:" + task_id
         asyncio.run(self._message(message))
 
     def stop(self, task_id):
+        logging.info("Stoping task streaming: %s", task_id)
         message = "stop:" + task_id
         asyncio.run(self._message(message))
 
