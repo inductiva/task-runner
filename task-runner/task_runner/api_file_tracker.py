@@ -15,13 +15,14 @@ class ApiFileTracker:
     def start(self, task_id):
         logging.info("Starting task streaming: %s", task_id)
         message = "start:" + task_id
-        asyncio.run(self._message(message))
+        self.started = asyncio.run(self._message(message))
 
     def stop(self, task_id):
         if self.started:
             logging.info("Stoping task streaming: %s", task_id)
             message = "stop:" + task_id
             asyncio.run(self._message(message))
+            self.started = False
 
     async def _message(self, message, num_retries=3):
         reader, writer = await asyncio.open_connection(self.host, self.port)
@@ -36,6 +37,6 @@ class ApiFileTracker:
                 break
 
             num_retries -= 1
-
         writer.close()
         await writer.wait_closed()
+        return num_retries > 0
