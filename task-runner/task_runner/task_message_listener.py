@@ -3,7 +3,6 @@ import logging
 import time
 import uuid
 
-from requests.exceptions import ConnectionError, ReadTimeout
 from typing_extensions import override
 
 import task_runner
@@ -47,11 +46,8 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                 if (message.status ==
                         task_runner.HTTPStatus.INTERNAL_SERVER_ERROR):
                     time.sleep(30)
-            except ConnectionError as e:
-                logging.exception("Connection error: %s", str(e))
-                time.sleep(30)
-            except ReadTimeout as e:
-                logging.exception("Request timed out: %s", str(e))
+            except Exception as e:  # noqa: BLE001
+                logging.exception("Caught exception: %s", str(e))
                 time.sleep(30)
 
     @override
