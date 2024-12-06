@@ -15,3 +15,12 @@ services:
         - "host.docker.internal:host-gateway"
       privileged: true
       platform: linux/amd64
+  file-tracker:
+    build:
+      context: .
+      dockerfile: file-tracker/Dockerfile
+    environment:
+      API_URL: ${INDUCTIVA_API_URL}
+      USER_API_KEY: ${INDUCTIVA_API_KEY}
+    privileged: true
+    platform: linux/amd64
