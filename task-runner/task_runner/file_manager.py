@@ -4,7 +4,6 @@ import time
 import urllib
 import urllib.request
 import uuid
-from typing import List
 
 import requests
 from typing_extensions import override
@@ -40,7 +39,7 @@ class BaseFileManager(abc.ABC):
     @abc.abstractmethod
     def download_input_resources(
         self,
-        input_resources: List[str],
+        input_resources: list[str],
         dest_path: str,
         task_runner_id: uuid.UUID,
     ):
@@ -129,7 +128,7 @@ class WebApiFileManager(BaseFileManager):
     @override
     def download_input_resources(
         self,
-        input_resources: List[str],
+        input_resources: list[str],
         dest_path: str,
         task_runner_id: uuid.UUID,
     ):
