@@ -138,6 +138,15 @@ class WebApiFileManager(BaseFileManager):
         for file_url in files_url:
             url = file_url["url"]
             base_path = file_url["file_path"]
+            unzip = file_url["unzip"]
             file_path = os.path.join(dest_path, base_path)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             urllib.request.urlretrieve(url, file_path)
+
+            if unzip:
+                extract_to = os.path.join(dest_path, os.path.dirname(file_path))
+                files.extract_subfolder_and_cleanup(
+                    zip_path=file_path,
+                    subfolder="artifacts/",
+                    extract_to=extract_to,
+                )

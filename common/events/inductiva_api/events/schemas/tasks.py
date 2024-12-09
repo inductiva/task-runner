@@ -31,6 +31,12 @@ class TaskOutputUploaded(TaskEvent):
     output_size: Optional[int] = None
 
 
+class TaskOutputUploadFailed(TaskEvent):
+    machine_id: uuid.UUID
+    error_message: str
+    traceback: Optional[str] = None
+
+
 class TaskKilled(TaskEvent):
     # optional because the task may have been killed before
     # it was assigned to a machine

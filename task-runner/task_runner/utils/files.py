@@ -1,5 +1,6 @@
 """File related utility functions"""
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -110,9 +111,13 @@ def get_dir_files_paths(directory):
 
     def _update_paths(file_name, file_type):
         full_path = os.path.join(root, file_name)
+        if os.path.islink(full_path):
+            return
+
         relative_path = os.path.relpath(full_path, directory)
         if file_type == "directory":
             relative_path += "/"
+
         paths.append({
             "fs": full_path,
             "name": relative_path,
@@ -262,7 +267,38 @@ def make_zip_archive(
                 # Add each file to the archive
                 for filename in filenames:
                     file_path = os.path.join(foldername, filename)
+
+                    if os.path.islink(file_path):
+                        continue
+
                     arcname = os.path.relpath(file_path, local_path)
                     zip_file.write(file_path, arcname=arcname)
 
     return output_zip
+
+
+def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
+    """
+    Extracts everything from the ZIP file, moves the files from the subfolder
+    to the target location, and cleans up the rest.
+
+    :param zip_path: Path to the ZIP file.
+    :param subfolder: The name of the subfolder to extract.
+    :param extract_to: The final directory to move the files to.
+    """
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        source_folder = os.path.join(temp_dir, subfolder)
+
+        # Move the contents of the subfolder to the target location
+        for item in os.listdir(source_folder):
+            shutil.move(
+                os.path.join(source_folder, item),
+                os.path.join(extract_to, item),
+            )
+
+    # Remove the original ZIP file
+    os.remove(zip_path)

@@ -1,7 +1,5 @@
 """Security checks for the executers."""
 
-import re
-
 
 def check_command_elem_security(cmd_elem):
     """Checks for security issues in a command element."""
@@ -12,11 +10,3 @@ def check_command_elem_security(cmd_elem):
 
     if cmd_elem == "":
         raise ValueError(f"Command element '{cmd_elem}' is empty.")
-
-    # Assure that command element is not a know operator for concatenating
-    # multiple commands in a single line.
-    # Blacklist: contains ";" or "|" or two "&".
-    pattern = r".*[;|&]{1,2}.*"
-    if re.match(pattern, cmd_elem):
-        raise ValueError(
-            f"Command element '{cmd_elem}' contains invalid characters.")

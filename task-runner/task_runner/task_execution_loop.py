@@ -38,7 +38,7 @@ def start_loop(
                 time.sleep(30)
 
         except ConnectionError as e:
-            logging.info("ERROR CONNECTION: %s", str(e))
+            logging.exception("Connection Error: %s", str(e))
             continue
         except ReadTimeout as e:
             logging.exception("Request timed out: %s", str(e))
