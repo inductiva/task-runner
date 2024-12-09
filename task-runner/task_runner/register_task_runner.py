@@ -1,4 +1,4 @@
-"""Module for registering a taks-runner with the API."""
+"""Module for registering a task-runner with the API."""
 import os
 from datetime import datetime, timezone
 from typing import Optional
