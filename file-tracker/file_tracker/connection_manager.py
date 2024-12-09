@@ -13,8 +13,6 @@ class ConnectionManager:
         self._user_api_key = user_api_key
         self._ice_url = ice_url
         self._headers = {"X-API-Key": self._user_api_key}
-        logging.info("Server %s", self._signaling_server)
-        logging.info("User API Key %s", self._user_api_key)
 
     @classmethod
     def from_env(cls):
