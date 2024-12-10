@@ -1,4 +1,5 @@
 import abc
+import logging
 import time
 import uuid
 
@@ -33,15 +34,20 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
     @override
     def receive(self, task_id: str):
         while True:
-            message = self._api_client.receive_task_message(
-                self._task_runner_id,
-                task_id,
-                block_s=self._block_s,
-            )
-            if message.status == task_runner.HTTPStatus.SUCCESS:
-                return message.data
+            try:
+                message = self._api_client.receive_task_message(
+                    self._task_runner_id,
+                    task_id,
+                    block_s=self._block_s,
+                )
+                if message.status == task_runner.HTTPStatus.SUCCESS:
+                    return message.data
 
-            if message.status == task_runner.HTTPStatus.INTERNAL_SERVER_ERROR:
+                if (message.status ==
+                        task_runner.HTTPStatus.INTERNAL_SERVER_ERROR):
+                    time.sleep(30)
+            except Exception as e:  # noqa: BLE001
+                logging.exception("Caught exception: %s", str(e))
                 time.sleep(30)
 
     @override

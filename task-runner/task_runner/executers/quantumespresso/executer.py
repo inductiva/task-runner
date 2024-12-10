@@ -1,4 +1,4 @@
-"""Executer tracker for QuantumEspresso"""
+"""Task-Runner for QuantumEspresso"""
 import os
 import shutil
 

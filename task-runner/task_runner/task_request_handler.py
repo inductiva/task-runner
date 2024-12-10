@@ -15,7 +15,6 @@ import shutil
 import threading
 import time
 import traceback
-from typing import Dict, Tuple
 from uuid import UUID
 
 from absl import logging
@@ -132,7 +131,7 @@ class TaskRequestHandler:
     the request for consumption.
 
     Attributes:
-        executer_uuid: UUID of the executer that handles the requests.
+        task_runner_uuid: UUID of the task_runner that handles the requests.
             Used for event logging purposes.
         workdir: Working directory.
         mpi_config: MPI configuration.
@@ -146,7 +145,7 @@ class TaskRequestHandler:
 
     def __init__(
         self,
-        executer_uuid: UUID,
+        task_runner_uuid: UUID,
         workdir: str,
         mpi_config: executers.MPIClusterConfiguration,
         apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
@@ -156,7 +155,7 @@ class TaskRequestHandler:
         file_manager: task_runner.BaseFileManager,
         api_file_tracker: task_runner.ApiFileTracker = None,
     ):
-        self.executer_uuid = executer_uuid
+        self.task_runner_uuid = task_runner_uuid
         self.workdir = workdir
         self.mpi_config = mpi_config
         self.apptainer_images_manager = apptainer_images_manager
@@ -191,21 +190,22 @@ class TaskRequestHandler:
 
         self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
 
-    def save_output(self, new_task_status=None):
+    def save_output(self, new_task_status=None, force=False):
         output_size = self._pack_output()
-        self._publish_event(
-            events.TaskOutputUploaded(id=self.task_id,
-                                      machine_id=self.executer_uuid,
-                                      new_status=new_task_status,
-                                      output_size=output_size))
+        self._publish_event(events.TaskOutputUploaded(
+            id=self.task_id,
+            machine_id=self.task_runner_uuid,
+            new_status=new_task_status,
+            output_size=output_size),
+                            force=force)
         return True
 
     def is_task_running(self) -> bool:
         """Checks if a task is currently running."""
         return self.task_id is not None and not self.cleaning_up
 
-    def _publish_event(self, event: events.Event):
-        if not self._shutting_down:
+    def _publish_event(self, event: events.Event, force=False):
+        if force or not self._shutting_down:
             self.event_logger.log(event)
 
     def _post_task_metric(self, metric: str, value: float):
@@ -253,7 +253,7 @@ class TaskRequestHandler:
         except queue.Empty:
             return False
 
-    def __call__(self, request: Dict[str, str]) -> None:
+    def __call__(self, request: dict[str, str]) -> None:
         """Execute the task described by the request.
 
         Note that this method blocks until the task is completed or killed.
@@ -327,7 +327,7 @@ class TaskRequestHandler:
                 self._publish_event(
                     events.TaskKilled(
                         id=self.task_id,
-                        machine_id=self.executer_uuid,
+                        machine_id=self.task_runner_uuid,
                     ))
                 return
 
@@ -337,7 +337,7 @@ class TaskRequestHandler:
                 self._publish_event(
                     events.TaskKilled(
                         id=self.task_id,
-                        machine_id=self.executer_uuid,
+                        machine_id=self.task_runner_uuid,
                     ))
                 return
 
@@ -346,7 +346,7 @@ class TaskRequestHandler:
                 events.TaskWorkStarted(
                     timestamp=computation_start_time,
                     id=self.task_id,
-                    machine_id=self.executer_uuid,
+                    machine_id=self.task_runner_uuid,
                 ))
 
             exit_code, exit_reason = self._execute_request(request)
@@ -357,7 +357,7 @@ class TaskRequestHandler:
                 events.TaskWorkFinished(
                     timestamp=computation_end_time,
                     id=self.task_id,
-                    machine_id=self.executer_uuid,
+                    machine_id=self.task_runner_uuid,
                 ))
 
             computation_seconds = (computation_end_time -
@@ -392,17 +392,26 @@ class TaskRequestHandler:
         except Exception as e:  # noqa: BLE001
             message = utils.get_exception_root_cause_message(e)
             try:
-                safely_delete = self.save_output()
-
                 self._publish_event(
                     events.TaskExecutionFailed(
+                        id=self.task_id,
+                        machine_id=self.task_runner_uuid,
+                        error_message=message,
+                        traceback=traceback.format_exc(),
+                    ))
+
+                safely_delete = self.save_output()
+
+            except Exception as e:  # noqa: BLE001
+                logging.exception("Failed to save output: %s", e)
+                message = utils.get_exception_root_cause_message(e)
+                self._publish_event(
+                    events.TaskOutputUploadFailed(
                         id=self.task_id,
                         machine_id=self.executer_uuid,
                         error_message=message,
                         traceback=traceback.format_exc(),
                     ))
-            except Exception as e:  # noqa: BLE001
-                logging.exception("Failed to save output: %s", e)
                 safely_delete = False
 
         finally:
@@ -434,7 +443,7 @@ class TaskRequestHandler:
         # by the task files
         if self.input_resources:
             download_duration = self.file_manager.download_input_resources(
-                self.input_resources, sim_workdir, self.executer_uuid)
+                self.input_resources, sim_workdir, self.task_runner_uuid)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -498,14 +507,14 @@ class TaskRequestHandler:
     def _execute_request(
         self,
         request,
-    ) -> Tuple[int, TaskExitReason]:
+    ) -> tuple[int, TaskExitReason]:
         """Execute the request.
 
         This uses a second thread to listen for possible "kill" messages from
         the API.
 
         Returns:
-            Tuple of the exit code of the task and a bool representing if the
+            tuple of the exit code of the task and a bool representing if the
             task was killed.
         """
         assert self.task_id is not None, (

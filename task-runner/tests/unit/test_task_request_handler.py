@@ -8,7 +8,7 @@ import threading
 import time
 import uuid
 from collections.abc import Iterator
-from typing import List, Optional
+from typing import Optional
 from unittest import mock
 
 import pytest
@@ -70,12 +70,13 @@ class MockMessageListener(task_message_listener.BaseTaskMessageListener):
 
 
 def download_input_side_effect(
-        commands: List[str],
+        commands: list[str],
         unblock_download_input: Optional[threading.Event] = None):
     """Get function to use as side_effect for file_manager.download_input."""
 
     task_request_payload = {
         "sim_dir": "sim_dir",
+        "run_subprocess_dir": None,
         "container_image": "unused",
         "commands": [{
             "cmd": command,
@@ -134,7 +135,7 @@ def fixture_task_request_handler(
     event_logger = mock.MagicMock()
 
     handler = task_request_handler.TaskRequestHandler(
-        executer_uuid=id_,
+        task_runner_uuid=id_,
         workdir=str(workdir),
         mpi_config=executers.MPIClusterConfiguration(),
         apptainer_images_manager=apptainer_images_manager,
@@ -154,7 +155,7 @@ def fixture_task_request_handler(
 
 
 def _setup_mock_task(
-    commands: List[str],
+    commands: list[str],
     handler: task_request_handler.TaskRequestHandler,
     time_to_live_seconds: Optional[float] = None,
     unblock_download_input: Optional[threading.Event] = None,

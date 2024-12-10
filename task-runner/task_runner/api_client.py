@@ -6,14 +6,14 @@ import os
 import time
 import uuid
 from collections import namedtuple
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import requests
 from absl import logging
 from inductiva_api import events
-from inductiva_api.task_status import ExecuterTerminationReason
+from inductiva_api.task_status import TaskRunnerTerminationReason
 
-from task_runner.cleanup import ExecuterTerminationError
+from task_runner.cleanup import TaskRunnerTerminationError
 from task_runner.utils import host
 
 
@@ -36,7 +36,7 @@ HTTPResponse = namedtuple("HTTPResponse", ["status", "data"])
 
 
 @dataclasses.dataclass
-class ExecuterAccessInfo:
+class TaskRunnerAccessInfo:
     id: uuid.UUID
     machine_group_id: uuid.UUID
 
@@ -69,7 +69,7 @@ class ApiClient:
             self._headers["X-API-Key"] = user_api_key
         if task_runner_token is not None:
             self._headers["X-Executer-Tracker-Token"] = task_runner_token
-        self._executer_uuid = None
+        self._task_runner_uuid = None
 
     @classmethod
     def from_env(cls):
@@ -108,11 +108,11 @@ class ApiClient:
         return resp
 
     def _request_task_runner_api(self, method: str, path: str, **kwargs):
-        full_path = f"/executer-tracker/{path.lstrip('/')}"
+        full_path = f"/task-runner/{path.lstrip('/')}"
 
         return self._request(method, full_path, **kwargs)
 
-    def register_task_runner(self, data: dict) -> ExecuterAccessInfo:
+    def register_task_runner(self, data: dict) -> TaskRunnerAccessInfo:
         resp = self._request_task_runner_api(
             HTTPMethod.POST.value,
             "/register",
@@ -123,17 +123,17 @@ class ApiClient:
 
         resp_body = resp.json()
 
-        self._executer_uuid = uuid.UUID(resp_body["executer_tracker_id"])
+        self._task_runner_uuid = uuid.UUID(resp_body["task_runner_id"])
 
-        return ExecuterAccessInfo(
-            id=self._executer_uuid,
+        return TaskRunnerAccessInfo(
+            id=self._task_runner_uuid,
             machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
         )
 
     def kill_machine(self) -> int:
         resp = self._request_task_runner_api(
             "DELETE",
-            f"/{self._executer_uuid}",
+            f"/{self._task_runner_uuid}",
         )
         return resp.status_code
 
@@ -141,7 +141,7 @@ class ApiClient:
         self,
         task_runner_id: uuid.UUID,
         block_s: int,
-    ) -> Optional[Dict]:
+    ) -> Optional[dict]:
         resp = self._request_task_runner_api(
             "GET",
             f"/{task_runner_id}/task?block_s={block_s}",
@@ -153,8 +153,8 @@ class ApiClient:
             return HTTPResponse(HTTPStatus.INTERNAL_SERVER_ERROR, None)
 
         if resp.status_code >= HTTPStatus.CLIENT_ERROR.value:
-            raise ExecuterTerminationError(
-                ExecuterTerminationReason.INTERRUPTED,
+            raise TaskRunnerTerminationError(
+                TaskRunnerTerminationReason.INTERRUPTED,
                 detail=resp.json()["detail"])
 
         return HTTPResponse(HTTPStatus.SUCCESS, resp.json())
@@ -275,7 +275,7 @@ class ApiClient:
         while max_retries > 0 and sent is False:
             resp = self._request_task_runner_api(
                 HTTPMethod.POST.value,
-                f"{self._executer_uuid}/task/{task_id}/metric",
+                f"{self._task_runner_uuid}/task/{task_id}/metric",
                 json=data,
             )
 
@@ -296,7 +296,7 @@ class ApiClient:
         self,
         operation_name: str,
         task_id: str,
-        attributes: Dict[str, Any],
+        attributes: dict[str, Any],
         timestamp: Optional[datetime.datetime] = None,
         elapsed_time_s: Optional[float] = None,
     ) -> str:
@@ -305,7 +305,7 @@ class ApiClient:
 
         resp = self._request_task_runner_api(
             "POST",
-            f"{self._executer_uuid}/task/{task_id}/operation",
+            f"{self._task_runner_uuid}/task/{task_id}/operation",
             json={
                 "time": timestamp.isoformat(),
                 "elapsed_time_s": elapsed_time_s,
@@ -322,7 +322,7 @@ class ApiClient:
         self,
         operation_id: str,
         task_id: str,
-        attributes: Dict[str, Any],
+        attributes: dict[str, Any],
         timestamp: Optional[datetime.datetime] = None,
         elapsed_time_s: Optional[float] = None,
     ):
@@ -331,7 +331,7 @@ class ApiClient:
 
         resp = self._request_task_runner_api(
             "POST",
-            f"{self._executer_uuid}/task/{task_id}/operation/{operation_id}/done",
+            f"{self._task_runner_uuid}/task/{task_id}/operation/{operation_id}/done",
             json={
                 "time": timestamp.isoformat(),
                 "elapsed_time_s": elapsed_time_s,
@@ -355,6 +355,7 @@ class ApiClient:
         files_url = [{
             "url": item["url"],
             "file_path": item["file_path"],
+            "unzip": item.get("unzip", False)
         } for item in response_data]
 
         return files_url

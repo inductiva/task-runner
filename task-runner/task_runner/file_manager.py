@@ -4,7 +4,6 @@ import time
 import urllib
 import urllib.request
 import uuid
-from typing import List
 
 import requests
 from typing_extensions import override
@@ -40,7 +39,7 @@ class BaseFileManager(abc.ABC):
     @abc.abstractmethod
     def download_input_resources(
         self,
-        input_resources: List[str],
+        input_resources: list[str],
         dest_path: str,
         task_runner_id: uuid.UUID,
     ):
@@ -129,7 +128,7 @@ class WebApiFileManager(BaseFileManager):
     @override
     def download_input_resources(
         self,
-        input_resources: List[str],
+        input_resources: list[str],
         dest_path: str,
         task_runner_id: uuid.UUID,
     ):
@@ -139,6 +138,15 @@ class WebApiFileManager(BaseFileManager):
         for file_url in files_url:
             url = file_url["url"]
             base_path = file_url["file_path"]
+            unzip = file_url["unzip"]
             file_path = os.path.join(dest_path, base_path)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             urllib.request.urlretrieve(url, file_path)
+
+            if unzip:
+                extract_to = os.path.join(dest_path, os.path.dirname(file_path))
+                files.extract_subfolder_and_cleanup(
+                    zip_path=file_path,
+                    subfolder="artifacts/",
+                    extract_to=extract_to,
+                )
