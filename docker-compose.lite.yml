@@ -11,6 +11,7 @@ services:
         HOST_NAME: ${TASK_RUNNER_HOSTNAME:-${HOSTNAME}}
       volumes:
         - ./apptainer:/executer-images
+        - workdir:/workdir
       extra_hosts:
         - "host.docker.internal:host-gateway"
       privileged: true
@@ -22,4 +23,8 @@ services:
     environment:
       API_URL: ${INDUCTIVA_API_URL}
       USER_API_KEY: ${INDUCTIVA_API_KEY}
-    platform: linux/amd64
+    volumes:
+        - workdir:/workdir
+
+volumes:
+  workdir:

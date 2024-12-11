@@ -112,7 +112,7 @@ def main(_):
         task_runner_id=task_runner_uuid,
     )
 
-    api_file_tracker = task_runner.ApiFileTracker()
+    api_file_tracker = task_runner.ApiFileTracker.from_env()
 
     request_handler = TaskRequestHandler(
         task_runner_uuid=task_runner_uuid,

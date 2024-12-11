@@ -1,13 +1,10 @@
 import asyncio
 import logging
 
-SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 5000
-
 
 class TaskListener:
 
-    def __init__(self, task_coordinator, host=SERVER_HOST, port=SERVER_PORT):
+    def __init__(self, task_coordinator, host, port):
         self.task_coordinator = task_coordinator
         self.host = host
         self.port = port

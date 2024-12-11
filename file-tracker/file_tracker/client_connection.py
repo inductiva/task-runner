@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 from aiortc import (
     RTCConfiguration,
@@ -24,7 +25,7 @@ class ClientConnection:
             RTCIceServer(f"turn:{ice_url}")
         ]
         self.pc = RTCPeerConnection(RTCConfiguration(iceServers=ice_servers))
-        self.path = task_id + "/output/artifacts/"
+        self.path = os.path.join(task_id, "/output/artifacts/")
 
     async def setup_connection(self, data):
 
@@ -39,7 +40,7 @@ class ClientConnection:
 
                 elif message.startswith("tail:"):
                     filename = message.split(":")[1]
-                    content = await tail(self.path + filename)
+                    content = await tail(os.path.join(self.path, filename))
                     channel.send(json.dumps(content))
 
             @channel.on("close")

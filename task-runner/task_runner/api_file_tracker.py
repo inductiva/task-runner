@@ -1,16 +1,21 @@
 import asyncio
 import logging
-
-SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 5000
+import os
 
 
 class ApiFileTracker:
 
-    def __init__(self, host=SERVER_HOST, port=SERVER_PORT):
+    def __init__(self, host, port):
         self.host = host
         self.port = port
         self.started = False
+
+    @classmethod
+    def from_env(cls):
+        return cls(
+            host=os.getenv("FILE_TRACKER_HOST", "0.0.0.0"),
+            port=int(os.getenv("FILE_TRACKER_PORT", "5000")),
+        )
 
     def start(self, task_id):
         logging.info("Starting task streaming: %s", task_id)

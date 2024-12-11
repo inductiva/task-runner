@@ -12,6 +12,7 @@ services:
         ON_GPU: true
       volumes:
         - ./apptainer:/executer-images
+        - workdir:/workdir
       privileged: true
       platform: linux/amd64
       deploy:
@@ -28,4 +29,8 @@ services:
     environment:
       API_URL: ${INDUCTIVA_API_URL}
       USER_API_KEY: ${INDUCTIVA_API_KEY}
-    platform: linux/amd64
+    volumes:
+      - workdir:/workdir
+
+volumes:
+  workdir:

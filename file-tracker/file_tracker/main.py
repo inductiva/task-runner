@@ -11,7 +11,10 @@ async def main():
     os.chdir(workdir)
 
     connection_manager = ConnectionManager.from_env()
-    task_listener = TaskListener(connection_manager)
+    file_tracker_host = os.getenv("FILE_TRACKER_HOST", "0.0.0.0")
+    file_tracker_port = int(os.getenv("FILE_TRACKER_PORT", "5000"))
+    task_listener = TaskListener(connection_manager, file_tracker_host,
+                                 file_tracker_port)
     logging.info("Starting task listener")
     await task_listener.start()
 
