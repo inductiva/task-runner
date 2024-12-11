@@ -27,7 +27,6 @@ services:
       network_mode: host
       volumes:
         - workdir:/workdir
-      privileged: true
       platform: linux/amd64
 
 volumes:
