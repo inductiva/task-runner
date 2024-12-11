@@ -13,9 +13,17 @@ from collections import namedtuple
 import psutil
 from absl import logging
 
-from task_runner import executers
+from task_runner import SystemMetrics, SystemMetricsLogger, executers
 from task_runner.executers import command, mpi_configuration
 from task_runner.utils import loki
+
+
+def system_metrics_log(workdir, finished_event: threading.Event):
+    metrics = [metric for metric in SystemMetrics]
+    logger = SystemMetricsLogger(metrics, workdir)
+    while not finished_event.is_set():
+        logger.log()
+        time.sleep(1)
 
 
 class ExecuterKilledError(Exception):
@@ -87,6 +95,13 @@ class BaseExecuter(ABC):
 
         self._lock = threading.Lock()
         self.is_shutting_down = threading.Event()
+
+        system_metrics_thread = threading.Thread(
+            target=system_metrics_log,
+            args=(self.artifacts_dir, self.is_shutting_down),
+            daemon=True,
+        )
+        system_metrics_thread.start()
 
         self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,

@@ -1,33 +1,47 @@
+import csv
+import datetime
 import enum
 import os
 
-import host
+import psutil
 
 
 class SystemMetrics(enum.Enum):
-    CPU_COUNT_LOGICAL = "cpu_count_logical"
-    CPU_COUNT_PHYSICAL = "cpu_count_physical"
-    MEMORY = "memory"
-    HOST_NAME = "host_name"
-    HOST_ID = "host_id"
+    CPU_USAGE = "cpu-usage"
+    MEMORY_USAGE = "memory"
+    DISK_INPUT = "disk-input"
+    DISK_OUTPUT = "disk-output"
 
 
 SYSTEM_METRICS_TO_FUNC = {
-    SystemMetrics.CPU_COUNT_LOGICAL: host.get_cpu_count().logical,
-    SystemMetrics.CPU_COUNT_PHYSICAL: host.get_cpu_count().physical,
-    SystemMetrics.MEMORY: host.get_total_memory(),
-    SystemMetrics.HOST_NAME: os.environ.get("HOST_NAME", "local-mode-name"),
-    SystemMetrics.HOST_ID: os.environ.get("HOST_ID", "local-mode-id"),
+    SystemMetrics.CPU_USAGE: psutil.cpu_percent,
+    SystemMetrics.MEMORY_USAGE: lambda: psutil.virtual_memory().percent,
+    SystemMetrics.DISK_INPUT: lambda: psutil.disk_io_counters().read_bytes,
+    SystemMetrics.DISK_OUTPUT: lambda: psutil.disk_io_counters().write_bytes
 }
 
 
 class SystemMetricsLogger:
 
-    def __init__(self):
-        self.metrics = []
+    def __init__(self,
+                 metrics,
+                 log_file_path,
+                 log_file_name="system_metrics.csv"):
+        self.metrics = metrics
+        self.log_file = os.path.join(log_file_path, log_file_name)
+        self._create_log_file()
 
-    def add_metric(self, metric):
-        self.metrics.append(metric)
+    def _create_log_file(self):
+        with open(self.log_file, "w", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["time"] +
+                            [metric.value for metric in self.metrics])
 
-    def _log():
-        pass
+    def log(self):
+        with open(self.log_file, "a", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            time_stamp = [datetime.datetime.now()]
+            metrics = [
+                SYSTEM_METRICS_TO_FUNC[metric]() for metric in self.metrics
+            ]
+            writer.writerow(time_stamp + metrics)
