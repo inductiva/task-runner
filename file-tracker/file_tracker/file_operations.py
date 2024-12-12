@@ -7,7 +7,6 @@ async def ls(path):
     dir = os.listdir(path)
     for file in dir:
         file_path = os.path.join(path, file)
-        print(file_path)
         if os.path.isdir(file_path):
             contents.append({file: await ls(file_path)})
         else:
