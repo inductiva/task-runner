@@ -6,14 +6,18 @@ async def ls(path):
     contents = []
     dir = os.listdir(path)
     for file in dir:
-        if os.path.isdir(path + file + "/"):
-            contents.append({file: await ls(path + file + "/")})
+        file_path = os.path.join(path, file)
+        print(file_path)
+        if os.path.isdir(file_path):
+            contents.append({file: await ls(file_path)})
         else:
             contents.append(file)
     return contents
 
 
 async def tail(filename, lines=10):
+    if not os.path.exists(filename):
+        return ["Error: File does not exist."]
     with open(filename, 'rb') as f:
         f.seek(0, 2)  # Seek to the end of the file
         block_size = 1024
