@@ -25,7 +25,7 @@ class ClientConnection:
             RTCIceServer(f"turn:{ice_url}")
         ]
         self.pc = RTCPeerConnection(RTCConfiguration(iceServers=ice_servers))
-        self.path = os.path.join(task_id, "output/artifacts/")
+        self.path = os.path.join(task_id, "output", "artifacts")
 
     async def setup_connection(self, data):
 
