@@ -51,7 +51,7 @@ class ClientConnection:
                     response = OperationResponse(status=OperationStatus.ERROR,
                                                  message=str(e))
                 finally:
-                    await channel.send(response.to_json_string())
+                    channel.send(response.to_json_string())
 
             @channel.on("close")
             async def on_close():

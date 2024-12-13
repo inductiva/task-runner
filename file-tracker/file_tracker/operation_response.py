@@ -15,7 +15,7 @@ class OperationResponse:
         self.message = message
 
     def to_dict(self):
-        return {"status": self.status, "message": self.message}
+        return {"status": self.status.value, "message": self.message}
 
     def to_json_string(self):
         return json.dumps(self.to_dict())
