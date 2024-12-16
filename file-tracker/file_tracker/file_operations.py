@@ -2,21 +2,25 @@ import os
 from collections import deque
 
 
-async def ls(path):
+class OperationError(Exception):
+    pass
+
+
+def ls(path):
     contents = []
     dir = os.listdir(path)
     for file in dir:
         file_path = os.path.join(path, file)
         if os.path.isdir(file_path):
-            contents.append({file: await ls(file_path)})
+            contents.append({file: ls(file_path)})
         else:
             contents.append(file)
     return contents
 
 
-async def tail(filename, lines=10):
+def tail(filename, lines=10):
     if not os.path.exists(filename):
-        return ["Error: File does not exist."]
+        raise OperationError(f"File not found: {filename}")
     with open(filename, 'rb') as f:
         f.seek(0, 2)  # Seek to the end of the file
         block_size = 1024
