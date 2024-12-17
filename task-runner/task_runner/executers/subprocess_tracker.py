@@ -3,7 +3,7 @@ import os
 import signal
 import subprocess
 import time
-from typing import IO, List
+from typing import IO
 
 from absl import logging
 
@@ -18,14 +18,14 @@ def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
 
     This function continuously reads lines from the given stream, decodes
     them to strings, and logs each line using the provided logger.
-    It also writes the decoded log messages to the Executer Tracker stdout.
+    It also writes the decoded log messages to the Task-Runner stdout.
 
     Args:
         stream (IO[bytes]): Input stream to read from (stdout or stderr
                             from a subprocess).
         loki_logger (LokiLogger): Logger instance to use for logging the
                                   decoded messages.
-        output (IO[str]): Executer Tracker stdout.
+        output (IO[str]): Task-Runner stdout.
         io_type (str): The I/O type associated with the stream (e.g., stdout or
                        stderr) used by the logger for categorizing messages.
     """
@@ -46,7 +46,7 @@ class SubprocessTracker:
 
     def __init__(
         self,
-        args: List[str],
+        args: list[str],
         working_dir,
         stdout,
         stderr,

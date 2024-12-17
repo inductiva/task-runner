@@ -2,7 +2,6 @@
 import os
 import shlex
 import shutil
-from typing import Tuple
 
 from task_runner import executers
 
@@ -18,7 +17,7 @@ class OpenFOAMCommand(executers.Command):
         super().__init__(cmd, prompts, is_mpi=is_mpi)
 
     @staticmethod
-    def process_openfoam_command(cmd, n_vcpus) -> Tuple[str, bool]:
+    def process_openfoam_command(cmd, n_vcpus) -> tuple[str, bool]:
         """Set the appropriate command for OpenFOAM.
 
         Define the appropriate command to be run inside the machine

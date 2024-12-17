@@ -1,7 +1,7 @@
 """Generic shell commands class."""
 import dataclasses
 import shlex
-from typing import Dict, List, Optional
+from typing import Optional
 
 from task_runner import executers
 
@@ -9,10 +9,10 @@ from task_runner import executers
 @dataclasses.dataclass
 class MPICommandConfig():
     version: str
-    args: List[str] = dataclasses.field(default_factory=list)
+    args: list[str] = dataclasses.field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: Dict):
+    def from_dict(cls, data: dict):
         options = data.get("options", {})
         if options is None:
             options = {}
@@ -40,7 +40,7 @@ class Command():
 
     Attributes:
         cmd (str): The command, given as a string.
-        prompt (List[str]): Command prompts, given as a list of strings.
+        prompt (list[str]): Command prompts, given as a list of strings.
 
     Example:
         >>> command = Command("gmx pdb2gmx -f protein.pdb", prompts=["amber94"])
@@ -49,7 +49,7 @@ class Command():
     def __init__(
         self,
         cmd: str,
-        prompts: Optional[List[str]] = None,
+        prompts: Optional[list[str]] = None,
         is_mpi: bool = False,
         mpi_config: Optional[MPICommandConfig] = None,
     ):
@@ -64,7 +64,7 @@ class Command():
         self._check_security(self.args, prompts)
 
     @classmethod
-    def from_dict(cls, data: Dict):
+    def from_dict(cls, data: dict):
         """Create an instance from a dictionary."""
         mpi_config_data = data.get("mpi_config")
         mpi_config = MPICommandConfig.from_dict(
@@ -77,7 +77,7 @@ class Command():
             mpi_config=mpi_config,
         )
 
-    def _tokenize(self, cmd) -> List[str]:
+    def _tokenize(self, cmd) -> list[str]:
         """Tokenize command"""
 
         return shlex.split(cmd)
