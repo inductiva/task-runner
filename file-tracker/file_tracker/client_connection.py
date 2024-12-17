@@ -40,8 +40,11 @@ class ClientConnection:
                         response.message = ls(self.path)
 
                     elif message.startswith("tail:"):
-                        filename = message.split(":")[1]
-                        response.message = tail(self.path, filename)
+                        _, args = message.split(":", 1)
+                        args = args.split(",")
+                        filename = args[0]
+                        n_lines = int(args[1]) if len(args) > 1 else 10
+                        response.message = tail(self.path, filename, n_lines)
                     else:
                         response = OperationResponse(
                             status=OperationStatus.INVALID,
