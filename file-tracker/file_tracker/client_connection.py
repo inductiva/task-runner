@@ -41,8 +41,7 @@ class ClientConnection:
 
                     elif message.startswith("tail:"):
                         filename = message.split(":")[1]
-                        response.message = tail(
-                            os.path.join(self.path, filename))
+                        response.message = tail(self.path, filename)
                     else:
                         response = OperationResponse(
                             status=OperationStatus.INVALID,
