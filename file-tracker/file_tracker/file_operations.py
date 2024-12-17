@@ -18,10 +18,11 @@ def ls(path):
     return contents
 
 
-def tail(filename, lines=10):
-    if not os.path.exists(filename):
+def tail(path_to_file, filename, lines=10):
+    file = os.path.join(path_to_file, filename)
+    if not os.path.exists(file):
         raise OperationError(f"File not found: {filename}")
-    with open(filename, 'rb') as f:
+    with open(file, 'rb') as f:
         f.seek(0, 2)  # Seek to the end of the file
         block_size = 1024
         blocks = deque()
@@ -40,6 +41,8 @@ def tail(filename, lines=10):
             blocks.appendleft(block)
             if read_lines > lines:
                 break
-
-        content = b''.join(blocks).decode()
+        try:
+            content = b''.join(blocks).decode()
+        except UnicodeDecodeError:
+            raise OperationError(f"File is not a text file: {filename}")
         return content.split('\n')[-lines:]
