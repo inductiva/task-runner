@@ -5,18 +5,12 @@ on:
     branches:
       - main
       - dev
+      - update-docker-image
 
     paths:
       - 'common/**'
       - 'task-runner/**'
       - 'file-tracker/**'
-
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to build Docker image from'
-        required: true
-        default: 'dev'
 
 jobs:
   build-publish-docker-image:
