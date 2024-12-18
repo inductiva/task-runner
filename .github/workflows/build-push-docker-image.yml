@@ -48,12 +48,8 @@ jobs:
           labels: |
             inductiva/file-tracker.org.opencontainers.image.url=https://inductiva.ai/
             inductiva/file-tracker.org.opencontainers.image.source=${{ github.repository }}
-
-          # Task Runner-specific labels
             inductiva/task-runner.org.opencontainers.image.title=Task Runner
             inductiva/task-runner.org.opencontainers.image.description=Task runner for the Inductiva API
-    
-          # File Tracker-specific labels
             inductiva/file-tracker.org.opencontainers.image.title=File Tracker
             inductiva/file-tracker.org.opencontainers.image.description=File tracker for the Inductiva API
 
