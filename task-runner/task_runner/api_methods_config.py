@@ -25,8 +25,6 @@ simulator_to_executer = {
         executers.amrwind.AmrWindExecuter,
     "gromacs":
         executers.gromacs.GROMACS,
-    "simsopt":
-        executers.simsopt.SimsoptExecuter,
     "fenicsx":
         executers.fenicsx.LinearElasticityFEniCSxExecuter,
     "fds":
