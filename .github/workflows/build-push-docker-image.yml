@@ -9,6 +9,14 @@ on:
     paths:
       - 'common/**'
       - 'task-runner/**'
+      - 'file-tracker/**'
+
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build Docker image from'
+        required: true
+        default: 'dev'
 
 jobs:
   build-publish-docker-image:
@@ -31,25 +39,43 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             inductiva/task-runner
+            inductiva/file-tracker
           # generate Docker tags based on the branch
           tags: |
             type=ref,event=branch
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
 
           labels: |
-            org.opencontainers.image.title=task-runner
-            org.opencontainers.image.description=Task runner for the Inductiva API
-            org.opencontainers.image.url=https://inductiva.ai/
-            org.opencontainers.image.source=
+            inductiva/file-tracker.org.opencontainers.image.url=https://inductiva.ai/
+            inductiva/file-tracker.org.opencontainers.image.source=${{ github.repository }}
+
+          # Task Runner-specific labels
+            inductiva/task-runner.org.opencontainers.image.title=Task Runner
+            inductiva/task-runner.org.opencontainers.image.description=Task runner for the Inductiva API
+    
+          # File Tracker-specific labels
+            inductiva/file-tracker.org.opencontainers.image.title=File Tracker
+            inductiva/file-tracker.org.opencontainers.image.description=File tracker for the Inductiva API
+
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push to Docker Hub
+      - name: Build and push task-runner to Docker Hub
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./task-runner/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Build and push file-tracker to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./file-tracker/Dockerfile
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
