@@ -49,7 +49,7 @@ class ClientConnection:
                         response = OperationResponse(
                             status=OperationStatus.INVALID,
                             message="Unknown command")
-                except OperationError as e:
+                except (OperationError, ValueError) as e:
                     response = OperationResponse(status=OperationStatus.ERROR,
                                                  message=str(e))
                 finally:
