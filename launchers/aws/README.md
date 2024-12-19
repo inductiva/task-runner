@@ -25,7 +25,7 @@
 The start_machine_group.py allows user inputs through flags (argparse) and uses Boto3 to interact with AWS (Software Development Kit [SDK] for Python).
 Before running the python program, I authenticate with AWS through SSO (Single Sign-on). Example command:
 
-10. aws sso login --profile lmcmr
+10. aws sso login --profile <your_profile_name>
 
 Then, a browser windows opens for me to insert username and password.
 
@@ -33,6 +33,6 @@ Example of a command to run start_machine_group.py:
 
 11. On the user-data.sh paste the Inductiva API key
 
-12. python .\start_machine_group.py --vm_type t2.micro --num_machines 2 --region ap-south-1 --machine_group_name "my_aws_machine_group" --user_data_path '.\user-data.sh' --profile lmcmr
+12. python .\start_machine_group.py --vm_type t2.micro --num_machines 2 --region ap-south-1 --machine_group_name "my_aws_machine_group" --user_data_path '.\user-data.sh' --profile <your_profile_name>
 
 The file user-data.sh is a script that is given to each virtual machine before starting in order to install all the dependencies (docker, git, make); then git clone the task-runner repository; authenticate through the Inductiva_API_Key; the machine_group_name gets defined dynamically through the python script; and make task-runner-up.
