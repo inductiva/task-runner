@@ -9,6 +9,7 @@ on:
     paths:
       - 'common/**'
       - 'task-runner/**'
+      - 'file-tracker/**'
 
 jobs:
   build-publish-docker-image:
@@ -31,21 +32,20 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             inductiva/task-runner
+            inductiva/file-tracker
           # generate Docker tags based on the branch
           tags: |
             type=ref,event=branch
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
 
           labels: |
-            org.opencontainers.image.title=task-runner
-            org.opencontainers.image.description=Task runner for the Inductiva API
             org.opencontainers.image.url=https://inductiva.ai/
-            org.opencontainers.image.source=
+            org.opencontainers.image.source=${{ github.repository }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push to Docker Hub
+      - name: Build and push task-runner to Docker Hub
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -53,4 +53,21 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.title=Task Runner
+            org.opencontainers.image.description=Task runner for the Inductiva API
+
+      - name: Build and push file-tracker to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./file-tracker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.title=File Tracker
+            org.opencontainers.image.description=File tracker for the Inductiva API
+
