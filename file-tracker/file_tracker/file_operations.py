@@ -1,8 +1,6 @@
 import os
 from collections import deque
 
-MAX_SIZE = 1024 * 14  # 14KB
-
 
 class OperationError(Exception):
     pass
@@ -43,7 +41,7 @@ def tail(path_to_file, filename, lines=10):
             read_lines += block.count(b'\n')  # Count lines for early stopping
             blocks.appendleft(block)
             current_size += current_block_size
-            if read_lines > lines or current_size > MAX_SIZE:
+            if read_lines > lines:
                 break
         try:
             content = b''.join(blocks).decode()
