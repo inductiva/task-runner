@@ -20,7 +20,6 @@ from . import (
     security,
     fenicsx,
     gromacs,
-    simsopt,
     amrwind,
     nwchem,
     reef3d,
