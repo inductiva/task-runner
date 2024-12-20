@@ -29,8 +29,26 @@ class ApiFileTracker:
             asyncio.run(self._message(message))
             self.started = False
 
+    async def _connect(self, num_retries=3):
+        while num_retries > 0:
+            try:
+                reader, writer = await asyncio.open_connection(
+                    self.host, self.port)
+            except OSError:
+                num_retries -= 1
+                asyncio.sleep(0.5)
+            else:
+                return reader, writer
+
+        raise ConnectionError("Could not connect to the file tracker")
+
     async def _message(self, message, num_retries=3):
-        reader, writer = await asyncio.open_connection(self.host, self.port)
+        try:
+            reader, writer = await self._connect()
+        except ConnectionError as e:
+            logging.exception("Connection Error: %s", str(e))
+            return False
+
         while num_retries > 0:
             writer.write(message.encode())
             await writer.drain()
