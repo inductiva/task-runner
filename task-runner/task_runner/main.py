@@ -112,6 +112,8 @@ def main(_):
         task_runner_id=task_runner_uuid,
     )
 
+    api_file_tracker = task_runner.ApiFileTracker.from_env()
+
     request_handler = TaskRequestHandler(
         task_runner_uuid=task_runner_uuid,
         workdir=workdir,
@@ -121,6 +123,7 @@ def main(_):
         event_logger=event_logger,
         message_listener=message_listener,
         file_manager=file_manager,
+        api_file_tracker=api_file_tracker,
     )
 
     termination_handler = cleanup.TerminationHandler(
