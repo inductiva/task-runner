@@ -30,18 +30,22 @@ class SystemMetricsLogger:
         self.metrics = metrics
         self.log_file = os.path.join(log_file_path, log_file_name)
         self._create_log_file()
+        self.command = None
 
     def _create_log_file(self):
         with open(self.log_file, "w", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["time"] +
+            writer.writerow(["time", "command"] +
                             [metric.value for metric in self.metrics])
+
+    def change_command(self, command):
+        self.command = command
 
     def log(self):
         with open(self.log_file, "a", encoding="utf-8") as f:
             writer = csv.writer(f)
-            time_stamp = [datetime.datetime.now()]
+            row_prefix = [datetime.datetime.now(), self.command]
             metrics = [
                 SYSTEM_METRICS_TO_FUNC[metric]() for metric in self.metrics
             ]
-            writer.writerow(time_stamp + metrics)
+            writer.writerow(row_prefix + metrics)
