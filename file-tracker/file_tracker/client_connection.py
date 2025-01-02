@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -46,14 +47,19 @@ class ClientConnection:
                     return
 
                 operation.path = self.path
+                while True:
+                    try:
+                        response.message = operation.execute()
+                    except OperationError as e:
+                        response = OperationResponse(
+                            status=OperationStatus.ERROR, message=str(e))
+                    finally:
+                        channel.send(response.to_json_string())
 
-                try:
-                    response.message = operation.execute()
-                except OperationError as e:
-                    response = OperationResponse(status=OperationStatus.ERROR,
-                                                 message=str(e))
-                finally:
-                    channel.send(response.to_json_string())
+                    if message.get("follow", False):
+                        await asyncio.sleep(1)
+                    else:
+                        break
 
             @channel.on("close")
             async def on_close():
