@@ -4,6 +4,10 @@ from collections import deque
 
 
 class OperationError(Exception):
+    pass
+
+
+class Operation:
 
     @classmethod
     def from_request(cls, request):
@@ -12,7 +16,7 @@ class OperationError(Exception):
 
     def _get_class(self, type):
         if type == "ls":
-            return Ls
+            return List
         elif type == "tail":
             return Tail
         else:
@@ -23,11 +27,7 @@ class OperationError(Exception):
         raise NotImplementedError("Subclasses must implement this method")
 
 
-class Operation:
-    pass
-
-
-class Ls(Operation):
+class List(Operation):
 
     def __init__(self, path):
         self.path = path
