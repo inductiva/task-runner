@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -7,7 +8,7 @@ from aiortc import (
     RTCPeerConnection,
     RTCSessionDescription,
 )
-from file_operations import OperationError, ls, tail
+from file_operations import Operation, OperationError
 from operation_response import OperationResponse, OperationStatus
 
 
@@ -34,22 +35,21 @@ class ClientConnection:
 
             @channel.on("message")
             async def on_message(message):
+                message = json.loads(message)
                 response = OperationResponse()
                 try:
-                    if message == "ls":
-                        response.message = ls(self.path)
-
-                    elif message.startswith("tail:"):
-                        _, args = message.split(":", 1)
-                        args = args.split(",")
-                        filename = args[0]
-                        n_lines = int(args[1]) if len(args) > 1 else 10
-                        response.message = tail(self.path, filename, n_lines)
-                    else:
-                        response = OperationResponse(
-                            status=OperationStatus.INVALID,
-                            message="Unknown command")
+                    operation = Operation.from_request(message)
                 except (OperationError, ValueError) as e:
+                    response = OperationResponse(status=OperationStatus.INVALID,
+                                                 message=str(e))
+                    channel.send(response.to_json_string())
+                    return
+
+                operation.path = self.path
+
+                try:
+                    response.message = operation.execute()
+                except OperationError as e:
                     response = OperationResponse(status=OperationStatus.ERROR,
                                                  message=str(e))
                 finally:
