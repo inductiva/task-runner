@@ -30,8 +30,8 @@ class Operation:
 
 class List(Operation):
 
-    def __init__(self, path):
-        self.path = path
+    def __init__(self):
+        self.path = None
 
     def execute(self):
         return self.ls(self.path)
@@ -53,7 +53,7 @@ class Tail(Operation):
     def __init__(self, filename, lines=10):
         self.filename = filename
         self.lines = lines
-        super().__init__()
+        self.path = None
 
     def execute(self):
         return self.tail(self.path, self.filename, self.lines)
