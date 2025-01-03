@@ -30,6 +30,7 @@ class ClientConnection:
         self.path = os.path.join(task_id, "output", "artifacts")
 
     async def setup_connection(self, data):
+        channel_closed = asyncio.Event()
 
         @self.pc.on("datachannel")
         def on_datachannel(channel):
@@ -47,7 +48,7 @@ class ClientConnection:
                     return
 
                 operation.path = self.path
-                while True:
+                while not channel_closed.is_set():
                     try:
                         response.message = operation.execute()
                     except OperationError as e:
@@ -63,6 +64,7 @@ class ClientConnection:
 
             @channel.on("close")
             async def on_close():
+                channel_closed.set()
                 await self.close()
                 logging.info("PeerConnection closed")
 
