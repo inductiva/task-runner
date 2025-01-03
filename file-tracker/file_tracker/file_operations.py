@@ -14,7 +14,8 @@ class Operation:
         operation = cls._get_class(request["type"])
         return operation(**request["args"])
 
-    def _get_class(self, type):
+    @classmethod
+    def _get_class(cls, type):
         if type == "ls":
             return List
         elif type == "tail":
