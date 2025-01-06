@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Install Docker
+# Installing Docker
 sudo apt-get update -y
 sudo apt-get install -y ca-certificates curl 
 sudo install -m 0755 -d /etc/apt/keyrings
@@ -21,9 +21,19 @@ cd /home/ubuntu
 git clone https://github.com/inductiva/task-runner.git
 cd task-runner
 
-echo "INDUCTIVA_API_KEY=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.3Mf6aeVx5eayjz2Kz1SZknkjZ_IqvaF7ZrCLwhJubneffUXA2oBwQQ.7lsfsvJJltI7QQEXaTX7lA.2WBWLbOE0oRoUeIAdhDP9fPedCh4rl5Zpyd2AyxgTPcKGEnjUafSk_b2ohIb_Jz8GV0.CgPlGBrqh_BxNzbzEvoc7g" | sudo tee -a .env
 echo "INDUCTIVA_API_URL=https://api.inductiva.ai" | sudo tee -a .env > /dev/null
-echo "MACHINE_GROUP_NAME='09Nov2024H11M22'" | sudo tee -a .env > /dev/null
+
+echo "INDUCTIVA_API_KEY='eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.4UwkIEog-BD_gAUgiC2xJfHzZ3nllIA2wnmKzKnELOO70ftFRr447g.LXbJWKthD9Vup4V8XK0l_Q.CBliZCG9sfmRvlZysRu9sapQCAniwgTIvvx5qzvmyNFUpaEFDeAhpvL8luHMDvgx9JI.xH-YDY2qilGp4lxMe-NldA'" | sudo tee -a .env > /dev/null
+echo "MACHINE_GROUP_NAME='06_01_2025_17_19'" | sudo tee -a .env > /dev/null
 export $(grep -v ^# .env | xargs)
 
-sudo make task-runner-up &
+make task-runner-lite-up &
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+sudo apt install unzip
+unzip awscliv2.zip
+sudo ./aws/install
+
+echo '#!/bin/bash
+export INSTANCE_ID=$(ec2metadata --instance-id)
+aws ec2 terminate-instances --instance-ids $INSTANCE_ID' > terminate_vm.sh
+chmod +x terminate_vm.sh
