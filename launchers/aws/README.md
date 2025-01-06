@@ -15,7 +15,7 @@
 * Python installation (download [here](https://www.python.org/downloads/)).
 * AWS account (register at https://aws.amazon.com/).
 * AWS CLI (command line interface) installation based on the [official instructions](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
-* Boto3 [AWS Software Development Kit (SDK) for Python] installation (pip install boto3)
+* Boto3 [AWS Software Development Kit (SDK) for Python] installation (```$ pip install boto3```)
 * Inductiva API key (register at https://inductiva.ai/).
 * git – (optional) – to clone this repository, alternatively download the zip file.
 
@@ -28,7 +28,7 @@
 4. For the next step, find an AWS region on the top right to be your default. For example, for "London" use "eu-west-2".
 5. Open your terminal and run the command:
 ```console
-> aws configure
+$ aws configure
 ```
 You will be prompted to enter the following fields:
 ```
@@ -46,7 +46,7 @@ aws_secret_access_key = <aws_secret_access_key>
 ```
 Plus, you can validate that your AWS profile is working by running the command:
 ```console
-> aws sts get-caller-identity
+$ aws sts get-caller-identity
 ```
 
 The output should look like this:
@@ -61,7 +61,7 @@ The output should look like this:
 ### Recommendations
 
 1.  As a best practice, avoid using long-term/permanent credentials like access keys. Instead, use alternatives such as a user in IAM Identity Center, which provide short-term/temporary credentials (see [Authentication Method 2](#authentication-method-2-iam-identity-center--single-sign-on-sso)).
-2.  Instead of using a root account, create an IAM user with an access key and apply least privilege permissions for that user.
+2.  If you still wish to use this method improve the security by creating an IAM user with an access key and apply least privilege permissions for that user, instead of using a root account.
 
 ### Next steps
 To launch a Machine Group with the Inductiva Task Runner with this method go [here](#authentication-method-1-access-and-secret-key-credentials).
@@ -85,7 +85,7 @@ After your administrator gives you access to applications and AWS accounts, you 
 13. Go to the “Dashboard” page, and copy the AWS access portal URL that is in the settings summary. It will look something like: `https://d-xxxxxxxxxx.awsapps.com/start`
 14. In your preferred terminal, run the command:
 ```console
-aws configure sso
+$ aws configure sso
 ```
 
 You will be prompted to enter the following fields:
@@ -93,12 +93,11 @@ You will be prompted to enter the following fields:
 ```
 SSO session name (Recommended): <insert_session_name>
 SSO start URL [None]: https://d-xxxxxxxxxx.awsapps.com/start
-SSO region [None]: <insert_aws_region> # the AWS Region that hosts the IAM Identity Center directory
+SSO region [None]: <insert_aws_region> # see Step 1
 SSO registration scopes [sso:account:access]: sso:account:access
 ```
 
 After that, you should see:
-
 ```
 Attempting to automatically open the SSO authorization page in your default browser.
 If the browser does not open or you wish to use a different device to authorize this request, open the provided URL:
@@ -117,7 +116,7 @@ The only AWS account available to you is: <account ID>
 Using the account ID <account ID>
 The only role available to you is: AdministratorAccess
 Using the role name "AdministratorAccess"
-CLI default client Region [eu-west-3]: <Enter>
+CLI default client Region [eu-west-2]: <Enter>
 CLI default output format [json]: <Enter>
 CLI profile name [AdministratorAccess-<Account_ID>]: <your_profile_name>
 ```
@@ -126,40 +125,65 @@ To launch Machine Group with the Inductiva Task Runner with this method go [here
 
 # Launch Machine Group with the Inductiva Task Runner
 ## Launch Method 1
-Continue if you've followed [Authentication Method 1: Access and secret key credentials](#authentication-method-1-access-and-secret-key-credentials).
-Go to your local repository and open a terminal, and run this example:
+Continue if you've followed [Authentication Method 1: Access and secret key credentials](#authentication-method-1-access-and-secret-key-credentials) steps.
+
+Start by logging in to Inductiva CLI, if you haven't already, by opening a terminal:
 ```console
-> python start_aws_machine_group.py \
+$ inductiva auth login
+```
+Follow the instructions and provide your API key. If successful it should appear:
+```console
+Welcome back <First Name> <Last Name>!
+```
+
+Go to your local repository, open a terminal, and run this example:
+```console
+$ python start_aws_machine_group.py \
 --vm_type t2.micro \
 --num_machines 2 \
 --region eu-west-2 \
---machine_group_name "my_aws_machine_group" \
+--machine_group_name "aws_machine_group" \
+--mode lite \
+```
+
+To see all the options run:
+```console
+$ python start_aws_machine_group.py --help
 ```
 
 ## Launch Method 2
 
 Continue if you've followed [Authentication Method 2: IAM Identity Center / Single Sign-On (SSO)](#authentication-method-2-iam-identity-center--single-sign-on-sso).
 
-Before running the python program, authenticate with AWS through SSO (Single Sign-on).
-
+Start by logging in to Inductiva, if you haven't already, by opening a terminal:
 ```console
-> aws sso login --profile <your_profile_name>
+$ inductiva auth login
+```
+Follow the instructions and provide your API key. If successful it should appear:
+```console
+Welcome back <First Name> <Last Name>!
 ```
 
-A browser windows should open and ask you to insert username and password.
+Next, authenticate with AWS through SSO (Single Sign-on):
+```console
+$ aws sso login --profile <your_profile_name>
+```
 
-The start_machine_group.py allows user inputs through flags (argparse) and uses Boto3 to interact with AWS (Software Development Kit [SDK] for Python).
+A browser windows should open and ask you to insert username and password. If successfull it should show:
+```console
+Request approved
+AWS CLI has been given requested permissions
+
+You can close this window and start using the AWS CLI.
+```
 
 Go to your local repository and open a terminal, and run this example:
 ```console
-python start_machine_group.py \
+$ python start_machine_group.py \
 --vm_type t2.micro \
 --num_machines 2 \
 --region eu-west-2 \
 --machine_group_name "my_aws_machine_group" \
+--mode lite \
 --profile <your_profile_name> \
---user_data_path 'user-data.sh'
 ```
-## Extra
-
-The file user-data.sh is a script that is provided to each virtual machine in order for them to install all the dependencies and run the task-runner.
