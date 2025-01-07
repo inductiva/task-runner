@@ -54,6 +54,7 @@ class Tail(Operation):
         self.filename = filename
         self.lines = lines
         self.path = None
+        self.last_updated_at = None
 
     def execute(self):
         return self.tail(self.path, self.filename, self.lines)
@@ -62,6 +63,12 @@ class Tail(Operation):
         file = os.path.join(path_to_file, filename)
         if not os.path.exists(file):
             raise OperationError(f"File not found: {filename}")
+
+        current_updated_time = os.path.getmtime(file)
+        if self.last_updated_at == current_updated_time:
+            return None
+
+        self.last_updated_at = current_updated_time
         with open(file, 'rb') as f:
             f.seek(0, 2)  # Seek to the end of the file
             block_size = 1024

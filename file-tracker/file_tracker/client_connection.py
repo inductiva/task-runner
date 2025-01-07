@@ -55,7 +55,8 @@ class ClientConnection:
                         response = OperationResponse(
                             status=OperationStatus.ERROR, message=str(e))
                     finally:
-                        channel.send(response.to_json_string())
+                        if response.message is not None:
+                            channel.send(response.to_json_string())
 
                     if message.get("follow", False):
                         await asyncio.sleep(1)
