@@ -36,7 +36,7 @@ class ApiFileTracker:
                     self.host, self.port)
             except OSError:
                 num_retries -= 1
-                asyncio.sleep(0.5)
+                await asyncio.sleep(0.5)
             else:
                 return reader, writer
 
