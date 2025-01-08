@@ -15,7 +15,7 @@ DOCKER_COMPOSE_COMMAND_TASK_RUNNER=\
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER_BUILD=\
 	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner-$(UID) \
+	-p task-runner-build-$(UID) \
 	-f docker-compose.build.yml
 
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER_CUDA=\
@@ -64,6 +64,9 @@ task-runner-cuda-up:
 
 task-runner-down:
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) down
+
+task-runner-build-down:
+	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_BUILD) down
 
 task-runner-lite-down:
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE) down
