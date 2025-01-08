@@ -2,7 +2,7 @@ services:
   task-runner:
       build:
         context: .
-        dockerfile: task-runner/Dockerfile
+        dockerfile: ${TASK_RUNNER_CONTAINER:-task-runner/Dockerfile}
       environment:
         EXECUTER_IMAGES_DIR: /executer-images
         API_URL: ${INDUCTIVA_API_URL}
@@ -20,7 +20,7 @@ services:
   file-tracker:
       build:
         context: .
-        dockerfile: file-tracker/Dockerfile
+        dockerfile: ${FILE_TRACKER_DOCKERFILE:-file-tracker/Dockerfile}
       environment:
         API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
