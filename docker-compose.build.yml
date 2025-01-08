@@ -1,6 +1,8 @@
 services:
   task-runner:
-      image: inductiva/task-runner:${TAG}
+      build:
+        context: .
+        dockerfile: task-runner/Dockerfile
       environment:
         EXECUTER_IMAGES_DIR: /executer-images
         API_URL: ${INDUCTIVA_API_URL}
@@ -16,7 +18,9 @@ services:
       privileged: true
       platform: linux/amd64
   file-tracker:
-      image: inductiva/file-tracker:${TAG}
+      build:
+        context: .
+        dockerfile: file-tracker/Dockerfile
       environment:
         API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
