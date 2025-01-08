@@ -1,4 +1,4 @@
-"""File related utility functions"""
+"""File related utility functions."""
 import os
 import shutil
 import stat
