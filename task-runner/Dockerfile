@@ -1,6 +1,7 @@
 FROM python:3.9
 
 ENV LOCAL_MODE=true
+ENV EXECUTER_IMAGES_DIR=/executer-images
 
 ARG API_URL=https://api.inductiva.ai
 ENV API_URL=${API_URL}
