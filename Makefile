@@ -2,7 +2,6 @@ DOCKER_COMPOSE_ENV_FILE=.env
 UID=$$(id -u)
 HOSTNAME:=$(shell uname -n)
 TAG_DEV=dev
-TAG_MAIN=main
 
 DOCKER_COMPOSE_COMMAND=\
 	HOSTNAME=$(HOSTNAME) docker compose \
@@ -49,11 +48,10 @@ help:
 	@echo "  make style: run formatter and linter"
 
 task-runner-up:
-	TAG=$(TAG_MAIN) \
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) up --build	
 
 task-runner-dev-up:
-	TAG=$(TAG_DEV) \
+	DEV=$(TAG_DEV) \
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) up --build
 
 task-runner-build-up:
