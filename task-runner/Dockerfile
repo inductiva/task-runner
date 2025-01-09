@@ -1,6 +1,9 @@
 FROM python:3.9
 
-ENV LOCAL_MODE true
+ENV LOCAL_MODE=true
+
+ARG API_URL=https://api.inductiva.ai
+ENV API_URL=${API_URL}
 
 RUN apt-get update && apt-get install -y wget
 RUN cd /tmp \
