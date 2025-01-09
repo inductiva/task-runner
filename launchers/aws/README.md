@@ -64,7 +64,7 @@ The output should look like this:
 2.  If you still wish to use this method improve the security by creating an IAM user with an access key and apply least privilege permissions for that user, instead of using a root account.
 
 ### Next steps
-To launch a Machine Group with the Inductiva Task Runner with this method go [here](#authentication-method-1-access-and-secret-key-credentials).
+To launch a Machine Group with the Inductiva Task Runner using this method go [here](#authentication-method-1-access-and-secret-key-credentials).
 
 ## Authentication Method 2: IAM Identity Center / Single Sign-On (SSO)
 
@@ -120,7 +120,7 @@ CLI default client Region [eu-west-2]: <Enter>
 CLI default output format [json]: <Enter>
 CLI profile name [AdministratorAccess-<Account_ID>]: <your_profile_name>
 ```
-To launch Machine Group with the Inductiva Task Runner with this method go [here](#authentication-method-2-iam-identity-center--single-sign-on-sso).
+To launch Machine Group with the Inductiva Task Runner using this method go [here](#authentication-method-2-iam-identity-center--single-sign-on-sso).
 
 
 # Launch Machine Group with the Inductiva Task Runner
@@ -142,7 +142,7 @@ $ python start_aws_machine_group.py \
 --vm_type t2.micro \
 --num_machines 2 \
 --region eu-west-2 \
---machine_group_name "aws_machine_group" \
+--machine_group_name "AWS Machine Group" \
 --mode lite \
 ```
 
@@ -153,7 +153,7 @@ $ python start_aws_machine_group.py --help
 
 ## Launch Method 2
 
-Continue if you've followed [Authentication Method 2: IAM Identity Center / Single Sign-On (SSO)](#authentication-method-2-iam-identity-center--single-sign-on-sso).
+Continue if you've followed [Authentication Method 2: IAM Identity Center / Single Sign-On (SSO)](#authentication-method-2-iam-identity-center--single-sign-on-sso) steps.
 
 Start by logging in to Inductiva, if you haven't already, by opening a terminal:
 ```console
@@ -183,7 +183,12 @@ $ python start_machine_group.py \
 --vm_type t2.micro \
 --num_machines 2 \
 --region eu-west-2 \
---machine_group_name "my_aws_machine_group" \
+--machine_group_name "AWS Machine Group" \
 --mode lite \
 --profile <your_profile_name> \
+```
+
+To see all the options run:
+```console
+$ python start_aws_machine_group.py --help
 ```
