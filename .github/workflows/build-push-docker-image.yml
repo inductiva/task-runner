@@ -69,6 +69,8 @@ jobs:
           tags: ${{ steps.meta-task-runner.outputs.tags }}
           labels: |
             ${{ steps.meta-task-runner.outputs.labels }}
+          build-args: |
+            API_URL=${{ github.ref == 'refs/heads/main' && 'https://api.inductiva.ai' || 'https://api-dev.inductiva.ai' }}
 
       # Build and push file-tracker
       - name: Build and push file-tracker to Docker Hub
@@ -81,4 +83,6 @@ jobs:
           tags: ${{ steps.meta-file-tracker.outputs.tags }}
           labels: |
             ${{ steps.meta-file-tracker.outputs.labels }}
+          build-args: |
+            API_URL=${{ github.ref == 'refs/heads/main' && 'https://api.inductiva.ai' || 'https://api-dev.inductiva.ai' }}
 
