@@ -1,12 +1,13 @@
 <details>
 <summary>Table of Contents</summary>
 
-- [Requirements](#requirements).
+- [Requirements](#requirements)
 - [Authenticating with AWS](#authenticating-with-aws)
   - [Authentication Method 1: Access and secret key credentials](#authentication-method-1-access-and-secret-key-credentials)
   - [Authentication Method 2: IAM Identity Center / Single Sign-On (SSO)](#authentication-method-2-iam-identity-center--single-sign-on-sso)
-- [Running](#running)
-- [Launch Inductiva Task Runner on your AWS account](#launch-inductiva-task-runner-on-your-aws-account)
+- [Launch Machine Group with the Inductiva Task Runner](#launch-machine-group-with-the-inductiva-task-runner)
+  - [Launch Method 1: Access and secret key credentials](#launch-method-1-access-and-secret-key-credentials)
+  - [Launch Method 2: IAM Identity Center / Single Sign-On (SSO)](#launch-method-2-iam-identity-center--single-sign-on-sso)
 
 </details>
     
@@ -124,7 +125,7 @@ To launch Machine Group with the Inductiva Task Runner using this method go [her
 
 
 # Launch Machine Group with the Inductiva Task Runner
-## Launch Method 1
+## Launch Method 1: Access and secret key credentials
 Continue if you've followed [Authentication Method 1: Access and secret key credentials](#authentication-method-1-access-and-secret-key-credentials) steps.
 
 Start by logging in to Inductiva CLI, if you haven't already, by opening a terminal:
@@ -151,7 +152,7 @@ To see all the options run:
 $ python start_aws_machine_group.py --help
 ```
 
-## Launch Method 2
+## Launch Method 2: IAM Identity Center / Single Sign-On (SSO)
 
 Continue if you've followed [Authentication Method 2: IAM Identity Center / Single Sign-On (SSO)](#authentication-method-2-iam-identity-center--single-sign-on-sso) steps.
 
