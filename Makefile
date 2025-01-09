@@ -34,10 +34,13 @@ DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE=\
 
 help:
 	@echo Run:
-	@echo "  make task-runner: starts task-runner"
-	@echo "  make task-runner-lite: starts task-runner in lite mode (faster)"
-	@echo "  make task-runner-cuda: starts task-runner with CUDA support"
-	@echo "  make task-runner-down: stops task-runner"
+	@echo "  make task-runner-up: starts task-runner"
+	@echo "  make task-runner-dev-up: starts task-runner in dev environment"
+	@echo "  make task-runner-build-up: starts task-runner building from source"
+	@echo "  make task-runner-lite-up: starts task-runner in lite mode (faster)"
+	@echo "  make task-runner-cuda-up: starts task-runner with CUDA support"
+	@echo "  make task-runner-down: stops task-runner (main/dev)"
+	@echo "  make task-runner-build-down stops task-runner building from source"
 	@echo "  make task-runner-lite-down stops task-runner in lite mode"
 	@echo "  make task-runner-cuda-down stops task-runner with CUDA support"
 	@echo Utils:
