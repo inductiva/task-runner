@@ -73,7 +73,6 @@ def task_message_listener_loop(
 
         elif message == KILL_MESSAGE:
             kill_task_thread_queue.put(KILL_MESSAGE)
-            return
 
         elif message == ENABLE_LOGGING_STREAM_MESSAGE:
             logger_enabled.set()

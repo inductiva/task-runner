@@ -26,6 +26,7 @@ def tail(path_to_file, filename, lines=10):
         f.seek(0, 2)  # Seek to the end of the file
         block_size = 1024
         blocks = deque()
+        current_size = 0
         read_lines = 0
 
         while f.tell() > 0:
@@ -39,6 +40,7 @@ def tail(path_to_file, filename, lines=10):
 
             read_lines += block.count(b'\n')  # Count lines for early stopping
             blocks.appendleft(block)
+            current_size += current_block_size
             if read_lines > lines:
                 break
         try:
