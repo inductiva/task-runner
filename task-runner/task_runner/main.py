@@ -172,6 +172,8 @@ def main(_):
 
             monitoring_flag = False
 
+    api_file_tracker.terminate()
+
 
 if __name__ == "__main__":
     logging.set_verbosity(logging.INFO)
