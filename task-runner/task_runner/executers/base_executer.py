@@ -273,9 +273,6 @@ class BaseExecuter(ABC):
                 "--pwd",
                 process_working_dir_container,
             ]
-            logging.info("working_dir: %s", working_dir)
-            logging.info("Running command in Apptainer container: %s",
-                         " ".join(apptainer_args))
             if cmd.is_mpi and not self.mpi_config.local_mode:
                 apptainer_args.append("--sharens")
             if self.on_gpu:
