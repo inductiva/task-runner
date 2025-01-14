@@ -54,7 +54,8 @@ class LinearElasticityFEniCSxExecuter(executers.BaseExecuter):
             mesh.write_mesh_info_to_json(mesh_info_path)
 
     def execute(self):
-        sim_dir_path = os.path.join(self.working_dir_container, self.args.sim_dir)
+        sim_dir_path = os.path.join(self.working_dir_container,
+                                    self.args.sim_dir)
         mesh_path = os.path.join(sim_dir_path, MESH_FILENAME)
         bcs_path = os.path.join(sim_dir_path, self.args.bcs_filename)
         material_path = os.path.join(sim_dir_path, self.args.material_filename)
