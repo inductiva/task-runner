@@ -12,11 +12,11 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
     def execute(self):
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
 
-        run_subprocess_dir = self.artifacts_dir
+        run_subprocess_dir = self.artifacts_dir_container
 
         if hasattr(self.args,
                    'run_subprocess_dir') and self.args.run_subprocess_dir:
-            run_subprocess_dir = os.path.join(self.artifacts_dir,
+            run_subprocess_dir = os.path.join(self.artifacts_dir_container,
                                               self.args.run_subprocess_dir)
 
         # Copy the input files to the artifacts directory
