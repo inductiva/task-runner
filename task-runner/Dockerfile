@@ -44,6 +44,6 @@ RUN mkdir /executer-images
 VOLUME /executer-images
 RUN chown task-runner:task-runner /workdir
 RUN chown task-runner:task-runner /executer-images
-# USER task-runner
+USER task-runner
 
 CMD ["python", "./task_runner/main.py"]
