@@ -74,10 +74,6 @@ class BaseExecuter(ABC):
         self.output_dir = os.path.join(self.working_dir, self.OUTPUT_DIRNAME)
         self.artifacts_dir = os.path.join(self.output_dir,
                                           self.ARTIFACTS_DIRNAME)
-        self.working_dir_container = "/workdir"
-        self.artifacts_dir_container = os.path.join(self.working_dir_container,
-                                                    self.OUTPUT_DIRNAME,
-                                                    self.ARTIFACTS_DIRNAME)
         self.loki_logger = loki_logger
         self.exec_command_logger = exec_command_logger
 
@@ -256,22 +252,21 @@ class BaseExecuter(ABC):
                     command_config=cmd.mpi_config)
 
             # This is the directory that contains all the task related files
-            task_working_dir_host = self.working_dir
-            task_working_dir_container = self.working_dir_container
+            task_working_dir = self.working_dir
 
             # This is the directory where the command will be executed. It
             # can be a subdirectory of the task directory.
-            process_working_dir_container = task_working_dir_container
+            process_working_dir = task_working_dir
             if working_dir:
-                process_working_dir_container = os.path.join(
-                    process_working_dir_container, working_dir)
+                process_working_dir = os.path.join(process_working_dir,
+                                                   working_dir)
             apptainer_args = [
                 "apptainer",
                 "exec",
                 "--bind",
-                f"{task_working_dir_host}:{task_working_dir_container}",
+                f"{task_working_dir}:{task_working_dir}",
                 "--pwd",
-                process_working_dir_container,
+                process_working_dir,
             ]
             if cmd.is_mpi and not self.mpi_config.local_mode:
                 apptainer_args.append("--sharens")
