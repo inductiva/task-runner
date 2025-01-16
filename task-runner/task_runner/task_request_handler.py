@@ -15,6 +15,7 @@ import shutil
 import threading
 import time
 import traceback
+from typing import Optional
 from uuid import UUID
 
 from absl import logging
@@ -73,7 +74,6 @@ def task_message_listener_loop(
 
         elif message == KILL_MESSAGE:
             kill_task_thread_queue.put(KILL_MESSAGE)
-            return
 
         elif message == ENABLE_LOGGING_STREAM_MESSAGE:
             logger_enabled.set()
@@ -153,7 +153,7 @@ class TaskRequestHandler:
         event_logger: task_runner.BaseEventLogger,
         message_listener: task_message_listener.BaseTaskMessageListener,
         file_manager: task_runner.BaseFileManager,
-        api_file_tracker: task_runner.ApiFileTracker = None,
+        api_file_tracker: Optional[task_runner.ApiFileTracker] = None,
     ):
         self.task_runner_uuid = task_runner_uuid
         self.workdir = workdir

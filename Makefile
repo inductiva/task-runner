@@ -1,6 +1,8 @@
 DOCKER_COMPOSE_ENV_FILE=.env
 UID=$$(id -u)
 HOSTNAME:=$(shell uname -n)
+TAG_DEV=dev
+TAG_MAIN=main
 
 DOCKER_COMPOSE_COMMAND=\
 	HOSTNAME=$(HOSTNAME) docker compose \
@@ -27,10 +29,10 @@ DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE=\
 
 help:
 	@echo Run:
-	@echo "  make task-runner: starts task-runner"
-	@echo "  make task-runner-lite: starts task-runner in lite mode (faster)"
-	@echo "  make task-runner-cuda: starts task-runner with CUDA support"
-	@echo "  make task-runner-down: stops task-runner"
+	@echo "  make task-runner-up: starts task-runner building from source"
+	@echo "  make task-runner-lite-up: starts task-runner in lite mode (faster)"
+	@echo "  make task-runner-cuda-up: starts task-runner with CUDA support"
+	@echo "  make task-runner-down stops task-runner building from source"
 	@echo "  make task-runner-lite-down stops task-runner in lite mode"
 	@echo "  make task-runner-cuda-down stops task-runner with CUDA support"
 	@echo Utils:
@@ -38,8 +40,9 @@ help:
 	@echo "  make format: run formatter"
 	@echo "  make style: run formatter and linter"
 
+
 task-runner-up:
-	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) up --build	
+	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) up --build
 
 task-runner-lite-up:
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE) up --build

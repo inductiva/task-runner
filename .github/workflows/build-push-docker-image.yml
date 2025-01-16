@@ -1,4 +1,4 @@
-name: Build Docker image and push to Docker Hub
+name: Build Docker images and push to Docker Hub
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
       - 'file-tracker/**'
 
 jobs:
-  build-publish-docker-image:
+  build-publish-docker-images:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,26 +25,40 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Docker meta
-        id: meta
+      # Metadata for task-runner
+      - name: Docker meta for task-runner
+        id: meta-task-runner
         uses: docker/metadata-action@v5
         with:
-          # list of Docker images to use as base name for tags
-          images: |
-            inductiva/task-runner
-            inductiva/file-tracker
-          # generate Docker tags based on the branch
+          images: inductiva/task-runner
           tags: |
             type=ref,event=branch
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
-
           labels: |
             org.opencontainers.image.url=https://inductiva.ai/
             org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.title=Task Runner
+            org.opencontainers.image.description=Task runner for the Inductiva API
+
+      # Metadata for file-tracker
+      - name: Docker meta for file-tracker
+        id: meta-file-tracker
+        uses: docker/metadata-action@v5
+        with:
+          images: inductiva/file-tracker
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+          labels: |
+            org.opencontainers.image.url=https://inductiva.ai/
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.title=File Tracker
+            org.opencontainers.image.description=File tracker for the Inductiva API
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Build and push task-runner
       - name: Build and push task-runner to Docker Hub
         uses: docker/build-push-action@v5
         with:
@@ -52,12 +66,13 @@ jobs:
           file: ./task-runner/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta-task-runner.outputs.tags }}
           labels: |
-            ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.title=Task Runner
-            org.opencontainers.image.description=Task runner for the Inductiva API
+            ${{ steps.meta-task-runner.outputs.labels }}
+          build-args: |
+            API_URL=${{ github.ref == 'refs/heads/main' && 'https://api.inductiva.ai' || 'https://api-dev.inductiva.ai' }}
 
+      # Build and push file-tracker
       - name: Build and push file-tracker to Docker Hub
         uses: docker/build-push-action@v5
         with:
@@ -65,9 +80,9 @@ jobs:
           file: ./file-tracker/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta-file-tracker.outputs.tags }}
           labels: |
-            ${{ steps.meta.outputs.labels }}
-            org.opencontainers.image.title=File Tracker
-            org.opencontainers.image.description=File tracker for the Inductiva API
+            ${{ steps.meta-file-tracker.outputs.labels }}
+          build-args: |
+            API_URL=${{ github.ref == 'refs/heads/main' && 'https://api.inductiva.ai' || 'https://api-dev.inductiva.ai' }}
 

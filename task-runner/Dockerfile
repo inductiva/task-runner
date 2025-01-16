@@ -1,6 +1,10 @@
 FROM python:3.9
 
-ENV LOCAL_MODE true
+ENV LOCAL_MODE=true
+ENV EXECUTER_IMAGES_DIR=/executer-images
+
+ARG API_URL=https://api.inductiva.ai
+ENV API_URL=${API_URL}
 
 RUN apt-get update && apt-get install -y wget
 RUN cd /tmp \
@@ -33,5 +37,13 @@ COPY ./common/events /common/events
 RUN pip install --no-cache-dir --upgrade /common/events
 COPY ./common/task_status /common/task_status
 RUN pip install --no-cache-dir --upgrade /common/task_status
+
+RUN useradd -m -s /bin/bash task-runner
+RUN mkdir /workdir
+RUN mkdir /executer-images
+VOLUME /executer-images
+RUN chown task-runner:task-runner /workdir
+RUN chown task-runner:task-runner /executer-images
+USER task-runner
 
 CMD ["python", "./task_runner/main.py"]
