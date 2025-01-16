@@ -273,6 +273,8 @@ class BaseExecuter(ABC):
                 "--pwd",
                 process_working_dir_container,
             ]
+            if self.mpi_config.local_mode:
+                apptainer_args.append("--writable-tmpfs")
             if cmd.is_mpi and not self.mpi_config.local_mode:
                 apptainer_args.append("--sharens")
             if self.on_gpu:
