@@ -26,6 +26,7 @@ class HTTPMethod(enum.Enum):
 
 class HTTPStatus(enum.Enum):
     SUCCESS = 200
+    CREATED = 201
     ACCEPTED = 202
     NO_CONTENT = 204
     CLIENT_ERROR = 400
@@ -119,7 +120,8 @@ class ApiClient:
             json=data,
         )
         if resp.status_code != HTTPStatus.ACCEPTED.value:
-            raise RuntimeError(f"Failed to register task runner: {resp.text}")
+            raise RuntimeError(
+                f"Failed to register task runner: {resp.json()['detail']}")
 
         resp_body = resp.json()
 
@@ -240,6 +242,10 @@ class ApiClient:
                 "disk_size_gb": host.get_total_memory() // 1e9,
             },
         )
+
+        if resp.status_code != HTTPStatus.CREATED.value:
+            raise RuntimeError(
+                f"Failed to create local machine group: {resp.json()}")
         return resp.json()["id"]
 
     def start_local_machine_group(self, machine_group_id: uuid.UUID):
@@ -250,6 +256,10 @@ class ApiClient:
                 "id": machine_group_id,
             },
         )
+
+        if resp.status_code != HTTPStatus.SUCCESS.value:
+            raise RuntimeError(
+                f"Failed to start local machine group: {resp.json()['detail']}")
         return resp.json()["id"]
 
     def get_machine_group_id_by_name(
