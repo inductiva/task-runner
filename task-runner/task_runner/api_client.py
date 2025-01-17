@@ -240,6 +240,10 @@ class ApiClient:
                 "disk_size_gb": host.get_total_memory() // 1e9,
             },
         )
+
+        if resp.status_code != HTTPStatus.SUCCESS.value:
+            raise RuntimeError(
+                f"Failed to create local machine group: {resp.text}")
         return resp.json()["id"]
 
     def start_local_machine_group(self, machine_group_id: uuid.UUID):
@@ -250,6 +254,10 @@ class ApiClient:
                 "id": machine_group_id,
             },
         )
+
+        if resp.status_code != HTTPStatus.SUCCESS.value:
+            raise RuntimeError(
+                f"Failed to start local machine group: {resp.text}")
         return resp.json()["id"]
 
     def get_machine_group_id_by_name(
