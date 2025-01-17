@@ -13,6 +13,7 @@ from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import TaskRunnerTerminationReason
 
+import task_runner
 from task_runner.cleanup import TaskRunnerTerminationError
 from task_runner.utils import host
 
@@ -64,7 +65,7 @@ class ApiClient:
 
         self._url = api_url
         self._request_timeout_s = request_timeout_s
-        self._headers = {}
+        self._headers = {"User-Agent": task_runner.get_api_agent()}
         if user_api_key is not None:
             self._headers["X-API-Key"] = user_api_key
         if task_runner_token is not None:
