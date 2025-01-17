@@ -55,8 +55,11 @@ class Tail(Operation):
         self.lines = lines
         self.path = None
         self.last_updated_at = None
+        self.cursor = None
 
     def execute(self):
+        if self.cursor:
+            return self.get_appended(self.path, self.filename, self.cursor)
         return self.tail(self.path, self.filename, self.lines)
 
     def tail(self, path_to_file, filename, lines=10):
@@ -64,15 +67,12 @@ class Tail(Operation):
         if not os.path.exists(file):
             raise OperationError(f"File not found: {filename}")
 
-        current_updated_time = os.path.getmtime(file)
-        if self.last_updated_at == current_updated_time:
-            return None
-
-        self.last_updated_at = current_updated_time
+        self.last_updated_at = os.path.getmtime(file)
+        blocks = deque()
         with open(file, 'rb') as f:
             f.seek(0, 2)  # Seek to the end of the file
+            self.cursor = f.tell()
             block_size = 1024
-            blocks = deque()
             current_size = 0
             read_lines = 0
 
@@ -90,8 +90,27 @@ class Tail(Operation):
                 current_size += current_block_size
                 if read_lines > lines:
                     break
-            try:
-                content = b''.join(blocks).decode()
-            except UnicodeDecodeError:
-                raise OperationError(f"File is not a text file: {filename}")
-            return content.split('\n')[-lines:]
+        try:
+            content = b''.join(blocks).decode()
+        except UnicodeDecodeError:
+            raise OperationError(f"File is not a text file: {filename}")
+        return content.split('\n')[-lines:]
+
+    def get_appended(self, path_to_file, filename):
+        file = os.path.join(path_to_file, filename)
+        current_updated_time = os.path.getmtime(file)
+        if self.last_updated_at == current_updated_time:
+            return None
+
+        self.last_updated_at = current_updated_time
+
+        content = None
+        with open(file, 'rb') as f:
+            f.seek(self.cursor)
+            content = f.read()
+            self.cursor = f.tell()
+        try:
+            content = content.decode()
+        except UnicodeDecodeError:
+            raise OperationError(f"File is not a text file: {filename}")
+        return content.split('\n')
