@@ -81,7 +81,7 @@ def main(_):
         if local_mode:
             api_client.start_local_machine_group(machine_group_id)
     except RuntimeError as e:
-        logging.error("Failed to start local machine group: %s", str(e))
+        logging.error(str(e))
         api_file_tracker.terminate()
         sys.exit(1)
 
