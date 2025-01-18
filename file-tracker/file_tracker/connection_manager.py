@@ -5,6 +5,8 @@ import os
 import aiohttp
 from client_connection import ClientConnection
 
+import file_tracker
+
 
 class ConnectionManager:
 
@@ -12,7 +14,10 @@ class ConnectionManager:
         self._signaling_server = signaling_server
         self._user_api_key = user_api_key
         self._ice_url = ice_url
-        self._headers = {"X-API-Key": self._user_api_key}
+        self._headers = {
+            "User-Agent": file_tracker.get_api_agent(),
+            "X-API-Key": self._user_api_key
+        }
         self.loop = None
         self.connections = []
 
