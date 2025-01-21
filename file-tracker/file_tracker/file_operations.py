@@ -59,7 +59,7 @@ class Tail(Operation):
 
     def execute(self):
         if self.cursor:
-            return self.get_appended(self.path, self.filename, self.cursor)
+            return self.get_appended(self.path, self.filename)
         return self.tail(self.path, self.filename, self.lines)
 
     def tail(self, path_to_file, filename, lines=10):
@@ -92,6 +92,8 @@ class Tail(Operation):
                     break
         try:
             content = b''.join(blocks).decode()
+            if content[-1] == '\n':
+                content = content[:-1]
         except UnicodeDecodeError:
             raise OperationError(f"File is not a text file: {filename}")
         return content.split('\n')[-lines:]
@@ -111,6 +113,8 @@ class Tail(Operation):
             self.cursor = f.tell()
         try:
             content = content.decode()
+            if content[-1] == '\n':
+                content = content[:-1]
         except UnicodeDecodeError:
             raise OperationError(f"File is not a text file: {filename}")
         return content.split('\n')
