@@ -43,7 +43,6 @@ class ApptainerImagesManager:
     ):
         self._local_cache_dir = local_cache_dir
         os.makedirs(self._local_cache_dir, exist_ok=True)
-        os.chown(self._local_cache_dir, os.getuid(), os.getgid())
 
         self._remote_storage_filesystem = None
         self._remote_storage_dir = None
