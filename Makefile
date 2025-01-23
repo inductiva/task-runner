@@ -40,14 +40,17 @@ help:
 	@echo "  make format: run formatter"
 	@echo "  make style: run formatter and linter"
 
+setup-apptainer-folder:
+	mkdir -p apptainer
+	chmod 777 apptainer
 
-task-runner-up:
+task-runner-up:setup-apptainer-folder
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) up --build
 
-task-runner-lite-up:
+task-runner-lite-up:setup-apptainer-folder
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE) up --build
 
-task-runner-cuda-up:
+task-runner-cuda-up:setup-apptainer-folder
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_CUDA) up --build
 
 task-runner-down:
