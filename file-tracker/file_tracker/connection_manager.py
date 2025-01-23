@@ -5,6 +5,8 @@ import os
 import aiohttp
 from client_connection import ClientConnection
 
+import file_tracker
+
 
 class ConnectionManager:
 
@@ -12,7 +14,12 @@ class ConnectionManager:
         self._signaling_server = signaling_server
         self._user_api_key = user_api_key
         self._ice_url = ice_url
-        self._headers = {"X-API-Key": self._user_api_key}
+        self._headers = {
+            "User-Agent": file_tracker.get_api_agent(),
+            "X-API-Key": self._user_api_key
+        }
+        self.loop = None
+        self.connections = []
 
     @classmethod
     def from_env(cls):
@@ -23,9 +30,8 @@ class ConnectionManager:
         )
 
     async def listen(self, task_id):
-        self.running = True
         self.connections = []
-        asyncio.create_task(self._listen_loop(task_id))
+        self.loop = asyncio.create_task(self._listen_loop(task_id))
 
     def _request_data(self, task_id, receiver_id=None, type=None, sdp=None):
         return {
@@ -43,7 +49,7 @@ class ConnectionManager:
                                json=self._request_data(task_id),
                                headers=self._headers)
 
-            while self.running:
+            while True:
                 logging.info("Listening for connections")
                 async with session.get(url + f"message?client={task_id}",
                                        headers=self._headers) as resp:
@@ -68,9 +74,10 @@ class ConnectionManager:
                         logging.error("Failed to get messages: %s", await
                                       resp.text())
                         await asyncio.sleep(5)
-            logging.info("Stopped listening for messages.")
 
     async def close(self):
-        self.running = False
+        if self.loop:
+            self.loop.cancel()
         for connection in self.connections:
             await connection.close()
+        logging.info("Connection manager closed")

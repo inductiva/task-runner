@@ -13,11 +13,6 @@ DOCKER_COMPOSE_COMMAND_TASK_RUNNER=\
 	-p task-runner-$(UID) \
 	-f docker-compose.yml
 
-DOCKER_COMPOSE_COMMAND_TASK_RUNNER_BUILD=\
-	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner-build-$(UID) \
-	-f docker-compose.build.yml
-
 DOCKER_COMPOSE_COMMAND_TASK_RUNNER_CUDA=\
 	$(DOCKER_COMPOSE_COMMAND) \
 	-p task-runner-cuda-$(UID) \
@@ -34,13 +29,10 @@ DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE=\
 
 help:
 	@echo Run:
-	@echo "  make task-runner-up: starts task-runner"
-	@echo "  make task-runner-dev-up: starts task-runner in dev environment"
-	@echo "  make task-runner-build-up: starts task-runner building from source"
+	@echo "  make task-runner-up: starts task-runner building from source"
 	@echo "  make task-runner-lite-up: starts task-runner in lite mode (faster)"
 	@echo "  make task-runner-cuda-up: starts task-runner with CUDA support"
-	@echo "  make task-runner-down: stops task-runner (main/dev)"
-	@echo "  make task-runner-build-down stops task-runner building from source"
+	@echo "  make task-runner-down stops task-runner building from source"
 	@echo "  make task-runner-lite-down stops task-runner in lite mode"
 	@echo "  make task-runner-cuda-down stops task-runner with CUDA support"
 	@echo Utils:
@@ -48,28 +40,21 @@ help:
 	@echo "  make format: run formatter"
 	@echo "  make style: run formatter and linter"
 
-task-runner-up:
-	TAG=$(TAG_MAIN) \
-	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) up --build	
+setup-apptainer-folder:
+	mkdir -p apptainer
+	chmod 777 apptainer
 
-task-runner-dev-up:
-	TAG=$(TAG_DEV) \
+task-runner-up:setup-apptainer-folder
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) up --build
 
-task-runner-build-up:
-	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_BUILD) up --build
-
-task-runner-lite-up:
+task-runner-lite-up:setup-apptainer-folder
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE) up --build
 
-task-runner-cuda-up:
+task-runner-cuda-up:setup-apptainer-folder
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_CUDA) up --build
 
 task-runner-down:
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) down
-
-task-runner-build-down:
-	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_BUILD) down
 
 task-runner-lite-down:
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE) down

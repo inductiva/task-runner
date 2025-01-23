@@ -71,14 +71,19 @@ def main(_):
     max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
     api_client = task_runner.ApiClient.from_env()
+    api_file_tracker = task_runner.ApiFileTracker.from_env()
 
-    machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
+    try:
+        machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
+        machine_group_id = machine_group_info.id
+        local_mode = machine_group_info.local_mode
 
-    machine_group_id = machine_group_info.id
-    local_mode = machine_group_info.local_mode
-
-    if local_mode:
-        api_client.start_local_machine_group(machine_group_id)
+        if local_mode:
+            api_client.start_local_machine_group(machine_group_id)
+    except RuntimeError as e:
+        logging.error(str(e))
+        api_file_tracker.terminate()
+        sys.exit(1)
 
     logging.info("Using machine group: %s", machine_group_id)
 
@@ -111,8 +116,6 @@ def main(_):
         api_client=api_client,
         task_runner_id=task_runner_uuid,
     )
-
-    api_file_tracker = task_runner.ApiFileTracker.from_env()
 
     request_handler = TaskRequestHandler(
         task_runner_uuid=task_runner_uuid,
@@ -171,6 +174,8 @@ def main(_):
                                                 save_traceback=True)
 
             monitoring_flag = False
+
+    api_file_tracker.terminate()
 
 
 if __name__ == "__main__":

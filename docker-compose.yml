@@ -1,7 +1,11 @@
 services:
   task-runner:
-      image: inductiva/task-runner:${TAG}
+      build:
+        context: .
+        dockerfile: task-runner/Dockerfile
       environment:
+        EXECUTER_IMAGES_DIR: /executer-images
+        API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
         MACHINE_GROUP_NAME: ${MACHINE_GROUP_NAME}
         HOST_NAME: ${TASK_RUNNER_HOSTNAME:-${HOSTNAME}}
@@ -9,11 +13,16 @@ services:
         - ./apptainer:/executer-images
         - workdir:/workdir
       network_mode: host
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
       privileged: true
       platform: linux/amd64
   file-tracker:
-      image: inductiva/file-tracker:${TAG}
+      build:
+        context: .
+        dockerfile: file-tracker/Dockerfile
       environment:
+        API_URL: ${INDUCTIVA_API_URL}
         USER_API_KEY: ${INDUCTIVA_API_KEY}
       network_mode: host
       volumes:

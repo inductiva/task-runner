@@ -29,6 +29,11 @@ class ApiFileTracker:
             asyncio.run(self._message(message))
             self.started = False
 
+    def terminate(self):
+        logging.info("Terminating task streaming")
+        message = "terminate"
+        asyncio.run(self._message(message))
+
     async def _connect(self, num_retries=3):
         while num_retries > 0:
             try:

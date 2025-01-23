@@ -54,7 +54,8 @@ class LinearElasticityFEniCSxExecuter(executers.BaseExecuter):
             mesh.write_mesh_info_to_json(mesh_info_path)
 
     def execute(self):
-        sim_dir_path = os.path.join(self.working_dir, self.args.sim_dir)
+        sim_dir_path = os.path.join(self.working_dir_container,
+                                    self.args.sim_dir)
         mesh_path = os.path.join(sim_dir_path, MESH_FILENAME)
         bcs_path = os.path.join(sim_dir_path, self.args.bcs_filename)
         material_path = os.path.join(sim_dir_path, self.args.material_filename)
@@ -62,7 +63,7 @@ class LinearElasticityFEniCSxExecuter(executers.BaseExecuter):
         element_order = self.args.mesh_element_order
         quadrature_rule = self.args.mesh_quadrature_rule
         quadrature_degree = self.args.mesh_quadrature_degree
-        results_dir = self.artifacts_dir
+        results_dir = self.artifacts_dir_container
 
         cmd = executers.Command("python /scripts/elastic_case/elastic_case.py "
                                 f"--mesh_path {mesh_path} "
