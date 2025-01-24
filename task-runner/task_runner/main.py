@@ -77,9 +77,6 @@ def main(_):
         machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
         machine_group_id = machine_group_info.id
         local_mode = machine_group_info.local_mode
-
-        if local_mode:
-            api_client.start_local_machine_group(machine_group_id)
     except RuntimeError as e:
         logging.error(str(e))
         api_file_tracker.terminate()

@@ -263,7 +263,7 @@ class ApiClient:
                 f"Failed to start local machine group: {resp.json()['detail']}")
         return resp.json()["id"]
 
-    def get_machine_group_id_by_name(
+    def get_started_machine_group_id_by_name(
             self, machine_group_name: str) -> Optional[uuid.UUID]:
         resp = self._request(
             "GET",
@@ -271,6 +271,9 @@ class ApiClient:
         )
 
         if resp.status_code != HTTPStatus.SUCCESS.value:
+            return
+
+        if resp.json()["status"] != "started":
             return
 
         return resp.json().get("id")
