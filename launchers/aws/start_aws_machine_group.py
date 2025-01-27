@@ -1,18 +1,18 @@
-import argparse  # Parser for command-line options, arguments and subcommand
-import os        # Interacting with the operating system (e.g. read/write user-data.sh file)
-import datetime  # Timestamping names
-import boto3     # AWS Software Development Kit (SDK) for Python
+import argparse # Parser for command-line options, arguments and subcommands
+import os       # Interacting with the operating system (e.g. read/write user_data.sh file)
+import datetime # Timestamping names for keeping track and troubleshooting
+import boto3    # AWS Software Development Kit (SDK) for Python
 import botocore
 import json
-import platform
+import platform # To determine the OS (Windows or MacOS/Linux)
+import re       # Regular Expressions (RegEx)
 
-# Function to fetch the latest Ubuntu 24.04 LTS Amazon Machine Image (AMI) ID from AWS Systems Manager Parameter Store
+# Function to fetch the latest Ubuntu 24.04 LTS Amazon Machine Image (AMI) ID from AWS Systems Manager Parameter Store for a particular region
 def fetch_ubuntu_ami_id(region, profile):
-    """Fetches the latest Ubuntu 24.04 LTS AMI ID from AWS Systems Manager."""
+    """Fetches the latest Ubuntu 24.04 LTS AMI ID for a particular region."""
     try:
         session = boto3.Session(profile_name=profile, region_name=region)
         ssm = session.client('ssm')
-        # Fetch the latest AMI ID for Ubuntu 24.04 LTS (amd64, hvm, ebs-gp3)
         parameter = ssm.get_parameter(
             Name='/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id'
         )
@@ -21,7 +21,7 @@ def fetch_ubuntu_ami_id(region, profile):
         print(f"Error fetching AMI ID: {error}")
         return None
 
-# Function to fetch and update the default AWS security group (i.e. Virtual Machine Firewall) in the respective region
+# Function to fetch and update the default AWS security group (i.e. Virtual Machine Firewall) in the respective region and Adds Rules for ports SSH, HHTP, and HTTPS
 def configure_default_security_group(region, profile):
     """Fetches the default security group (VM firewall) and adds rules for SSH, HTTP, and HTTPS."""
     session = boto3.Session(profile_name=profile, region_name=region)
@@ -49,42 +49,36 @@ def configure_default_security_group(region, profile):
             print(f"Error configuring security group: {error}")
         return security_group_id
 
+# Create key pair in order to access with SSH (port 22) the Virtual Machine (aka EC2 Instance) for troubleshooting (e.g. PuTTy)
 def create_key_pair(region, profile, key_format):
     """Creates a new RSA key pair in the specified format (PEM or PPK)."""
     session = boto3.Session(profile_name=profile, region_name=region)
     ec2_client = session.client('ec2')
-    key_name = f"KeyPair-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-    
+    key_name = f"KeyPair-{datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}"
     # Validate key_format
     if key_format not in ['pem', 'ppk']:
         raise ValueError("Invalid key format. Choose 'pem' or 'ppk'.")
-
     try:
         key_pair = ec2_client.create_key_pair(
             KeyName=key_name,
             KeyType='rsa',
             KeyFormat=key_format  # PEM or PPK
         )
-
         # Set the file extension and path based on the format
         file_extension = 'pem' if key_format == 'pem' else 'ppk'
         key_file = os.path.expanduser(f"~/{key_name}.{file_extension}")
-        
-        # Save the key material to a file
+        # Save the key to a file
         with open(key_file, 'w') as file:
             file.write(key_pair['KeyMaterial'])
-        
         # Set secure file permissions
         os.chmod(key_file, 0o400)
-        
-        print(f"Key pair saved to: {key_file}")
-
+        #print(f"Key pair saved to: {key_file}")
         return key_name
     except Exception as e:
         print(f"Error creating {key_format.upper()} key pair: {e}")
         return None
 
-# Function to create an Identity and Acess Management (IAM) role with AdministratorAccess
+# Function to create an Identity and Acess Management (IAM) role with AdministratorAccess necessary for the VM to delete itself
 def create_iam_role_with_admin_access(role_name, profile):
     session = boto3.Session(profile_name=profile)
     iam_client = session.client('iam')
@@ -118,8 +112,7 @@ def create_iam_role_with_admin_access(role_name, profile):
             RoleName=role_name,
             PolicyArn="arn:aws:iam::aws:policy/AdministratorAccess"
         )
-        print(f"Role {role_name} created and AdministratorAccess policy attached.")
-
+        #print(f"Role {role_name} created and AdministratorAccess policy attached.")
     # Create an instance profile for the role
     instance_profile_name = f"{role_name}-instance-profile"
     try:
@@ -133,9 +126,10 @@ def create_iam_role_with_admin_access(role_name, profile):
             InstanceProfileName=instance_profile_name,
             RoleName=role_name
         )
-        print(f"Instance Profile {instance_profile_name} created and role associated.")
+        #print(f"Instance Profile {instance_profile_name} created and role associated.")
     return instance_profile_name
 
+# When logging in with 'inductiva auth login' the api key is requested and stored in a file inductiva\api_key
 def get_default_api_key_path():
     """Determine the default path for the Inductiva API key based on the operating system."""
     if platform.system() == "Windows":
@@ -145,6 +139,7 @@ def get_default_api_key_path():
         # macOS/Linux: ~/.inductiva/api_key
         return os.path.join(os.path.expanduser("~"), ".inductiva", "api_key")
 
+# Retrieve the API Key from the previously file inductiva\api_key
 def get_inductiva_api_key():
     """Retrieve the Inductiva API key from the default path."""
     default_path = get_default_api_key_path()
@@ -161,6 +156,78 @@ def get_inductiva_api_key():
     except Exception as e:
         print(f"Error reading API key file: {e}")
         return None
+    
+# Update the USER_API_KEY in user-data.sh
+def update_inductiva_api_key_in_user_data(api_key, script_path="user_data.sh"):
+    """
+    Update the USER_API_KEY in the user_data.sh file.
+    """
+    try:
+        # Read the content of the script
+        with open(script_path, 'r') as file:
+            script_content = file.read()
+
+        # Replace the USER_API_KEY value using regex
+        updated_content = re.sub(
+            r'(--env USER_API_KEY=)([^\s]+)',  # Match `--env USER_API_KEY=` and its value
+            rf'\1{api_key}',                  # Replace with `--env USER_API_KEY=<api_key>`
+            script_content
+        )
+
+        # Write the updated content back to the script
+        with open(script_path, 'w') as file:
+            file.write(updated_content)
+
+    except FileNotFoundError:
+        print(f"Error: File {script_path} not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Function to update the MACHINE_GROUP_NAME in user-data.sh
+def update_machine_group_name(file_path, machine_group_name):
+    """
+    Updates the MACHINE_GROUP_NAME in the user_data.sh file.
+    """
+    try:
+        # Read the current contents of the file
+        with open(file_path, "r") as file:
+            content = file.read()
+        
+        # Define the regex pattern to find the MACHINE_GROUP_NAME line
+        pattern = r"--env MACHINE_GROUP_NAME=[^ ]+"
+        replacement = f"--env MACHINE_GROUP_NAME='{machine_group_name}'"
+        
+        # Replace the MACHINE_GROUP_NAME value
+        updated_content = re.sub(pattern, replacement, content)
+        
+        # Write the updated contents back to the file
+        with open(file_path, "w") as file:
+            file.write(updated_content)
+        
+        print(f"'{machine_group_name}' will appear in the Inductiva.AI Console, at 'Machine Groups'.")
+    except Exception as e:
+        print(f"An error occurred while updating MACHINE_GROUP_NAME: {e}")
+
+def update_user_data_tag_branch(file_path, branch):
+    """
+    Updates the user_data.sh file with the specified Docker image tags for the branch.
+    """
+    # Read the user_data.sh file
+    with open(file_path, 'r') as file:
+        user_data = file.read()
+
+    # Define the new tags based on the branch
+    file_tracker_tag = f"inductiva/file-tracker:{branch}"
+    task_runner_tag = f"inductiva/task-runner:{branch}"
+
+    # Use regex to replace existing image tags
+    user_data = re.sub(r'inductiva/file-tracker(:\w+)?', file_tracker_tag, user_data)
+    user_data = re.sub(r'inductiva/task-runner(:\w+)?', task_runner_tag, user_data)
+
+    # Write the updated user_data.sh file back to disk
+    with open(file_path, 'w') as file:
+        file.write(user_data)
+    #print(f"user_data.sh file updated for the '{branch}' branch.")
 
 # Initialize the argument parser
 parser = argparse.ArgumentParser(description="Launch Virtual Machines (VMs) by configuring them.")
@@ -176,13 +243,13 @@ parser.add_argument('--machine_group_name', type=str, default='AWS Machine Group
                     help="Inductiva Machine Group Name [default: AWS Machine Group]")
 parser.add_argument('--branch', type=str, choices=['main', 'dev'], default='main',
                     help="Task-runner branch to clone: main [default] or dev")
-parser.add_argument('--mode', type=str, choices=['normal', 'lite', 'cuda'], default='normal',
-                        help="Task Runner Mode: normal [default], lite, or cuda")
 parser.add_argument('--key_format', type=str, choices=['pem', 'ppk'], default='pem',
                     help="Key Pair Format: pem [default] or ppk")
-parser.add_argument('--user_data_path', type=str, default='user-data.sh',
+parser.add_argument('--user_data_path', type=str, default='user_data.sh',
                     help="File path to the user-data.sh script [default: user-data.sh]")
 parser.add_argument('--profile', type=str, default='default', help="AWS CLI profile [default: default]")
+"""parser.add_argument('--mode', type=str, choices=['normal', 'lite', 'cuda'], default='normal',
+                        help="Task Runner Mode: normal [default], lite, or cuda") """
 args = parser.parse_args()
 
 # Validate the user data script path
@@ -191,154 +258,57 @@ if not os.path.exists(user_data_path):
     print(f"User data file not found at {user_data_path}. Exiting.")
     exit(1)
 
-# Read the user data script
-with open(user_data_path, 'r') as user_data_file:
-    user_data_lines = user_data_file.readlines()
-
-# Function to remove any existing task runner command
-def remove_existing_task_runner_command():
-    for i, line in enumerate(user_data_lines):
-        if line.startswith("make task-runner"):
-            user_data_lines.pop(i)  # Remove the task runner line
-            break
-
-# Function to add the appropriate make command based on the mode
-def update_task_runner_command(mode):
-    # Define the commands for each mode
-    mode_commands = {
-        'normal': "make task-runner-up &",
-        'lite': "make task-runner-lite-up &",
-        'cuda': "make task-runner-cuda-up &"
-    }
-
-    # Get the command for the selected mode
-    task_runner_command = mode_commands.get(mode)
-
-    # Remove any existing task runner command to avoid duplicates
-    remove_existing_task_runner_command()
-
-    # Search for the "export $(grep -v ^# .env | xargs)" line
-    for i, line in enumerate(user_data_lines):
-        if "export $(grep -v ^# .env | xargs)" in line:
-            # Insert the corresponding task runner command after the export line
-            user_data_lines.insert(i + 1, f"\n{task_runner_command}")
-            break
-
-# Call the function to update the task runner command based on the selected mode
-update_task_runner_command(args.mode)
-
-# Save the modified script back to the file
-with open(user_data_path, 'w') as user_data_file:
-    user_data_file.writelines(user_data_lines)
-
-# Function to update the INDUCTIVA_API_KEY in user-data.sh
-def update_inductiva_api_key_in_user_data(api_key):
-    api_key_updated = False
-    inside_task_runner_block = False
-    # Loop through the lines and find where "cd task-runner" is
-    for i, line in enumerate(user_data_lines):
-
-        if "cd task-runner" in line:
-            inside_task_runner_block = True
-
-        if inside_task_runner_block and "export $(grep -v ^# .env | xargs)" in line:
-            # If "INDUCTIVA_API_KEY" exists in the lines already, update it
-            for j in range(i - 1, -1, -1):
-                if "INDUCTIVA_API_KEY" in user_data_lines[j]:
-                    user_data_lines[j] = f"echo \"INDUCTIVA_API_KEY='{api_key}'\" | sudo tee -a .env > /dev/null\n"
-                    api_key_updated = True
-                    break
-
-            # If key doesn't exist, add it at the correct position
-            if not api_key_updated:
-                user_data_lines.insert(i, f"echo \"INDUCTIVA_API_KEY='{api_key}'\" | sudo tee -a .env > /dev/null\n")
-            break
-
-
-# Function to update the MACHINE_GROUP_NAME in user-data.sh
-def update_machine_group_name_in_user_data(machine_group_name):
-    machine_group_name_updated = False
-    inside_task_runner_block = False
-    # Loop through the lines and find where "cd task-runner" is
-    for i, line in enumerate(user_data_lines):
-
-        if "cd task-runner" in line:
-            inside_task_runner_block = True
-
-        if inside_task_runner_block and "export $(grep -v ^# .env | xargs)" in line:
-            # If "MACHINE_GROUP_NAME" exists in the lines already, update it
-            for j in range(i - 1, -1, -1):
-                if "MACHINE_GROUP_NAME" in user_data_lines[j]:
-                    user_data_lines[
-                        j] = f"echo \"MACHINE_GROUP_NAME='{machine_group_name}'\" | sudo tee -a .env > /dev/null\n"
-                    machine_group_name_updated = True
-                    break
-
-            # If the machine group name doesn't exist, add it at the correct position
-            if not machine_group_name_updated:
-                user_data_lines.insert(i,
-                                       f"echo \"MACHINE_GROUP_NAME='{machine_group_name}'\" | sudo tee -a .env > /dev/null\n")
-            break
-
 # Retrieve the Inductiva API Key from the file
 inductiva_api_key = get_inductiva_api_key()
-# If inductiva_api_key is provided, update or insert it
-if inductiva_api_key:
-    update_inductiva_api_key_in_user_data(inductiva_api_key)
-else:
-    # If inductiva_api_key is not provided, check if it exists in user-data.sh
-    key_exists = any("INDUCTIVA_API_KEY" in line for line in user_data_lines)
-    if not key_exists:
-        print("Error: INDUCTIVA_API_KEY not found in user-data.sh.")
-        print("Please provide your Inductiva API Key.")
-        inductiva_api_key = input("Enter your Inductiva API Key: ")
-        if not inductiva_api_key:
-            print("Error: No Inductiva API Key provided. The operation cannot continue.")
-            exit(1)  # Exit the script
-        # Update user data with the provided API key
-        update_inductiva_api_key_in_user_data(inductiva_api_key)
+update_inductiva_api_key_in_user_data(inductiva_api_key, args.user_data_path)
 
-# If machine_group_name is provided, update or insert it
-if args.machine_group_name:
-    update_machine_group_name_in_user_data(args.machine_group_name)
-else:
-    # If machine_group_name is not provided, update it with the default value if missing
-    update_machine_group_name_in_user_data(args.machine_group_name)
+# Update the Machine Group Name
+update_machine_group_name(args.user_data_path, args.machine_group_name)
 
-# Save the modified script back to the file
-with open(user_data_path, 'w') as user_data_file:
-    user_data_file.writelines(user_data_lines)
-
-# Get the Ubuntu AMI ID (OS Template)
+# Get the Ubuntu AMI ID (Image OS Template)
 ami_id = fetch_ubuntu_ami_id(args.region, args.profile)
 if not ami_id:
     print("Error: Could not fetch AMI ID. Exiting.")
     exit(1)
 
-# Configure the default security group (VM Firewall)
+# Configure the default security group (i.e. Virtual Machine Firewall)
 security_group_id = configure_default_security_group(args.region, args.profile)
 if not security_group_id:
     print("Error: Could not configure the security group. Exiting.")
     exit(1)
 
-# Create a key pair (pem or ppk) for SSH access to the VM
+# Create a key pair (pem or ppk) for SSH access to the Virtual Machine [EC2 Instance]
 key_name = create_key_pair(args.region, args.profile, args.key_format)
 if not key_name:
     print("Failed to create key pair.")
 
-# Create the Virtual Machine (EC2 Instance)
-session = boto3.Session(profile_name=args.profile, region_name=args.region)
-ec2_client = session.client('ec2')
-
 # Define IAM role name
 role_name = 'EC2RoleAdmin'
 
-# Create the IAM role with AdministratorAccess to allow Virtual Machine to delete itself
+# Create the IAM role with AdministratorAccess to allow Virtual Machine [EC2 Instance] to delete itself
 instance_profile_name = create_iam_role_with_admin_access(role_name, args.profile)
 
-# Launch EC2 Virtual Machine(s) with the modified User Data
+# Update the docker container tag in the user_data.sh file to use the appropriate branch
+update_user_data_tag_branch(args.user_data_path, args.branch)
+
+# Save the user_data.sh file in a variable
+try:
+    with open(args.user_data_path, 'r') as user_data_file:
+        user_data_lines = user_data_file.read()
+except FileNotFoundError:
+    print(f"Error: User data file {args.user_data_path} not found. Exiting.")
+    exit(1)
+except Exception as e:
+    print(f"Error reading user data file: {e}. Exiting.")
+    exit(1)
+
+# Create the Virtual Machine [EC2 Instance]
+session = boto3.Session(profile_name=args.profile, region_name=args.region)
+ec2_client = session.client('ec2')
+
+# Launch Virtual Machine(s) [EC2 Instances] with the modified User Data
 for i in range(args.num_machines):
-    unique_name = f"VM-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{i + 1}"
+    unique_name = f"VM-{i + 1}-{datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')}"
     try:
         response = ec2_client.run_instances(
             ImageId=ami_id,
@@ -348,7 +318,7 @@ for i in range(args.num_machines):
             UserData=''.join(user_data_lines),
             MinCount=1,
             MaxCount=1,
-            IamInstanceProfile={'Name': instance_profile_name},  # Attach the instance profile here
+            IamInstanceProfile={'Name': instance_profile_name},
             TagSpecifications=[{
                 'ResourceType': 'instance',
                 'Tags': [{'Key': 'Name', 'Value': unique_name}]
@@ -365,6 +335,6 @@ for i in range(args.num_machines):
             }]
         )
         for instance in response['Instances']:
-            print(f"VM launched with ID: {instance['InstanceId']} and Name: {unique_name}")
+            print(f"Machine {i+1} with Name '{unique_name}' and ID '{instance['InstanceId']}' launched at AWS.")
     except Exception as e:
         print(f"Error launching VM: {e}")

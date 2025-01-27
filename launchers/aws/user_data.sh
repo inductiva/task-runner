@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Installing Docker
+
 sudo apt-get update -y
 sudo apt-get install -y ca-certificates curl 
 sudo install -m 0755 -d /etc/apt/keyrings
@@ -13,25 +14,20 @@ echo \
 sudo apt-get update -y
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-sudo apt install -y git-all
+#Running task-runner docker container
 
-sudo apt install make
+docker run -d --name file-tracker --env USER_API_KEY=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.GeVxzESKzuiJWMAEqiNnS2qalNVbCL-QbpKDOqMb5tjezjTmmq6diA.rYVyJzVcBUEkUvNeaas6cQ.GD8nPIL5FgMzNDS8DfNCwBukeAt9sjvKKNqEsB_yjg4AujpsI2JE1KvJ3hzHIKCX1KM.h5kQOtp1syA_R1xA3tklBA --volume workdir:/workdir --network host inductiva/file-tracker:main
 
-cd /home/ubuntu
-git clone https://github.com/inductiva/task-runner.git
-cd task-runner
+docker run -d --name task-runner --env USER_API_KEY=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.GeVxzESKzuiJWMAEqiNnS2qalNVbCL-QbpKDOqMb5tjezjTmmq6diA.rYVyJzVcBUEkUvNeaas6cQ.GD8nPIL5FgMzNDS8DfNCwBukeAt9sjvKKNqEsB_yjg4AujpsI2JE1KvJ3hzHIKCX1KM.h5kQOtp1syA_R1xA3tklBA --env MACHINE_GROUP_NAME='27Jan2025H10M26' --env HOST_NAME=$(hostname) --volume ./apptainer:/executer-images --volume workdir:/workdir --network host --privileged --platform linux/amd64 inductiva/task-runner:main
 
-echo "INDUCTIVA_API_URL=https://api.inductiva.ai" | sudo tee -a .env > /dev/null
+# Install AWS CLI
 
-echo "INDUCTIVA_API_KEY='eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.4UwkIEog-BD_gAUgiC2xJfHzZ3nllIA2wnmKzKnELOO70ftFRr447g.LXbJWKthD9Vup4V8XK0l_Q.CBliZCG9sfmRvlZysRu9sapQCAniwgTIvvx5qzvmyNFUpaEFDeAhpvL8luHMDvgx9JI.xH-YDY2qilGp4lxMe-NldA'" | sudo tee -a .env > /dev/null
-echo "MACHINE_GROUP_NAME='06_01_2025_17_19'" | sudo tee -a .env > /dev/null
-export $(grep -v ^# .env | xargs)
-
-make task-runner-lite-up &
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 sudo apt install unzip
 unzip awscliv2.zip
 sudo ./aws/install
+
+# Script that allows the VM to delete itself
 
 echo '#!/bin/bash
 export INSTANCE_ID=$(ec2metadata --instance-id)
