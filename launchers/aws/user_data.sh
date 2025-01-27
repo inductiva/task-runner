@@ -16,9 +16,9 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 
 #Running task-runner docker container
 
-docker run -d --name file-tracker --env USER_API_KEY=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.GeVxzESKzuiJWMAEqiNnS2qalNVbCL-QbpKDOqMb5tjezjTmmq6diA.rYVyJzVcBUEkUvNeaas6cQ.GD8nPIL5FgMzNDS8DfNCwBukeAt9sjvKKNqEsB_yjg4AujpsI2JE1KvJ3hzHIKCX1KM.h5kQOtp1syA_R1xA3tklBA --volume workdir:/workdir --network host inductiva/file-tracker:main
+docker run -d --name file-tracker --env USER_API_KEY= --volume workdir:/workdir --network host inductiva/file-tracker:main
 
-docker run -d --name task-runner --env USER_API_KEY=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.GeVxzESKzuiJWMAEqiNnS2qalNVbCL-QbpKDOqMb5tjezjTmmq6diA.rYVyJzVcBUEkUvNeaas6cQ.GD8nPIL5FgMzNDS8DfNCwBukeAt9sjvKKNqEsB_yjg4AujpsI2JE1KvJ3hzHIKCX1KM.h5kQOtp1syA_R1xA3tklBA --env MACHINE_GROUP_NAME='27Jan2025H10M26' --env HOST_NAME=$(hostname) --volume ./apptainer:/executer-images --volume workdir:/workdir --network host --privileged --platform linux/amd64 inductiva/task-runner:main
+docker run -d --name task-runner --env USER_API_KEY= --env MACHINE_GROUP_NAME= --env HOST_NAME=$(hostname) --volume ./apptainer:/executer-images --volume workdir:/workdir --network host --privileged --platform linux/amd64 inductiva/task-runner:main
 
 # Install AWS CLI
 
