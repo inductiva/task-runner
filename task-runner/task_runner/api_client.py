@@ -249,21 +249,7 @@ class ApiClient:
                 f"Failed to create local machine group: {resp.json()}")
         return resp.json()["id"]
 
-    def start_local_machine_group(self, machine_group_id: uuid.UUID):
-        resp = self._request(
-            "POST",
-            "/compute/group/start",
-            json={
-                "id": machine_group_id,
-            },
-        )
-
-        if resp.status_code != HTTPStatus.SUCCESS.value:
-            raise RuntimeError(
-                f"Failed to start local machine group: {resp.json()['detail']}")
-        return resp.json()["id"]
-
-    def get_machine_group_id_by_name(
+    def get_started_machine_group_id_by_name(
             self, machine_group_name: str) -> Optional[uuid.UUID]:
         resp = self._request(
             "GET",
@@ -271,7 +257,10 @@ class ApiClient:
         )
 
         if resp.status_code != HTTPStatus.SUCCESS.value:
-            return
+            return None
+
+        if resp.json()["status"] != "started":
+            return None
 
         return resp.json().get("id")
 

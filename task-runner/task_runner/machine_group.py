@@ -24,9 +24,10 @@ class MachineGroupInfo:
             logging.info("Specified machine group: %s", machine_group_info.id)
             return machine_group_info
 
-        if machine_group_info.name and (machine_group_id :=
-                                        api_client.get_machine_group_id_by_name(
-                                            machine_group_info.name)):
+        if machine_group_info.name and (
+                machine_group_id :=
+                api_client.get_started_machine_group_id_by_name(
+                    machine_group_info.name)):
             logging.info("Specified machine group exists: %s",
                          machine_group_info.name)
             machine_group_info.id = machine_group_id
