@@ -257,10 +257,10 @@ class ApiClient:
         )
 
         if resp.status_code != HTTPStatus.SUCCESS.value:
-            return
+            return None
 
         if resp.json()["status"] != "started":
-            return
+            return None
 
         return resp.json().get("id")
 
