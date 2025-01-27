@@ -16,9 +16,9 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 
 #Running task-runner docker container
 
-docker run -d --name file-tracker --env USER_API_KEY= --volume workdir:/workdir --network host inductiva/file-tracker:main
+docker run -d --name file-tracker --env USER_API_KEY=a --volume workdir:/workdir --network host inductiva/file-tracker:main
 
-docker run -d --name task-runner --env USER_API_KEY= --env MACHINE_GROUP_NAME= --env HOST_NAME=$(hostname) --volume ./apptainer:/executer-images --volume workdir:/workdir --network host --privileged --platform linux/amd64 inductiva/task-runner:main
+docker run -d --name task-runner --env USER_API_KEY=a --env MACHINE_GROUP_NAME=a --env HOST_NAME=$(hostname) --volume ./apptainer:/executer-images --volume workdir:/workdir --network host --privileged --platform linux/amd64 inductiva/task-runner:main
 
 # Install AWS CLI
 

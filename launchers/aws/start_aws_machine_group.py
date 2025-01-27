@@ -246,7 +246,7 @@ parser.add_argument('--branch', type=str, choices=['main', 'dev'], default='main
 parser.add_argument('--key_format', type=str, choices=['pem', 'ppk'], default='pem',
                     help="Key Pair Format: pem [default] or ppk")
 parser.add_argument('--user_data_path', type=str, default='user_data.sh',
-                    help="File path to the user-data.sh script [default: user-data.sh]")
+                    help="File path to the user-data.sh script [default: user_data.sh]")
 parser.add_argument('--profile', type=str, default='default', help="AWS CLI profile [default: default]")
 """parser.add_argument('--mode', type=str, choices=['normal', 'lite', 'cuda'], default='normal',
                         help="Task Runner Mode: normal [default], lite, or cuda") """
