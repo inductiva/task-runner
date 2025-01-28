@@ -30,10 +30,15 @@ def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
                        stderr) used by the logger for categorizing messages.
     """
     for line in stream:
-        log_message = line.decode("utf-8")
-        loki_logger.log_text(log_message, io_type=io_type)
-        output.write(log_message)
-        output.flush()
+        try:
+            log_message = line.decode("utf-8")
+        except UnicodeDecodeError as e:
+            logging.exception("Exception while decoding log message: %s", e)
+            log_message = line.decode("utf-8", errors="replace")
+        finally:
+            loki_logger.log_text(log_message, io_type=io_type)
+            output.write(log_message)
+            output.flush()
     loki_logger.flush(io_type)
 
 
