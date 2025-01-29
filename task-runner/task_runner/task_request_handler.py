@@ -308,13 +308,13 @@ class TaskRequestHandler:
                 },
             )
 
-            image_path, download_time, container_source = (
+            image_path, download_time, container_source, image_size = (
                 self.apptainer_images_manager.get(image_uri))
 
             operation.end(attributes={
                 "execution_time_s": download_time,
                 "source": container_source.value,
-                "size_bytes": os.path.getsize(image_path),
+                "size_bytes": image_size,
             },)
 
             self.apptainer_image_path = image_path
@@ -322,6 +322,8 @@ class TaskRequestHandler:
             if download_time is not None:
                 self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE,
                                        download_time)
+
+                self._post_task_metric(utils.EXECUTER_IMAGE_SIZE, image_size)
 
             if self._check_task_killed():
                 self._publish_event(
