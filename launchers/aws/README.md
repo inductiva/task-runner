@@ -144,7 +144,6 @@ $ python start_aws_machine_group.py \
 --num_machines 2 \
 --region eu-west-2 \
 --machine_group_name "AWS Machine Group" \
---mode lite \
 ```
 
 To see all the options run:
@@ -185,7 +184,6 @@ $ python start_machine_group.py \
 --num_machines 2 \
 --region eu-west-2 \
 --machine_group_name "AWS Machine Group" \
---mode lite \
 --profile <your_profile_name> \
 ```
 
