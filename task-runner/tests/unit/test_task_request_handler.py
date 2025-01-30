@@ -131,6 +131,7 @@ def fixture_task_request_handler(
         container_path,
         0.0,
         apptainer_utils.ApptainerImageSource.LOCAL_FILESYSTEM,
+        0,
     )
 
     event_logger = mock.MagicMock()
