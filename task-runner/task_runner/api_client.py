@@ -6,7 +6,7 @@ import os
 import time
 import uuid
 from collections import namedtuple
-from typing import Any, Optional
+from typing import Any, List, Literal, Optional
 
 import requests
 from absl import logging
@@ -201,34 +201,36 @@ class ApiClient:
             "POST",
             f"/{task_runner_id}/task/{task_id}/message/unblock",
         )
-
-    def get_download_input_url(
+    
+    def get_signed_urls(
         self,
-        task_runner_id: uuid.UUID,
-        task_id: str,
-    ) -> str:
-        resp = self._request_task_runner_api(
-            "GET",
-            f"/{task_runner_id}/task/{task_id}/download_input_url",
+        paths: List[str],
+        operation: Literal["upload", "download"],
+    ) -> List[str]:
+        resp = self._request(
+            method="GET",
+            path="/storage/signed-urls",
+            params={
+                "paths": paths,
+                "operation": operation,
+            },
         )
+        return resp.json()
 
-        return resp.json()["url"]
+    def get_download_input_url(self, task_id: str) -> str:
+        return self.get_signed_urls(
+            paths=[f"{task_id}/input.zip"],
+            operation="download",
+        )[0]
 
-    def get_upload_output_url(
-        self,
-        task_runner_id: uuid.UUID,
-        task_id: str,
-    ) -> UploadUrlInfo:
-        resp = self._request_task_runner_api(
-            "GET",
-            f"/{task_runner_id}/task/{task_id}/upload_output_url",
-        )
-
-        resp_body = resp.json()
-
+    def get_upload_output_url(self, task_id: str) -> UploadUrlInfo:
+        url = self.get_signed_urls(
+            paths=[f"{task_id}/output.zip"],
+            operation="upload",
+        )[0]
         return UploadUrlInfo(
-            url=resp_body["url"],
-            method=resp_body["method"],
+            url=url,
+            method="PUT",
         )
 
     def create_local_machine_group(self,
