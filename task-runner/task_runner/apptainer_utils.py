@@ -177,7 +177,9 @@ class ApptainerImagesManager:
 
         if os.path.exists(sif_local_path):
             logging.info("SIF image found locally: %s", sif_image_name)
-            return sif_local_path, 0, ApptainerImageSource.LOCAL_FILESYSTEM
+            image_size = os.path.getsize(sif_local_path)
+            return (sif_local_path, 0, ApptainerImageSource.LOCAL_FILESYSTEM,
+                    image_size)
 
         logging.info("SIF image not found locally: %s", sif_image_name)
 
@@ -195,5 +197,5 @@ class ApptainerImagesManager:
 
         download_time = time.time() - donwload_start
         logging.info("Apptainer image downloaded in %s seconds", download_time)
-
-        return sif_local_path, download_time, source
+        image_size = os.path.getsize(sif_local_path)
+        return sif_local_path, download_time, source, image_size
