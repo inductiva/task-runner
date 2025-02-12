@@ -100,6 +100,9 @@ class Tail(Operation):
 
     def get_appended(self, path_to_file, filename):
         file = os.path.join(path_to_file, filename)
+        if not os.path.exists(file):
+            return None
+
         current_updated_time = os.path.getmtime(file)
         if self.last_updated_at == current_updated_time:
             return None
