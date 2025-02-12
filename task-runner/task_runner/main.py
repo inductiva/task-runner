@@ -14,9 +14,11 @@ Usage (note the required environment variables):
 """
 import json
 import os
+import socket
 import sys
 import uuid
 
+import socks
 from absl import app, logging
 from inductiva_api.task_status import TaskRunnerTerminationReason
 
@@ -40,7 +42,30 @@ def _log_task_runner_id(path, task_runner_id: uuid.UUID):
         json.dump({"id": str(task_runner_id)}, f)
 
 
+def _set_socks_proxy():
+    """
+    Sets the SOCKS proxy configuration if the environment variables
+    SOCKS_PROXY_HOST and SOCKS_PROXY_PORT are provided.
+    """
+    socks_proxy_host = os.getenv('SOCKS_PROXY_HOST', None)
+    socks_proxy_port = os.getenv('SOCKS_PROXY_PORT', None)
+
+    if socks_proxy_host and socks_proxy_port:
+        try:
+            socks_proxy_port = int(socks_proxy_port)
+            socks.set_default_proxy(socks.SOCKS5, socks_proxy_host,
+                                    socks_proxy_port)
+            socket.socket = socks.socksocket
+            logging.info(
+                f"SOCKS proxy set to {socks_proxy_host}:{socks_proxy_port}")
+        except ValueError:
+            logging.error(f"Invalid SOCKS proxy port: {socks_proxy_port}")
+        except OSError as e:
+            logging.error(f"Socket-related error occurred: {e}")
+
+
 def main(_):
+    _set_socks_proxy()
     workdir = os.getenv("WORKDIR", "/workdir")
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR", "/apptainer")
     if not executer_images_dir:
