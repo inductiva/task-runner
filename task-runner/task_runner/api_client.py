@@ -16,7 +16,7 @@ import urllib
 
 import task_runner
 from task_runner.cleanup import TaskRunnerTerminationError
-from task_runner.utils import host
+from task_runner.utils import INPUT_ZIP_FILENAME, OUTPUT_ZIP_FILENAME, host
 
 
 class HTTPMethod(enum.Enum):
@@ -220,13 +220,13 @@ class ApiClient:
 
     def get_download_input_url(self, task_id: str) -> str:
         return self.get_signed_urls(
-            paths=[f"{task_id}/input.zip"],
+            paths=[f"{task_id}/{INPUT_ZIP_FILENAME}"],
             operation="download",
         )[0]
 
     def get_upload_output_url(self, task_id: str) -> UploadUrlInfo:
         url = self.get_signed_urls(
-            paths=[f"{task_id}/output.zip"],
+            paths=[f"{task_id}/{OUTPUT_ZIP_FILENAME}"],
             operation="upload",
         )[0]
         return UploadUrlInfo(
@@ -352,7 +352,7 @@ class ApiClient:
             path_parts = parsed_url.path.strip(os.sep).split(os.sep)
 
             _, root_name, *sub_parts = path_parts
-            is_output_zip = sub_parts[-1].endswith("output.zip")
+            is_output_zip = sub_parts[-1].endswith(OUTPUT_ZIP_FILENAME)
             file_path = f"{root_name}/{os.sep.join(sub_parts)}" \
                 if is_output_zip \
                 else os.sep.join(sub_parts[1:])
