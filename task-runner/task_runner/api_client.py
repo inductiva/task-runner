@@ -4,6 +4,7 @@ import datetime
 import enum
 import os
 import time
+import urllib
 import uuid
 from collections import namedtuple
 from typing import Any, List, Literal, Optional
@@ -12,7 +13,6 @@ import requests
 from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import TaskRunnerTerminationReason
-import urllib
 
 import task_runner
 from task_runner.cleanup import TaskRunnerTerminationError
@@ -202,7 +202,7 @@ class ApiClient:
             "POST",
             f"/{task_runner_id}/task/{task_id}/message/unblock",
         )
-    
+
     def get_signed_urls(
         self,
         paths: List[str],
@@ -345,8 +345,8 @@ class ApiClient:
         )
         resp.raise_for_status()
 
-
     def get_download_urls(self, input_resources: list[str]) -> str:
+
         def _signed_url_info(signed_url):
             parsed_url = urllib.parse.urlparse(signed_url)
             path_parts = parsed_url.path.strip(os.sep).split(os.sep)
@@ -356,12 +356,12 @@ class ApiClient:
             file_path = f"{root_name}/{os.sep.join(sub_parts)}" \
                 if is_output_zip \
                 else os.sep.join(sub_parts[1:])
-            
+
             return {
                 "url": signed_url,
                 "file_path": file_path,
                 "unzip": is_output_zip,
             }
-            
+
         urls = self.get_signed_urls(input_resources, "download")
         return [_signed_url_info(url) for url in urls]
