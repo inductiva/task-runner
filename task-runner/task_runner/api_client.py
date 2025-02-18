@@ -4,9 +4,10 @@ import datetime
 import enum
 import os
 import time
+import urllib
 import uuid
 from collections import namedtuple
-from typing import Any, Optional
+from typing import Any, List, Literal, Optional
 
 import requests
 from absl import logging
@@ -15,7 +16,7 @@ from inductiva_api.task_status import TaskRunnerTerminationReason
 
 import task_runner
 from task_runner.cleanup import TaskRunnerTerminationError
-from task_runner.utils import host
+from task_runner.utils import INPUT_ZIP_FILENAME, OUTPUT_ZIP_FILENAME, host
 
 
 class HTTPMethod(enum.Enum):
@@ -202,33 +203,35 @@ class ApiClient:
             f"/{task_runner_id}/task/{task_id}/message/unblock",
         )
 
-    def get_download_input_url(
+    def get_signed_urls(
         self,
-        task_runner_id: uuid.UUID,
-        task_id: str,
-    ) -> str:
-        resp = self._request_task_runner_api(
-            "GET",
-            f"/{task_runner_id}/task/{task_id}/download_input_url",
+        paths: List[str],
+        operation: Literal["upload", "download"],
+    ) -> List[str]:
+        resp = self._request(
+            method="GET",
+            path="/storage/signed-urls",
+            params={
+                "paths": paths,
+                "operation": operation,
+            },
         )
+        return resp.json()
 
-        return resp.json()["url"]
+    def get_download_input_url(self, task_id: str) -> str:
+        return self.get_signed_urls(
+            paths=[f"{task_id}/{INPUT_ZIP_FILENAME}"],
+            operation="download",
+        )[0]
 
-    def get_upload_output_url(
-        self,
-        task_runner_id: uuid.UUID,
-        task_id: str,
-    ) -> UploadUrlInfo:
-        resp = self._request_task_runner_api(
-            "GET",
-            f"/{task_runner_id}/task/{task_id}/upload_output_url",
-        )
-
-        resp_body = resp.json()
-
+    def get_upload_output_url(self, task_id: str) -> UploadUrlInfo:
+        url = self.get_signed_urls(
+            paths=[f"{task_id}/{OUTPUT_ZIP_FILENAME}"],
+            operation="upload",
+        )[0]
         return UploadUrlInfo(
-            url=resp_body["url"],
-            method=resp_body["method"],
+            url=url,
+            method="PUT",
         )
 
     def create_local_machine_group(self,
@@ -342,20 +345,23 @@ class ApiClient:
         )
         resp.raise_for_status()
 
-    def get_download_urls(self, input_resources: list[str],
-                          task_runner_id: uuid.UUID) -> str:
+    def get_download_urls(self, input_resources: list[str]) -> str:
 
-        resp = self._request_task_runner_api("GET",
-                                             f"/{task_runner_id}/download_urls",
-                                             params={
-                                                 "input_resources":
-                                                     input_resources,
-                                             })
-        response_data = resp.json()
-        files_url = [{
-            "url": item["url"],
-            "file_path": item["file_path"],
-            "unzip": item.get("unzip", False)
-        } for item in response_data]
+        def _signed_url_info(signed_url):
+            parsed_url = urllib.parse.urlparse(signed_url)
+            path_parts = parsed_url.path.strip(os.sep).split(os.sep)
 
-        return files_url
+            _, root_name, *sub_parts = path_parts
+            is_output_zip = sub_parts[-1].endswith(OUTPUT_ZIP_FILENAME)
+            file_path = f"{root_name}/{os.sep.join(sub_parts)}" \
+                if is_output_zip \
+                else os.sep.join(sub_parts[1:])
+
+            return {
+                "url": signed_url,
+                "file_path": file_path,
+                "unzip": is_output_zip,
+            }
+
+        urls = self.get_signed_urls(input_resources, "download")
+        return [_signed_url_info(url) for url in urls]

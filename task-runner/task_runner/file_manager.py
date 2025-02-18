@@ -67,10 +67,7 @@ class WebApiFileManager(BaseFileManager):
     ):
         del task_dir_remote  # unused
 
-        url = self._api_client.get_download_input_url(
-            self._task_runner_id,
-            task_id,
-        )
+        url = self._api_client.get_download_input_url(task_id)
         urllib.request.urlretrieve(url, dest_path)
 
     @override
@@ -95,8 +92,7 @@ class WebApiFileManager(BaseFileManager):
 
             data = open(zip_path, "rb")
 
-        upload_info = self._api_client.get_upload_output_url(
-            task_runner_id=self._task_runner_id, task_id=task_id)
+        upload_info = self._api_client.get_upload_output_url(task_id=task_id)
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
@@ -130,10 +126,8 @@ class WebApiFileManager(BaseFileManager):
         self,
         input_resources: list[str],
         dest_path: str,
-        task_runner_id: uuid.UUID,
     ):
-        files_url = self._api_client.get_download_urls(input_resources,
-                                                       task_runner_id)
+        files_url = self._api_client.get_download_urls(input_resources)
 
         for file_url in files_url:
             url = file_url["url"]

@@ -445,7 +445,7 @@ class TaskRequestHandler:
         # by the task files
         if self.input_resources:
             download_duration = self.file_manager.download_input_resources(
-                self.input_resources, sim_workdir, self.task_runner_uuid)
+                self.input_resources, sim_workdir)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
