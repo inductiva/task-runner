@@ -12,6 +12,7 @@ import requests
 from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import TaskRunnerTerminationReason
+import urllib
 
 import task_runner
 from task_runner.cleanup import TaskRunnerTerminationError
@@ -344,20 +345,23 @@ class ApiClient:
         )
         resp.raise_for_status()
 
-    def get_download_urls(self, input_resources: list[str],
-                          task_runner_id: uuid.UUID) -> str:
 
-        resp = self._request_task_runner_api("GET",
-                                             f"/{task_runner_id}/download_urls",
-                                             params={
-                                                 "input_resources":
-                                                     input_resources,
-                                             })
-        response_data = resp.json()
-        files_url = [{
-            "url": item["url"],
-            "file_path": item["file_path"],
-            "unzip": item.get("unzip", False)
-        } for item in response_data]
+    def get_download_urls(self, input_resources: list[str]) -> str:
+        def _signed_url_info(signed_url):
+            parsed_url = urllib.parse.urlparse(signed_url)
+            path_parts = parsed_url.path.strip(os.sep).split(os.sep)
 
-        return files_url
+            _, root_name, *sub_parts = path_parts
+            is_output_zip = sub_parts[-1].endswith("output.zip")
+            file_path = f"{root_name}/{os.sep.join(sub_parts)}" \
+                if is_output_zip \
+                else os.sep.join(sub_parts[1:])
+            
+            return {
+                "url": signed_url,
+                "file_path": file_path,
+                "unzip": is_output_zip,
+            }
+            
+        urls = self.get_signed_urls(input_resources, "download")
+        return [_signed_url_info(url) for url in urls]

@@ -126,10 +126,8 @@ class WebApiFileManager(BaseFileManager):
         self,
         input_resources: list[str],
         dest_path: str,
-        task_runner_id: uuid.UUID,
     ):
-        files_url = self._api_client.get_download_urls(input_resources,
-                                                       task_runner_id)
+        files_url = self._api_client.get_download_urls(input_resources)
 
         for file_url in files_url:
             url = file_url["url"]
