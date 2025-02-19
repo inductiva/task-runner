@@ -13,9 +13,15 @@ from collections import namedtuple
 import psutil
 from absl import logging
 
-from task_runner import executers
+from task_runner import SystemMetrics, SystemMetricsLogger, executers
 from task_runner.executers import command, mpi_configuration
 from task_runner.utils import loki
+
+
+def system_metrics_log(logger, finished_event: threading.Event):
+    while not finished_event.is_set():
+        logger.log()
+        time.sleep(1)
 
 
 class ExecuterKilledError(Exception):
@@ -91,6 +97,14 @@ class BaseExecuter(ABC):
 
         self._lock = threading.Lock()
         self.is_shutting_down = threading.Event()
+
+        metrics = [metric for metric in SystemMetrics]
+        self.logger = SystemMetricsLogger(metrics, self.artifacts_dir)
+        self.system_metrics_thread = threading.Thread(
+            target=system_metrics_log,
+            args=(self.logger, self.is_shutting_down),
+            daemon=True,
+        )
 
         self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
@@ -230,6 +244,8 @@ class BaseExecuter(ABC):
             if self.is_shutting_down.is_set():
                 raise ExecuterKilledError()
 
+        self.logger.change_command(" ".join(cmd.args))
+
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
 
@@ -315,7 +331,7 @@ class BaseExecuter(ABC):
     def run(self):
         """Method used to run the executer."""
         exit_code = 0
-
+        self.system_metrics_thread.start()
         try:
             self.load_input_configuration()
             self.pre_process()
