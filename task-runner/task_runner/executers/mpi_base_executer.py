@@ -4,7 +4,6 @@ import shutil
 
 from task_runner import executers
 from task_runner.executers import mpi_configuration
-from task_runner.utils import loki
 
 # Instructions inside Docker containers are run by the root user (as default),
 # so we need to allow Open MPI to be run as root. This is usually strongly
@@ -22,13 +21,12 @@ class MPIExecuter(executers.BaseExecuter):
         working_dir,
         container_image,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
-        loki_logger: loki.LokiLogger,
         exec_command_logger: executers.ExecCommandLogger,
         sim_binary,
         file_type,
         sim_specific_input_filename,
     ):
-        super().__init__(working_dir, container_image, mpi_config, loki_logger,
+        super().__init__(working_dir, container_image, mpi_config,
                          exec_command_logger)
         self.sim_binary = sim_binary
         self.sim_specific_input_filename = sim_specific_input_filename

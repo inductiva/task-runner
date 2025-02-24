@@ -41,7 +41,6 @@ class MockExecuter(
                 stdout=mock.MagicMock(),
                 stderr=mock.MagicMock(),
                 stdin=mock.MagicMock(),
-                loki_logger=mock.MagicMock(),
             )
             self.subprocess.run()
             exit_code = self.subprocess.wait()

@@ -27,15 +27,13 @@ def test_subprocess_tracker_init(mock_output_files):
     """Test the initialization of SubprocessTracker."""
     # Mocking dependencies
     mock_stdout, mock_stderr = mock_output_files
-    mock_loki_logger = mock.MagicMock()
 
     # Create an instance of SubprocessTracker
     tracker = executers.SubprocessTracker(args=["echo", "Hello"],
                                           working_dir=".",
                                           stdout=mock_stdout,
                                           stderr=mock_stderr,
-                                          stdin=None,
-                                          loki_logger=mock_loki_logger)
+                                          stdin=None)
 
     # Assertions to verify the initialization
     assert tracker.args == ["echo", "Hello"]
@@ -43,7 +41,6 @@ def test_subprocess_tracker_init(mock_output_files):
     assert tracker.stdout == mock_stdout
     assert tracker.stderr == mock_stderr
     assert tracker.stdin is None
-    assert tracker.loki_logger == mock_loki_logger
     assert tracker.spawn_time is None
     assert tracker.command_line is None
     assert tracker.subproc is None
@@ -58,8 +55,7 @@ def test_run(mock_output_files):
                                           working_dir=".",
                                           stdout=mock_stdout,
                                           stderr=mock_stderr,
-                                          stdin=None,
-                                          loki_logger=mock.MagicMock())
+                                          stdin=None)
 
     tracker.run()
     exit_code = tracker.wait()
@@ -84,8 +80,7 @@ def test_run_with_multiple_stdout_lines(mock_output_files):
                                           working_dir=".",
                                           stdout=mock_stdout,
                                           stderr=mock_stderr,
-                                          stdin=None,
-                                          loki_logger=mock.MagicMock())
+                                          stdin=None)
 
     tracker.run()
     exit_code = tracker.wait()
@@ -112,8 +107,7 @@ def test_exit_gracefully(mock_output_files):
                                           working_dir=".",
                                           stdout=mock_stdout,
                                           stderr=mock_stderr,
-                                          stdin=None,
-                                          loki_logger=mock.MagicMock())
+                                          stdin=None)
 
     # Run the subprocess in a separate thread to avoid blocking
     run_thread = threading.Thread(target=tracker.run)
@@ -142,8 +136,7 @@ def test_exit_gracefully_ignore_sigterm(mock_output_files):
                                           working_dir=".",
                                           stdout=mock_stdout,
                                           stderr=mock_stderr,
-                                          stdin=None,
-                                          loki_logger=mock.MagicMock())
+                                          stdin=None)
 
     # Run the subprocess in a separate thread to avoid blocking
     run_thread = threading.Thread(target=tracker.run)
