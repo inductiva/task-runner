@@ -1,7 +1,6 @@
 """Test the subprocess tracker."""
 import threading
 import time
-from unittest import mock
 
 import pytest
 from task_runner import executers
