@@ -6,6 +6,3 @@ fsspec
 gcsfs
 stream-zip==0.0.81
 
-# FEniCSx
-gmsh==4.11.1
-meshio==5.3.5

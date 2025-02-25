@@ -13,5 +13,4 @@ from .subprocess_tracker import SubprocessTracker  # noqa: I001
 from . import (
     arbitrary_commands_executer,
     security,
-    fenicsx,
 )
