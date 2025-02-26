@@ -7,8 +7,6 @@ from task_runner import executers
 simulator_to_executer = {
     "arbitrary_commands":
         executers.arbitrary_commands_executer.ArbitraryCommandsExecuter,
-    "fenicsx":
-        executers.fenicsx.LinearElasticityFEniCSxExecuter,
 }
 
 

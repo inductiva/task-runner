@@ -32,7 +32,7 @@ from task_runner import (
     utils,
 )
 from task_runner.operations_logger import OperationName, OperationsLogger
-from task_runner.utils import files, loki
+from task_runner.utils import files
 
 KILL_MESSAGE = "kill"
 INTERRUPT_MESSAGE = "interrupt"
@@ -51,7 +51,6 @@ def task_message_listener_loop(
     listener: task_message_listener.BaseTaskMessageListener,
     task_id: str,
     kill_task_thread_queue: queue.Queue,
-    logger_enabled: threading.Event,
 ) -> None:
     """Function to handle the kill request for the running task.
 
@@ -74,14 +73,6 @@ def task_message_listener_loop(
 
         elif message == KILL_MESSAGE:
             kill_task_thread_queue.put(KILL_MESSAGE)
-
-        elif message == ENABLE_LOGGING_STREAM_MESSAGE:
-            logger_enabled.set()
-            logging.info("Logging stream enabled.")
-
-        elif message == DISABLE_LOGGING_STREAM_MESSAGE:
-            logger_enabled.clear()
-            logging.info("Logging stream disabled.")
 
 
 def interrupt_task_ttl_exceeded(
@@ -165,14 +156,12 @@ class TaskRequestHandler:
         self.file_manager = file_manager
         self.api_file_tracker = api_file_tracker
         self.task_id = None
-        self.loki_logger = None
         self.task_workdir = None
         self.apptainer_image_path = None
         self.threads = []
         self.cleaning_up = False
         self._message_listener_thread = None
         self._kill_task_thread_queue = None
-        self._logger_enabled = threading.Event()
         self._shutting_down = False
         self._operations_logger = OperationsLogger(self.api_client)
 
@@ -274,12 +263,6 @@ class TaskRequestHandler:
         self.stream_zip = True if request.get("stream_zip",
                                               "t") == "t" else False
         self.cleaning_up = False
-        self.loki_logger = loki.LokiLogger(
-            task_id=self.task_id,
-            project_id=self.project_id,
-            enabled=self._logger_enabled,
-        )
-        self._logger_enabled.clear()
         self._kill_task_thread_queue = queue.Queue()
 
         self._log_task_picked_up()
@@ -292,7 +275,6 @@ class TaskRequestHandler:
                     self.message_listener,
                     self.task_id,
                     self._kill_task_thread_queue,
-                    self._logger_enabled,
                 ),
                 daemon=True,
             )
@@ -682,7 +664,6 @@ class TaskRequestHandler:
             self.task_workdir,
             self.apptainer_image_path,
             copy.deepcopy(self.mpi_config),
-            self.loki_logger,
             executers.ExecCommandLogger(
                 self.task_id,
                 self._operations_logger,

@@ -23,8 +23,6 @@ RUN make install
 RUN ldconfig
 ENV MPIRUN_BIN_PATH_TEMPLATE /opt/openmpi/{version}/bin/mpirun
 
-RUN apt-get install -y gmsh
-
 # Install the package dependencies in the requirements file.
 COPY /task-runner/requirements.txt /requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /requirements.txt
