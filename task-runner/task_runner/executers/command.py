@@ -3,8 +3,6 @@ import dataclasses
 import shlex
 from typing import Optional
 
-from task_runner import executers
-
 
 @dataclasses.dataclass
 class MPICommandConfig():
