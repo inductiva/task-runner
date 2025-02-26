@@ -61,7 +61,7 @@ class Command():
         self.prompts = prompts
         self.is_mpi = is_mpi
         self.mpi_config = mpi_config
-        self._check_security(self.args, prompts)
+        _check_format(self.args, prompts)
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -82,12 +82,24 @@ class Command():
 
         return shlex.split(cmd)
 
-    def _check_security(self, tokens, prompts):
-        """Check command security."""
-        if not tokens:
-            raise ValueError(f"Command '{' '.join(tokens)}' is empty.")
 
-        cmd_elems = tokens + prompts
+def _check_format(tokens, prompts):
+    """Check command security."""
+    if not tokens:
+        raise ValueError(f"Command '{' '.join(tokens)}' is empty.")
 
-        for cmd_elem in cmd_elems:
-            executers.security.check_command_elem_security(cmd_elem)
+    cmd_elems = tokens + prompts
+
+    for cmd_elem in cmd_elems:
+        _check_length(cmd_elem)
+
+
+def _check_length(cmd_elem):
+    """Checks for length limits in a command element."""
+
+    maximum_elem_len = 256
+    if len(cmd_elem) > maximum_elem_len:
+        raise ValueError(f"Command element '{cmd_elem}' is too long.")
+
+    if cmd_elem == "":
+        raise ValueError(f"Command element '{cmd_elem}' is empty.")
