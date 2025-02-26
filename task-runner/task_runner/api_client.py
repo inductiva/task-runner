@@ -218,15 +218,15 @@ class ApiClient:
         )
         return resp.json()
 
-    def get_download_input_url(self, task_id: str) -> str:
+    def get_download_input_url(self, storage_dir: str) -> str:
         return self.get_signed_urls(
-            paths=[f"{task_id}/{INPUT_ZIP_FILENAME}"],
+            paths=[f"{storage_dir}/{INPUT_ZIP_FILENAME}"],
             operation="download",
         )[0]
 
-    def get_upload_output_url(self, task_id: str) -> UploadUrlInfo:
+    def get_upload_output_url(self, storage_dir: str) -> UploadUrlInfo:
         url = self.get_signed_urls(
-            paths=[f"{task_id}/{OUTPUT_ZIP_FILENAME}"],
+            paths=[f"{storage_dir}/{OUTPUT_ZIP_FILENAME}"],
             operation="upload",
         )[0]
         return UploadUrlInfo(

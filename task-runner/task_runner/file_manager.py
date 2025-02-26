@@ -1,5 +1,6 @@
 import abc
 import os
+import pathlib
 import time
 import urllib
 import urllib.request
@@ -56,6 +57,12 @@ class WebApiFileManager(BaseFileManager):
     ):
         self._api_client = api_client
         self._task_runner_id = task_runner_id
+    
+    def _get_storage_dir(task_dir_remote: str) -> str:
+        """Removes the user bucket prefix from `task_dir_remote`"""
+        task_path = pathlib.Path(task_dir_remote)
+        storage_dir = task_path.relative_to(task_path.parts[0])
+        return str(storage_dir)
 
     @utils.execution_time
     @override
@@ -65,9 +72,8 @@ class WebApiFileManager(BaseFileManager):
         task_dir_remote: str,
         dest_path: str,
     ):
-        del task_dir_remote  # unused
-
-        url = self._api_client.get_download_input_url(task_id)
+        storage_dir = WebApiFileManager._get_storage_dir(task_dir_remote)
+        url = self._api_client.get_download_input_url(storage_dir)
         urllib.request.urlretrieve(url, dest_path)
 
     @override
@@ -79,8 +85,6 @@ class WebApiFileManager(BaseFileManager):
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
     ):
-        del task_dir_remote  # unused
-
         if stream_zip:
             data = files.get_zip_generator(local_path)
             zip_duration = None
@@ -92,7 +96,8 @@ class WebApiFileManager(BaseFileManager):
 
             data = open(zip_path, "rb")
 
-        upload_info = self._api_client.get_upload_output_url(task_id=task_id)
+        storage_dir = WebApiFileManager._get_storage_dir(task_dir_remote)
+        upload_info = self._api_client.get_upload_output_url(storage_dir)
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
