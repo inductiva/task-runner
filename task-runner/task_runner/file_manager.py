@@ -96,7 +96,7 @@ class WebApiFileManager(BaseFileManager):
 
             data = open(zip_path, "rb")
 
-        storage_dir = WebApiFileManager._get_storage_dir(task_dir_remote)
+        storage_dir = self._get_storage_dir(task_dir_remote)
         upload_info = self._api_client.get_upload_output_url(storage_dir)
 
         operation = operations_logger.start_operation(
