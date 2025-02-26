@@ -57,8 +57,8 @@ class WebApiFileManager(BaseFileManager):
     ):
         self._api_client = api_client
         self._task_runner_id = task_runner_id
-    
-    def _get_storage_dir(task_dir_remote: str) -> str:
+
+    def _get_storage_dir(self, task_dir_remote: str) -> str:
         """Removes the user bucket prefix from `task_dir_remote`"""
         task_path = pathlib.Path(task_dir_remote)
         storage_dir = task_path.relative_to(task_path.parts[0])
@@ -72,7 +72,7 @@ class WebApiFileManager(BaseFileManager):
         task_dir_remote: str,
         dest_path: str,
     ):
-        storage_dir = WebApiFileManager._get_storage_dir(task_dir_remote)
+        storage_dir = self._get_storage_dir(task_dir_remote)
         url = self._api_client.get_download_input_url(storage_dir)
         urllib.request.urlretrieve(url, dest_path)
 
