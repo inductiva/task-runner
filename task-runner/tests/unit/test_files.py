@@ -44,6 +44,10 @@ def get_directory_filenames(directory_name):
 
 
 def test_remove_before_time_without_file_changes(directory):
+    """
+    Test that all files in the directory are removed when no files are
+    modified or created after the reference time.
+    """
     start_time_ns = time.time_ns()
     removed = files.remove_before_time(directory=directory.name,
                                        reference_time_ns=start_time_ns)
@@ -53,6 +57,10 @@ def test_remove_before_time_without_file_changes(directory):
 
 
 def test_remove_before_time_with_file_changes(directory):
+    """
+    Test that only files created or modified after the reference time remain in 
+    the directory.
+    """
     start_time_ns = time.time_ns()
 
     filenames = get_directory_filenames(directory_name=directory.name)
