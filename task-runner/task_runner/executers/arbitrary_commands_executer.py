@@ -25,7 +25,7 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         # Save this timestamp to detect which files were created or modified
-        start_time_ns = time.perf_counter()
+        start_time_ns = time.time_ns()
 
         try:
             for command in self.args.commands:
