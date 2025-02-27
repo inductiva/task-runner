@@ -7,6 +7,7 @@ import time
 from task_runner import executers
 from task_runner.utils import files
 
+REMOVE_UNCHANGED_FILES_FLAG = os.getenv("REMOVE_BEFORE_TIME_FLAG", True)
 
 class ArbitraryCommandsExecuter(executers.BaseExecuter):
     """Concrete implementation of an Executer to run arbitrary commands."""
@@ -32,5 +33,6 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
             self.run_subprocess(cmd, working_dir=run_subprocess_dir)
         
         # Remove files that were not modified or created during the simulation
-        files.remove_before_time(directory=self.artifacts_dir,
-                                 reference_time=start_time)
+        if REMOVE_UNCHANGED_FILES_FLAG:
+            files.remove_before_time(directory=self.artifacts_dir,
+                                     reference_time=start_time)
