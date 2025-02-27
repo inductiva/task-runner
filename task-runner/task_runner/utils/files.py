@@ -313,7 +313,7 @@ def remove_before_time(directory: str, reference_time: float):
     directory = pathlib.Path(directory)
     if not directory.is_dir():
         raise ValueError(f"Not a directory: '{directory}'.")
-    
+
     removed = []
     for file in directory.iterdir():
         if file.is_dir():
