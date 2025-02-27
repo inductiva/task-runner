@@ -42,13 +42,18 @@ def test_remove_before_time_without_file_changes(directory):
 
 
 def test_remove_before_time_with_file_changes(directory):
+
+    def get_directory_filenames(directory_name):
+        return [
+            os.path.join(path, filename)
+            for path, _, filenames in os.walk(directory)
+            for filename in filenames
+        ]
+
     start_time = time.time()
 
-    filenames = [
-        os.path.join(path, filename)
-        for path, _, filenames in os.walk(directory.name)
-        for filename in filenames
-    ]
+    filenames = get_directory_filenames(directory_name=directory.name)
+    
     modified_files = [filenames[0], filenames[-1]]
     for modified_file in modified_files:
         with open(modified_file, "a") as file:
@@ -62,11 +67,7 @@ def test_remove_before_time_with_file_changes(directory):
                                        reference_time=start_time)
     assert len(removed) == 3
 
-    filenames = [
-        os.path.join(path, filename)
-        for path, _, filenames in os.walk(directory.name)
-        for filename in filenames
-    ]
+    filenames = get_directory_filenames(directory_name=directory.name)
 
     assert created_file in filenames
     assert modified_files[0] in filenames
