@@ -36,9 +36,9 @@ def fixture_directory():
 
 
 def test_remove_before_time_without_file_changes(directory):
-    start_time = time.time()
+    start_time_ns = time.time_ns()
     removed = files.remove_before_time(directory=directory.name,
-                                       reference_time=start_time)
+                                       reference_time_ns=start_time_ns)
     assert len(removed) == 5
 
 
@@ -47,11 +47,11 @@ def test_remove_before_time_with_file_changes(directory):
     def get_directory_filenames(directory_name):
         return [
             os.path.join(path, filename)
-            for path, _, filenames in os.walk(directory)
+            for path, _, filenames in os.walk(directory_name)
             for filename in filenames
         ]
 
-    start_time = time.time()
+    start_time_ns = time.time_ns()
 
     filenames = get_directory_filenames(directory_name=directory.name)
 
@@ -65,7 +65,7 @@ def test_remove_before_time_with_file_changes(directory):
         file.write("\n")
 
     removed = files.remove_before_time(directory=directory.name,
-                                       reference_time=start_time)
+                                       reference_time_ns=start_time_ns)
     assert len(removed) == 3
 
     filenames = get_directory_filenames(directory_name=directory.name)
