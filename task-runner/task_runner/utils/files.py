@@ -1,5 +1,6 @@
 """File related utility functions."""
 import os
+import pathlib
 import shutil
 import stat
 import subprocess
@@ -302,3 +303,29 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
 
     # Remove the original ZIP file
     os.remove(zip_path)
+
+
+def remove_before_time(directory: str, reference_time: float):
+    """
+    Remove files in the specified directory that have a modification or
+    creation time earlier than the given reference time.
+    """
+    directory = pathlib.Path(directory)
+    if not directory.is_dir():
+        raise ValueError(f"Not a directory: '{directory}'.")
+    
+    removed = []
+    for file in directory.iterdir():
+        if file.is_dir():
+            removed.extend(remove_before_time(file, reference_time))
+            continue
+
+        file_stat = file.stat()
+        if file_stat.st_mtime > reference_time or \
+           file_stat.st_ctime > reference_time:
+            continue
+
+        file.unlink()
+        removed.append(file)
+
+    return removed
