@@ -25,12 +25,13 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         # Save this timestamp to detect which files were created or modified
-        start_time = time.time()
+        start_time_ns = time.time_ns()
 
-        for command in self.args.commands:
-            cmd = executers.Command.from_dict(command)
-            self.run_subprocess(cmd, working_dir=run_subprocess_dir)
-
-        # Remove files that were not modified or created during the simulation
-        files.remove_before_time(directory=self.artifacts_dir,
-                                 reference_time=start_time)
+        try:
+            for command in self.args.commands:
+                cmd = executers.Command.from_dict(command)
+                self.run_subprocess(cmd, working_dir=run_subprocess_dir)
+        finally:
+            # Remove files that were not modified or created
+            files.remove_before_time(directory=self.artifacts_dir,
+                                     reference_time_ns=start_time_ns)
