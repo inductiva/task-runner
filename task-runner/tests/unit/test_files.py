@@ -21,7 +21,7 @@ def fixture_directory():
             with open(file_path, 'w', encoding="utf-8") as f:
                 f.write(random_string())
 
-    temporary_directory = tempfile.TemporaryDirectory(delete=False)
+    temporary_directory = tempfile.TemporaryDirectory()
 
     create_random_files(temporary_directory.name, 3)
 
