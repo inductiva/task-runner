@@ -1,12 +1,13 @@
 """File related utility functions."""
 import os
+import pathlib
 import shutil
 import stat
 import subprocess
 import tempfile
 import zipfile
 import zlib
-from typing import Optional
+from typing import List, Optional
 
 import stream_zip
 from absl import logging
@@ -302,3 +303,47 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
 
     # Remove the original ZIP file
     os.remove(zip_path)
+
+
+def get_directory_filenames(directory_name: str) -> List[str]:
+    return [
+        os.path.join(path, filename)
+        for path, _, filenames in os.walk(directory_name)
+        for filename in filenames
+    ]
+
+
+def get_most_recent_timestamp(directory_name: str) -> Optional[float]:
+
+    def _most_recent_timestamp(filename: str) -> float:
+        stat = os.stat(filename)
+        return max(stat.st_ctime_ns, stat.st_mtime_ns)
+
+    filenames = get_directory_filenames(directory_name)
+    return max(map(_most_recent_timestamp, filenames), default=None)
+
+
+def remove_before_time(directory: str, reference_time_ns: float):
+    """
+    Remove files in the specified directory that have a modification or
+    creation time earlier than the given reference time.
+    """
+    directory = pathlib.Path(directory)
+    if not directory.is_dir():
+        raise ValueError(f"Not a directory: '{directory}'.")
+
+    removed = []
+    for file in directory.iterdir():
+        if file.is_dir():
+            removed.extend(remove_before_time(file, reference_time_ns))
+            continue
+
+        file_stat = file.stat()
+        if file_stat.st_mtime_ns > reference_time_ns or \
+           file_stat.st_ctime_ns > reference_time_ns:
+            continue
+
+        file.unlink()
+        removed.append(file)
+
+    return removed
