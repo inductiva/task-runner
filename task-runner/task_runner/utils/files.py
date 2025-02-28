@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import zipfile
 import zlib
-from typing import Optional
+from typing import List, Optional
 
 import stream_zip
 from absl import logging
@@ -303,6 +303,22 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
 
     # Remove the original ZIP file
     os.remove(zip_path)
+
+
+def get_directory_filenames(directory_name: str) -> List[str]:
+    return [
+        os.path.join(path, filename)
+        for path, _, filenames in os.walk(directory_name)
+        for filename in filenames
+    ]
+
+
+def get_most_recent_timestamp(directory_name: str) -> float:
+    def _most_recent_timestamp(filename: str) -> float:
+        stat = os.stat(filename)
+        return max(stat.st_ctime_ns, stat.st_mtime_ns)
+    filenames = get_directory_filenames(directory_name)
+    return _most_recent_timestamp(max(filenames, key=_most_recent_timestamp))
 
 
 def remove_before_time(directory: str, reference_time_ns: float):

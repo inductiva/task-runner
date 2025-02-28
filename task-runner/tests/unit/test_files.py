@@ -35,23 +35,15 @@ def fixture_directory():
     temporary_directory.cleanup()
 
 
-def get_directory_filenames(directory_name):
-    return [
-        os.path.join(path, filename)
-        for path, _, filenames in os.walk(directory_name)
-        for filename in filenames
-    ]
-
-
 def test_remove_before_time_without_file_changes(directory):
     """
     Test that all files in the directory are removed when no files are
     modified or created after the reference time.
     """
-    start_time_ns = time.time_ns()
+    timestamp = files.get_most_recent_timestamp(directory.name)
     removed = files.remove_before_time(directory=directory.name,
-                                       reference_time_ns=start_time_ns)
-    after = get_directory_filenames(directory_name=directory.name)
+                                       reference_time_ns=timestamp)
+    after = files.get_directory_filenames(directory_name=directory.name)
     assert len(removed) == 5
     assert len(after) == 0
 
@@ -61,24 +53,26 @@ def test_remove_before_time_with_file_changes(directory):
     Test that only files created or modified after the reference time remain in 
     the directory.
     """
-    start_time_ns = time.time_ns()
+    timestamp = files.get_most_recent_timestamp(directory.name)
 
-    filenames = get_directory_filenames(directory_name=directory.name)
+    filenames = files.get_directory_filenames(directory_name=directory.name)
 
     modified_files = [filenames[0], filenames[-1]]
     for modified_file in modified_files:
         with open(modified_file, "a", encoding="utf-8") as file:
             file.write("\n")
+            file.flush()
 
     created_file = os.path.join(os.path.dirname(modified_files[0]), "new.txt")
     with open(created_file, "w", encoding="utf-8") as file:
         file.write("\n")
+        file.flush()
 
     removed = files.remove_before_time(directory=directory.name,
-                                       reference_time_ns=start_time_ns)
+                                       reference_time_ns=timestamp)
     assert len(removed) == 3
 
-    filenames = get_directory_filenames(directory_name=directory.name)
+    filenames = files.get_directory_filenames(directory_name=directory.name)
 
     assert created_file in filenames
     assert modified_files[0] in filenames
