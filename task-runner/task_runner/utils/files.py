@@ -320,7 +320,7 @@ def get_most_recent_timestamp(directory_name: str) -> float:
         return max(stat.st_ctime_ns, stat.st_mtime_ns)
 
     filenames = get_directory_filenames(directory_name)
-    return _most_recent_timestamp(max(filenames, key=_most_recent_timestamp))
+    return max(map(_most_recent_timestamp, filenames))
 
 
 def remove_before_time(directory: str, reference_time_ns: float):
