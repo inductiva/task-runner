@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import time
 
 from task_runner import executers
 from task_runner.utils import files

@@ -57,6 +57,9 @@ def test_remove_before_time_with_file_changes(directory):
 
     filenames = files.get_directory_filenames(directory_name=directory.name)
 
+    # Assume simulation takes at least 1 milisecond
+    time.sleep(0.001)
+
     modified_files = [filenames[0], filenames[-1]]
     for modified_file in modified_files:
         with open(modified_file, "a", encoding="utf-8") as file:

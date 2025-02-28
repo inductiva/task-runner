@@ -314,9 +314,11 @@ def get_directory_filenames(directory_name: str) -> List[str]:
 
 
 def get_most_recent_timestamp(directory_name: str) -> float:
+
     def _most_recent_timestamp(filename: str) -> float:
         stat = os.stat(filename)
         return max(stat.st_ctime_ns, stat.st_mtime_ns)
+
     filenames = get_directory_filenames(directory_name)
     return _most_recent_timestamp(max(filenames, key=_most_recent_timestamp))
 
