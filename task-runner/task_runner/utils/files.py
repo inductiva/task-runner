@@ -313,14 +313,14 @@ def get_directory_filenames(directory_name: str) -> List[str]:
     ]
 
 
-def get_most_recent_timestamp(directory_name: str) -> float:
+def get_most_recent_timestamp(directory_name: str) -> Optional[float]:
 
     def _most_recent_timestamp(filename: str) -> float:
         stat = os.stat(filename)
         return max(stat.st_ctime_ns, stat.st_mtime_ns)
 
     filenames = get_directory_filenames(directory_name)
-    return max(map(_most_recent_timestamp, filenames))
+    return max(map(_most_recent_timestamp, filenames), default=None)
 
 
 def remove_before_time(directory: str, reference_time_ns: float):
