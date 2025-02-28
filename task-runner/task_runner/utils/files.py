@@ -305,7 +305,7 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
     os.remove(zip_path)
 
 
-def remove_before_time(directory: str, reference_time_ns: float):
+def remove_before_time(directory: str, reference_time_ms: float):
     """
     Remove files in the specified directory that have a modification or
     creation time earlier than the given reference time.
@@ -317,12 +317,12 @@ def remove_before_time(directory: str, reference_time_ns: float):
     removed = []
     for file in directory.iterdir():
         if file.is_dir():
-            removed.extend(remove_before_time(file, reference_time_ns))
+            removed.extend(remove_before_time(file, reference_time_ms))
             continue
 
         file_stat = file.stat()
-        if file_stat.st_mtime_ns > reference_time_ns or \
-           file_stat.st_ctime_ns > reference_time_ns:
+        if file_stat.st_mtime * 1_000_000 > reference_time_ms or \
+           file_stat.st_ctime * 1_000_000 > reference_time_ms:
             continue
 
         file.unlink()

@@ -25,7 +25,7 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         # Save this timestamp to detect which files were created or modified
-        start_time_ns = time.time_ns()
+        start_time_ms = time.time() * 1000
 
         try:
             for command in self.args.commands:
@@ -34,4 +34,4 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
         finally:
             # Remove files that were not modified or created
             files.remove_before_time(directory=self.artifacts_dir,
-                                     reference_time_ns=start_time_ns)
+                                     reference_time_ms=start_time_ms)
