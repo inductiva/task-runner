@@ -32,5 +32,7 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
                 self.run_subprocess(cmd, working_dir=run_subprocess_dir)
         finally:
             # Remove files that were not modified or created
+            if not timestamp:
+                return
             files.remove_before_time(directory=self.artifacts_dir,
                                      reference_time_ns=timestamp)
