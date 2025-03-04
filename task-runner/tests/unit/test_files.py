@@ -37,6 +37,7 @@ def fixture_directory():
 
 @pytest.fixture(name="directory_with_symlinks", scope="function")
 def fixture_directory_with_symlinks(directory):
+
     def make_symlinks(dirname):
         for filename in os.listdir(dirname):
             file_path = os.path.join(dirname, filename)
@@ -45,14 +46,13 @@ def fixture_directory_with_symlinks(directory):
                 os.symlink(file_path, symlink_path)
             elif os.path.isdir(file_path):
                 make_symlinks(file_path)
+
     make_symlinks(dirname=directory.name)
     yield directory
 
 
-@pytest.mark.parametrize(
-    "fixture_name",
-    ["directory", "directory_with_symlinks"]
-)
+@pytest.mark.parametrize("fixture_name",
+                         ["directory", "directory_with_symlinks"])
 def test_remove_before_time_without_file_changes(request, fixture_name):
     """
     Test that all files in the directory are removed when no files are

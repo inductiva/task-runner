@@ -337,7 +337,7 @@ def remove_before_time(directory: str, reference_time_ns: float):
         if file.is_dir():
             removed.extend(remove_before_time(file, reference_time_ns))
             continue
-        
+
         if file.is_symlink() and not file.exists():
             file.unlink()
             removed.append(file)
