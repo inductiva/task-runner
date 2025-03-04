@@ -43,7 +43,6 @@ def fixture_directory_with_symlinks(directory):
             symlink_path = os.path.join(dirname, f"symlink-{filename}")
             if os.path.isfile(file_path):
                 os.symlink(file_path, symlink_path)
-                print(f"Created symlink: {symlink_path} -> {file_path}")
             elif os.path.isdir(file_path):
                 make_symlinks(file_path)
     make_symlinks(dirname=directory.name)
