@@ -80,3 +80,22 @@ def test_remove_before_time_with_file_changes(directory):
     assert created_file in filenames
     assert modified_files[0] in filenames
     assert modified_files[1] in filenames
+
+
+def test_remove_before_time_with_symbolic_links(directory):
+    def make_symlinks(dirname):
+        for filename in os.listdir(dirname):
+            file_path = os.path.join(dirname, filename)
+            symlink_path = os.path.join(dirname, f"symlink-{filename}")
+            if os.path.isfile(file_path):
+                os.symlink(file_path, symlink_path)
+                print(f"Created symlink: {symlink_path} -> {file_path}")
+            elif os.path.isdir(file_path):
+                make_symlinks(file_path)
+
+    make_symlinks(dirname=directory.name)
+    timestamp = files.get_most_recent_timestamp(directory.name)
+    _ = files.remove_before_time(directory=directory.name,
+                                 reference_time_ns=timestamp)
+    after = files.get_directory_filenames(directory_name=directory.name)
+    assert not after
