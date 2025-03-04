@@ -338,6 +338,11 @@ def remove_before_time(directory: str, reference_time_ns: float):
             removed.extend(remove_before_time(file, reference_time_ns))
             continue
 
+        if file.is_symlink() and not file.exists():
+            file.unlink()
+            removed.append(file)
+            continue
+
         file_stat = file.stat()
         if file_stat.st_mtime_ns > reference_time_ns or \
            file_stat.st_ctime_ns > reference_time_ns:
