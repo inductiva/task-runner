@@ -244,6 +244,8 @@ class ApiClient:
                 "provider_id": "LOCAL",
                 "name": machine_group_name,
                 "disk_size_gb": host.get_total_memory() // 1e9,
+                "cpu_cores_logical": host.get_cpu_count().logical,
+                "cpu_cores_physical": host.get_cpu_count().physical,
             },
         )
 
