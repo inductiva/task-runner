@@ -56,7 +56,7 @@ class ApiClient:
     def __init__(
         self,
         api_url: str,
-        user_api_key: str = None,
+        user_api_key: str,
         request_timeout_s: int = 300,
     ):
         if user_api_key is None:
