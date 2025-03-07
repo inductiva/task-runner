@@ -360,7 +360,7 @@ class ApiClient:
             return {
                 "url": signed_url,
                 "file_path": file_path,
-                "unzip": file_path.endswith(OUTPUT_ZIP_FILENAME),
+                "unzip": is_output_zip,
             }
 
         urls = self.get_signed_urls(input_resources, "download")
