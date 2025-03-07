@@ -348,12 +348,10 @@ class ApiClient:
         def _signed_url_info(signed_url):
             parsed_url = urllib.parse.urlparse(signed_url)
             path_parts = parsed_url.path.strip(os.sep).split(os.sep)
-
             _, root_name, *sub_parts = path_parts
             is_output_zip = sub_parts[-1].endswith(OUTPUT_ZIP_FILENAME)
-            file_path = f"{root_name}/{os.sep.join(sub_parts)}" \
-                if is_output_zip \
-                else os.sep.join(sub_parts[1:])
+            sub_path = os.sep.join(sub_parts)
+            file_path = f"{root_name}/{sub_path}" if is_output_zip else sub_path
 
             return {
                 "url": signed_url,
