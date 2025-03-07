@@ -1,7 +1,6 @@
 """Test the the command class."""
 
 import pytest
-
 from task_runner import executers
 
 
