@@ -8,7 +8,7 @@ import os
 import re
 import subprocess
 import time
-from typing import Optional, Tuple
+from typing import Optional
 
 import fsspec
 from absl import logging
@@ -153,7 +153,7 @@ class ApptainerImagesManager:
 
         return False
 
-    def get(self, image: str) -> Tuple[str, float, ApptainerImageSource]:
+    def get(self, image: str) -> tuple[str, float, ApptainerImageSource]:
         """Makes the requested Apptainer image available locally.
 
         If the image is not available in the local directory, it is attempted
@@ -187,7 +187,9 @@ class ApptainerImagesManager:
 
         if os.path.exists(sif_local_path):
             logging.info("SIF image found locally: %s", sif_image_name)
-            return sif_local_path, 0, ApptainerImageSource.LOCAL_FILESYSTEM
+            image_size = os.path.getsize(sif_local_path)
+            return (sif_local_path, 0, ApptainerImageSource.LOCAL_FILESYSTEM,
+                    image_size)
 
         logging.info("SIF image not found locally: %s", sif_image_name)
 
@@ -205,5 +207,5 @@ class ApptainerImagesManager:
 
         download_time = time.time() - donwload_start
         logging.info("Apptainer image downloaded in %s seconds", download_time)
-
-        return sif_local_path, download_time, source
+        image_size = os.path.getsize(sif_local_path)
+        return sif_local_path, download_time, source, image_size

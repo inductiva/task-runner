@@ -15,7 +15,6 @@ from absl import logging
 
 from task_runner import executers
 from task_runner.executers import command, mpi_configuration
-from task_runner.utils import loki
 
 
 class ExecuterKilledError(Exception):
@@ -60,7 +59,6 @@ class BaseExecuter(ABC):
         working_dir: str,
         container_image: str,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
-        loki_logger: loki.LokiLogger,
         exec_command_logger: executers.ExecCommandLogger,
     ):
         """Performs initial setup of the executer.
@@ -74,7 +72,10 @@ class BaseExecuter(ABC):
         self.output_dir = os.path.join(self.working_dir, self.OUTPUT_DIRNAME)
         self.artifacts_dir = os.path.join(self.output_dir,
                                           self.ARTIFACTS_DIRNAME)
-        self.loki_logger = loki_logger
+        self.working_dir_container = "/workdir"
+        self.artifacts_dir_container = os.path.join(self.working_dir_container,
+                                                    self.OUTPUT_DIRNAME,
+                                                    self.ARTIFACTS_DIRNAME)
         self.exec_command_logger = exec_command_logger
 
         logging.info("Working directory: %s", self.working_dir)
@@ -186,12 +187,6 @@ class BaseExecuter(ABC):
 
             json.dump(json_obj, f)
 
-    def close_streams(self):
-        """Method that signals the end of log streams used by the executer."""
-        for io_type in loki.IOTypes:
-            self.loki_logger.log_text(loki.END_OF_STREAM, io_type=io_type)
-            self.loki_logger.flush(io_type)
-
     def run_subprocess(
         self,
         cmd: command.Command,
@@ -237,8 +232,8 @@ class BaseExecuter(ABC):
         with open(self.stdout_logs_path, "a", encoding="UTF-8") as stdout, \
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
-            log_message = f"# COMMAND: {cmd.args}\n"
-            self.loki_logger.log_text(log_message, io_type=loki.IOTypes.COMMAND)
+            log_message = (f"# COMMAND: {cmd.args}\n"
+                           f"# Working directory: {working_dir}\n")
             log_message += "\n"
             stdout.write(log_message)
             stderr.write(log_message)
@@ -251,22 +246,25 @@ class BaseExecuter(ABC):
                     command_config=cmd.mpi_config)
 
             # This is the directory that contains all the task related files
-            task_working_dir = self.working_dir
+            task_working_dir_host = self.working_dir
+            task_working_dir_container = self.working_dir_container
 
             # This is the directory where the command will be executed. It
             # can be a subdirectory of the task directory.
-            process_working_dir = task_working_dir
+            process_working_dir_container = task_working_dir_container
             if working_dir:
-                process_working_dir = os.path.join(process_working_dir,
-                                                   working_dir)
+                process_working_dir_container = os.path.join(
+                    process_working_dir_container, working_dir)
             apptainer_args = [
                 "apptainer",
                 "exec",
                 "--bind",
-                f"{task_working_dir}:{task_working_dir}",
+                f"{task_working_dir_host}:{task_working_dir_container}",
                 "--pwd",
-                process_working_dir,
+                process_working_dir_container,
             ]
+            if self.mpi_config.local_mode:
+                apptainer_args.append("--writable-tmpfs")
             if cmd.is_mpi and not self.mpi_config.local_mode:
                 apptainer_args.append("--sharens")
             if self.on_gpu:
@@ -282,7 +280,6 @@ class BaseExecuter(ABC):
                 stdout=stdout,
                 stderr=stderr,
                 stdin=stdin,
-                loki_logger=self.loki_logger,
             )
             self.exec_command_logger.log_command_started(
                 command=" ".join(command_args),
@@ -322,8 +319,6 @@ class BaseExecuter(ABC):
             # The executer was killed, so we don't need to do anything;
             # the exception was raised to stop the execution.
             pass
-        finally:
-            self.close_streams()
 
         return exit_code
 

@@ -20,7 +20,7 @@ import uuid
 
 import socks
 from absl import app, logging
-from inductiva_api.task_status import ExecuterTerminationReason
+from inductiva_api.task_status import TaskRunnerTerminationReason
 
 import task_runner
 from task_runner import (
@@ -30,7 +30,7 @@ from task_runner import (
     task_execution_loop,
     utils,
 )
-from task_runner.register_executer import register_executer
+from task_runner.register_task_runner import register_task_runner
 from task_runner.task_request_handler import TaskRequestHandler
 
 
@@ -96,49 +96,51 @@ def main(_):
     max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
     api_client = task_runner.ApiClient.from_env()
+    api_file_tracker = task_runner.ApiFileTracker.from_env()
 
-    machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
-
-    machine_group_id = machine_group_info.id
-    local_mode = machine_group_info.local_mode
-
-    if local_mode:
-        api_client.start_local_machine_group(machine_group_id)
+    try:
+        machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
+        machine_group_id = machine_group_info.id
+        local_mode = machine_group_info.local_mode
+    except RuntimeError as e:
+        logging.error(str(e))
+        api_file_tracker.terminate()
+        sys.exit(1)
 
     logging.info("Using machine group: %s", machine_group_id)
 
-    executer_access_info = register_executer(
+    task_runner_access_info = register_task_runner(
         api_client,
         machine_group_id=machine_group_id,
         mpi_cluster=mpi_config.is_cluster,
         num_mpi_hosts=mpi_config.num_hosts,
         local_mode=local_mode,
     )
-    executer_uuid = executer_access_info.id
-    _log_task_runner_id(task_runner_id_path, executer_uuid)
+    task_runner_uuid = task_runner_access_info.id
+    _log_task_runner_id(task_runner_id_path, task_runner_uuid)
 
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
         local_cache_dir=executer_images_dir,
         remote_storage_url=executer_images_remote_storage,
     )
 
-    file_manager = task_runner.WebApiFileManager(api_client,
-                                                 task_runner_id=executer_uuid)
+    file_manager = task_runner.WebApiFileManager(
+        api_client, task_runner_id=task_runner_uuid)
     task_fetcher = task_runner.WebApiTaskFetcher(
         api_client=api_client,
-        task_runner_id=executer_uuid,
+        task_runner_id=task_runner_uuid,
     )
     event_logger = task_runner.WebApiLogger(
         api_client=api_client,
-        task_runner_id=executer_uuid,
+        task_runner_id=task_runner_uuid,
     )
     message_listener = task_runner.WebApiTaskMessageListener(
         api_client=api_client,
-        task_runner_id=executer_uuid,
+        task_runner_id=task_runner_uuid,
     )
 
     request_handler = TaskRequestHandler(
-        executer_uuid=executer_uuid,
+        task_runner_uuid=task_runner_uuid,
         workdir=workdir,
         mpi_config=mpi_config,
         apptainer_images_manager=apptainer_images_manager,
@@ -146,10 +148,11 @@ def main(_):
         event_logger=event_logger,
         message_listener=message_listener,
         file_manager=file_manager,
+        api_file_tracker=api_file_tracker,
     )
 
     termination_handler = cleanup.TerminationHandler(
-        executer_id=executer_uuid,
+        task_runner_id=task_runner_uuid,
         request_handler=request_handler,
     )
 
@@ -177,7 +180,7 @@ def main(_):
             else:
                 termination_handler.log_termination(e.reason, e.detail)
                 monitoring_flag = False
-        except cleanup.ExecuterTerminationError as e:
+        except cleanup.TaskRunnerTerminationError as e:
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")
             termination_handler.log_termination(e.reason, e.detail)
@@ -185,7 +188,7 @@ def main(_):
         except Exception as e:  # noqa: BLE001
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")
-            reason = ExecuterTerminationReason.ERROR
+            reason = TaskRunnerTerminationReason.ERROR
 
             detail = utils.get_exception_root_cause_message(e)
             termination_handler.log_termination(reason,
@@ -193,6 +196,8 @@ def main(_):
                                                 save_traceback=True)
 
             monitoring_flag = False
+
+    api_file_tracker.terminate()
 
 
 if __name__ == "__main__":

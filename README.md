@@ -2,7 +2,24 @@
 Task Runner allows you to run simulations locally via the Inductiva API.
 
 ## How to Run
-The prerequisites for running the Task Runner are docker and a Inductiva account. 
+
+Refer to [this tutorial](https://tutorials.inductiva.ai/how_to/use-local-task-runner.html) to learn
+how to easily run your simulations locally using the Inductiva API and the Task Runner.
+
+## Contributing
+
+### Pre-requisites
+
+- Operating System: **Linux** -- MacOS should work, but might be slower building MPI dependencies. Windows was not yet tested.
+- **docker** -- user should already have been added to the docker group, or have admin rights to do it
+- **git** -- (optional) to clone this repository, alternatively download the zip file.
+- **make** (optional) -- to launch the commands easily, alternatively run them explicitely on the terminal.
+- **nvidia container toolkit** -- (optional) -- this is required only if you want to launch the TaskRunner with NVIDIA GPU support -- please follow the [official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) to install the libraries and then configure Docker.
+
+
+Additionally you need:
+
+- an **Inductiva API key**. (register at https://console.inductiva.ai)
 
 ### Setup Environment
 
@@ -34,7 +51,7 @@ Build and run a lighter version of the Task Runner
 make task-runner-lite-up
 ```
 
-NOTE: The simulators that use openmpi (eg. AmrWind, CaNs) can not be chosen to run simulations in Lite mode. 
+NOTE: The simulators that use openmpi (eg. AmrWind, CaNs) can not be chosen to run simulations in Lite mode.
 
 #### With GPU access
 Build and run the Task Runner with CUDA support:

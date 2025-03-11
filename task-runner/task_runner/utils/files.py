@@ -1,11 +1,13 @@
-"""File related utility functions"""
+"""File related utility functions."""
 import os
+import pathlib
+import shutil
 import stat
 import subprocess
 import tempfile
 import zipfile
 import zlib
-from typing import Optional
+from typing import List, Optional
 
 import stream_zip
 from absl import logging
@@ -110,9 +112,13 @@ def get_dir_files_paths(directory):
 
     def _update_paths(file_name, file_type):
         full_path = os.path.join(root, file_name)
+        if os.path.islink(full_path):
+            return
+
         relative_path = os.path.relpath(full_path, directory)
         if file_type == "directory":
             relative_path += "/"
+
         paths.append({
             "fs": full_path,
             "name": relative_path,
@@ -262,7 +268,87 @@ def make_zip_archive(
                 # Add each file to the archive
                 for filename in filenames:
                     file_path = os.path.join(foldername, filename)
+
+                    if os.path.islink(file_path):
+                        continue
+
                     arcname = os.path.relpath(file_path, local_path)
                     zip_file.write(file_path, arcname=arcname)
 
     return output_zip
+
+
+def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
+    """
+    Extracts everything from the ZIP file, moves the files from the subfolder
+    to the target location, and cleans up the rest.
+
+    :param zip_path: Path to the ZIP file.
+    :param subfolder: The name of the subfolder to extract.
+    :param extract_to: The final directory to move the files to.
+    """
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        source_folder = os.path.join(temp_dir, subfolder)
+
+        # Move the contents of the subfolder to the target location
+        for item in os.listdir(source_folder):
+            shutil.move(
+                os.path.join(source_folder, item),
+                os.path.join(extract_to, item),
+            )
+
+    # Remove the original ZIP file
+    os.remove(zip_path)
+
+
+def get_directory_filenames(directory_name: str) -> List[str]:
+    return [
+        os.path.join(path, filename)
+        for path, _, filenames in os.walk(directory_name)
+        for filename in filenames
+    ]
+
+
+def get_most_recent_timestamp(directory_name: str) -> Optional[float]:
+
+    def _most_recent_timestamp(filename: str) -> float:
+        stat = os.stat(filename)
+        return max(stat.st_ctime_ns, stat.st_mtime_ns)
+
+    filenames = get_directory_filenames(directory_name)
+    return max(map(_most_recent_timestamp, filenames), default=None)
+
+
+def remove_before_time(directory: str, reference_time_ns: float):
+    """
+    Remove files in the specified directory that have a modification or
+    creation time earlier than the given reference time.
+    """
+    directory = pathlib.Path(directory)
+    if not directory.is_dir():
+        raise ValueError(f"Not a directory: '{directory}'.")
+
+    removed = []
+    for file in directory.iterdir():
+        if file.is_dir():
+            removed.extend(remove_before_time(file, reference_time_ns))
+            continue
+
+        if file.is_symlink() and not file.exists():
+            file.unlink()
+            removed.append(file)
+            continue
+
+        file_stat = file.stat()
+        if file_stat.st_mtime_ns > reference_time_ns or \
+           file_stat.st_ctime_ns > reference_time_ns:
+            continue
+
+        file.unlink()
+        removed.append(file)
+
+    return removed

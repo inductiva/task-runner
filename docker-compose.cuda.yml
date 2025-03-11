@@ -12,6 +12,10 @@ services:
         ON_GPU: true
       volumes:
         - ./apptainer:/executer-images
+        - workdir:/workdir
+      network_mode: host
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
       privileged: true
       platform: linux/amd64
       deploy:
@@ -21,3 +25,16 @@ services:
               - driver: nvidia
                 count: all
                 capabilities: [gpu]
+  file-tracker:
+    build:
+      context: .
+      dockerfile: file-tracker/Dockerfile
+    environment:
+      API_URL: ${INDUCTIVA_API_URL}
+      USER_API_KEY: ${INDUCTIVA_API_KEY}
+    network_mode: host
+    volumes:
+      - workdir:/workdir
+
+volumes:
+  workdir:

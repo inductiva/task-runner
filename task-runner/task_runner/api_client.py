@@ -4,17 +4,19 @@ import datetime
 import enum
 import os
 import time
+import urllib
 import uuid
 from collections import namedtuple
-from typing import Any, Dict, Optional
+from typing import Any, List, Literal, Optional
 
 import requests
 from absl import logging
 from inductiva_api import events
-from inductiva_api.task_status import ExecuterTerminationReason
+from inductiva_api.task_status import TaskRunnerTerminationReason
 
-from task_runner.cleanup import ExecuterTerminationError
-from task_runner.utils import host
+import task_runner
+from task_runner.cleanup import TaskRunnerTerminationError
+from task_runner.utils import INPUT_ZIP_FILENAME, OUTPUT_ZIP_FILENAME, host
 
 
 class HTTPMethod(enum.Enum):
@@ -26,6 +28,7 @@ class HTTPMethod(enum.Enum):
 
 class HTTPStatus(enum.Enum):
     SUCCESS = 200
+    CREATED = 201
     ACCEPTED = 202
     NO_CONTENT = 204
     CLIENT_ERROR = 400
@@ -36,7 +39,7 @@ HTTPResponse = namedtuple("HTTPResponse", ["status", "data"])
 
 
 @dataclasses.dataclass
-class ExecuterAccessInfo:
+class TaskRunnerAccessInfo:
     id: uuid.UUID
     machine_group_id: uuid.UUID
 
@@ -53,30 +56,25 @@ class ApiClient:
     def __init__(
         self,
         api_url: str,
-        user_api_key: Optional[str] = None,
-        task_runner_token: Optional[str] = None,
+        user_api_key: str,
         request_timeout_s: int = 300,
     ):
-        if (user_api_key is None) == (task_runner_token is None):
-            raise RuntimeError(
-                "Exactly one of USER_API_KEY and EXECUTER_TRACKER_TOKEN "
-                "should be set.")
+        if user_api_key is None:
+            raise RuntimeError("USER_API_KEY must be set.")
 
         self._url = api_url
         self._request_timeout_s = request_timeout_s
-        self._headers = {}
-        if user_api_key is not None:
-            self._headers["X-API-Key"] = user_api_key
-        if task_runner_token is not None:
-            self._headers["X-Executer-Tracker-Token"] = task_runner_token
-        self._executer_uuid = None
+        self._headers = {
+            "User-Agent": task_runner.get_api_agent(),
+            "X-API-Key": user_api_key,
+        }
+        self._task_runner_uuid = None
 
     @classmethod
     def from_env(cls):
         return cls(
             api_url=os.getenv("API_URL", "https://api.inductiva.ai"),
             user_api_key=os.getenv("USER_API_KEY"),
-            task_runner_token=os.getenv("EXECUTER_TRACKER_TOKEN"),
         )
 
     def _log_response(self, resp: requests.Response):
@@ -108,32 +106,33 @@ class ApiClient:
         return resp
 
     def _request_task_runner_api(self, method: str, path: str, **kwargs):
-        full_path = f"/executer-tracker/{path.lstrip('/')}"
+        full_path = f"/task-runner/{path.lstrip('/')}"
 
         return self._request(method, full_path, **kwargs)
 
-    def register_task_runner(self, data: dict) -> ExecuterAccessInfo:
+    def register_task_runner(self, data: dict) -> TaskRunnerAccessInfo:
         resp = self._request_task_runner_api(
             HTTPMethod.POST.value,
             "/register",
             json=data,
         )
         if resp.status_code != HTTPStatus.ACCEPTED.value:
-            raise RuntimeError(f"Failed to register task runner: {resp.text}")
+            raise RuntimeError(
+                f"Failed to register task runner: {resp.json()['detail']}")
 
         resp_body = resp.json()
 
-        self._executer_uuid = uuid.UUID(resp_body["executer_tracker_id"])
+        self._task_runner_uuid = uuid.UUID(resp_body["task_runner_id"])
 
-        return ExecuterAccessInfo(
-            id=self._executer_uuid,
+        return TaskRunnerAccessInfo(
+            id=self._task_runner_uuid,
             machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
         )
 
     def kill_machine(self) -> int:
         resp = self._request_task_runner_api(
             "DELETE",
-            f"/{self._executer_uuid}",
+            f"/{self._task_runner_uuid}",
         )
         return resp.status_code
 
@@ -141,7 +140,7 @@ class ApiClient:
         self,
         task_runner_id: uuid.UUID,
         block_s: int,
-    ) -> Optional[Dict]:
+    ) -> Optional[dict]:
         resp = self._request_task_runner_api(
             "GET",
             f"/{task_runner_id}/task?block_s={block_s}",
@@ -153,8 +152,8 @@ class ApiClient:
             return HTTPResponse(HTTPStatus.INTERNAL_SERVER_ERROR, None)
 
         if resp.status_code >= HTTPStatus.CLIENT_ERROR.value:
-            raise ExecuterTerminationError(
-                ExecuterTerminationReason.INTERRUPTED,
+            raise TaskRunnerTerminationError(
+                TaskRunnerTerminationReason.INTERRUPTED,
                 detail=resp.json()["detail"])
 
         return HTTPResponse(HTTPStatus.SUCCESS, resp.json())
@@ -168,6 +167,7 @@ class ApiClient:
             "POST",
             f"/{task_runner_id}/event",
             json=events.parse.to_dict(event),
+            raise_exception=True,
         )
 
     def receive_task_message(
@@ -198,38 +198,41 @@ class ApiClient:
             f"/{task_runner_id}/task/{task_id}/message/unblock",
         )
 
-    def get_download_input_url(
+    def get_signed_urls(
         self,
-        task_runner_id: uuid.UUID,
-        task_id: str,
-    ) -> str:
-        resp = self._request_task_runner_api(
-            "GET",
-            f"/{task_runner_id}/task/{task_id}/download_input_url",
+        paths: List[str],
+        operation: Literal["upload", "download"],
+    ) -> List[str]:
+        resp = self._request(
+            method="GET",
+            path="/storage/signed-urls",
+            params={
+                "paths": paths,
+                "operation": operation,
+            },
         )
+        return resp.json()
 
-        return resp.json()["url"]
+    def get_download_input_url(self, storage_dir: str) -> str:
+        return self.get_signed_urls(
+            paths=[f"{storage_dir}/{INPUT_ZIP_FILENAME}"],
+            operation="download",
+        )[0]
 
-    def get_upload_output_url(
-        self,
-        task_runner_id: uuid.UUID,
-        task_id: str,
-    ) -> UploadUrlInfo:
-        resp = self._request_task_runner_api(
-            "GET",
-            f"/{task_runner_id}/task/{task_id}/upload_output_url",
-        )
-
-        resp_body = resp.json()
-
+    def get_upload_output_url(self, storage_dir: str) -> UploadUrlInfo:
+        url = self.get_signed_urls(
+            paths=[f"{storage_dir}/{OUTPUT_ZIP_FILENAME}"],
+            operation="upload",
+        )[0]
         return UploadUrlInfo(
-            url=resp_body["url"],
-            method=resp_body["method"],
+            url=url,
+            method="PUT",
         )
 
-    def create_local_machine_group(self,
-                                   machine_group_name: Optional[str] = None
-                                  ) -> uuid.UUID:
+    def create_local_machine_group(
+        self,
+        machine_group_name: Optional[str] = None,
+    ) -> uuid.UUID:
         resp = self._request(
             "POST",
             "/compute/group",
@@ -237,21 +240,17 @@ class ApiClient:
                 "provider_id": "LOCAL",
                 "name": machine_group_name,
                 "disk_size_gb": host.get_total_memory() // 1e9,
+                "cpu_cores_logical": host.get_cpu_count().logical,
+                "cpu_cores_physical": host.get_cpu_count().physical,
             },
         )
+
+        if resp.status_code != HTTPStatus.CREATED.value:
+            raise RuntimeError(
+                f"Failed to create local machine group: {resp.json()}")
         return resp.json()["id"]
 
-    def start_local_machine_group(self, machine_group_id: uuid.UUID):
-        resp = self._request(
-            "POST",
-            "/compute/group/start",
-            json={
-                "id": machine_group_id,
-            },
-        )
-        return resp.json()["id"]
-
-    def get_machine_group_id_by_name(
+    def get_started_machine_group_id_by_name(
             self, machine_group_name: str) -> Optional[uuid.UUID]:
         resp = self._request(
             "GET",
@@ -259,7 +258,10 @@ class ApiClient:
         )
 
         if resp.status_code != HTTPStatus.SUCCESS.value:
-            return
+            return None
+
+        if resp.json()["status"] != "started":
+            return None
 
         return resp.json().get("id")
 
@@ -274,7 +276,7 @@ class ApiClient:
         while max_retries > 0 and sent is False:
             resp = self._request_task_runner_api(
                 HTTPMethod.POST.value,
-                f"{self._executer_uuid}/task/{task_id}/metric",
+                f"{self._task_runner_uuid}/task/{task_id}/metric",
                 json=data,
             )
 
@@ -295,7 +297,7 @@ class ApiClient:
         self,
         operation_name: str,
         task_id: str,
-        attributes: Dict[str, Any],
+        attributes: dict[str, Any],
         timestamp: Optional[datetime.datetime] = None,
         elapsed_time_s: Optional[float] = None,
     ) -> str:
@@ -304,7 +306,7 @@ class ApiClient:
 
         resp = self._request_task_runner_api(
             "POST",
-            f"{self._executer_uuid}/task/{task_id}/operation",
+            f"{self._task_runner_uuid}/task/{task_id}/operation",
             json={
                 "time": timestamp.isoformat(),
                 "elapsed_time_s": elapsed_time_s,
@@ -321,7 +323,7 @@ class ApiClient:
         self,
         operation_id: str,
         task_id: str,
-        attributes: Dict[str, Any],
+        attributes: dict[str, Any],
         timestamp: Optional[datetime.datetime] = None,
         elapsed_time_s: Optional[float] = None,
     ):
@@ -330,7 +332,7 @@ class ApiClient:
 
         resp = self._request_task_runner_api(
             "POST",
-            f"{self._executer_uuid}/task/{task_id}/operation/{operation_id}/done",
+            f"{self._task_runner_uuid}/task/{task_id}/operation/{operation_id}/done",
             json={
                 "time": timestamp.isoformat(),
                 "elapsed_time_s": elapsed_time_s,
@@ -341,19 +343,21 @@ class ApiClient:
         )
         resp.raise_for_status()
 
-    def get_download_urls(self, input_resources: list[str],
-                          task_runner_id: uuid.UUID) -> str:
+    def get_download_urls(self, input_resources: list[str]) -> str:
 
-        resp = self._request_task_runner_api("GET",
-                                             f"/{task_runner_id}/download_urls",
-                                             params={
-                                                 "input_resources":
-                                                     input_resources,
-                                             })
-        response_data = resp.json()
-        files_url = [{
-            "url": item["url"],
-            "file_path": item["file_path"],
-        } for item in response_data]
+        def _signed_url_info(signed_url):
+            parsed_url = urllib.parse.urlparse(signed_url)
+            path_parts = parsed_url.path.strip(os.sep).split(os.sep)
+            _, root_name, *sub_parts = path_parts
+            is_output_zip = sub_parts[-1].endswith(OUTPUT_ZIP_FILENAME)
+            sub_path = os.sep.join(sub_parts)
+            file_path = f"{root_name}/{sub_path}" if is_output_zip else sub_path
 
-        return files_url
+            return {
+                "url": signed_url,
+                "file_path": file_path,
+                "unzip": is_output_zip,
+            }
+
+        urls = self.get_signed_urls(input_resources, "download")
+        return [_signed_url_info(url) for url in urls]

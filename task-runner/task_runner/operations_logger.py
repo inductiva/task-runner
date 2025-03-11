@@ -1,7 +1,7 @@
 """Utils for logging operations to the API."""
 import datetime
 import enum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from task_runner import ApiClient, utils
 
@@ -20,7 +20,7 @@ def _start_operation(
     api_client: ApiClient,
     name: OperationName,
     task_id: str,
-    attributes: Dict[str, Any],
+    attributes: dict[str, Any],
     timestamp: datetime.datetime,
 ):
     """Registers a new operation in the API and returns its ID.
@@ -48,7 +48,7 @@ def _end_operation(
     api_client: ApiClient,
     operation_id: str,
     task_id: str,
-    attributes: Dict[str, Any],
+    attributes: dict[str, Any],
     timestamp: datetime.datetime,
 ):
     """Marks an operation as finished in the API."""
@@ -80,7 +80,7 @@ class Operation:
 
     def end(
         self,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: Optional[dict[str, Any]] = None,
     ) -> None:
         attributes = attributes or {}
         timestamp = datetime.datetime.now(datetime.timezone.utc)
@@ -131,7 +131,7 @@ class OperationsLogger:
         self,
         name: OperationName,
         task_id: str,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: Optional[dict[str, Any]] = None,
     ) -> Operation:
         attributes = attributes or {}
         timestamp = datetime.datetime.now(datetime.timezone.utc)

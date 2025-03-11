@@ -27,8 +27,14 @@ class TaskOutputUploaded(TaskEvent):
     machine_id: uuid.UUID
     new_status: Optional[str] = None
     # Output size in bytes, it's optional because the output may not be
-    # available when the event is emitted by the executer tracker
+    # available when the event is emitted by the task-runner
     output_size: Optional[int] = None
+
+
+class TaskOutputUploadFailed(TaskEvent):
+    machine_id: uuid.UUID
+    error_message: str
+    traceback: Optional[str] = None
 
 
 class TaskKilled(TaskEvent):

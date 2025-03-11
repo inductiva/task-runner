@@ -1,10 +1,10 @@
 import abc
 import os
+import pathlib
 import time
 import urllib
 import urllib.request
 import uuid
-from typing import List
 
 import requests
 from typing_extensions import override
@@ -40,7 +40,7 @@ class BaseFileManager(abc.ABC):
     @abc.abstractmethod
     def download_input_resources(
         self,
-        input_resources: List[str],
+        input_resources: list[str],
         dest_path: str,
         task_runner_id: uuid.UUID,
     ):
@@ -58,6 +58,12 @@ class WebApiFileManager(BaseFileManager):
         self._api_client = api_client
         self._task_runner_id = task_runner_id
 
+    def _get_storage_dir(self, task_dir_remote: str) -> str:
+        """Removes the user bucket prefix from `task_dir_remote`"""
+        task_path = pathlib.Path(task_dir_remote)
+        storage_dir = task_path.relative_to(task_path.parts[0])
+        return str(storage_dir)
+
     @utils.execution_time
     @override
     def download_input(
@@ -66,12 +72,8 @@ class WebApiFileManager(BaseFileManager):
         task_dir_remote: str,
         dest_path: str,
     ):
-        del task_dir_remote  # unused
-
-        url = self._api_client.get_download_input_url(
-            self._task_runner_id,
-            task_id,
-        )
+        storage_dir = self._get_storage_dir(task_dir_remote)
+        url = self._api_client.get_download_input_url(storage_dir)
         urllib.request.urlretrieve(url, dest_path)
 
     @override
@@ -83,8 +85,6 @@ class WebApiFileManager(BaseFileManager):
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
     ):
-        del task_dir_remote  # unused
-
         if stream_zip:
             data = files.get_zip_generator(local_path)
             zip_duration = None
@@ -96,8 +96,8 @@ class WebApiFileManager(BaseFileManager):
 
             data = open(zip_path, "rb")
 
-        upload_info = self._api_client.get_upload_output_url(
-            task_runner_id=self._task_runner_id, task_id=task_id)
+        storage_dir = self._get_storage_dir(task_dir_remote)
+        upload_info = self._api_client.get_upload_output_url(storage_dir)
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
@@ -129,16 +129,23 @@ class WebApiFileManager(BaseFileManager):
     @override
     def download_input_resources(
         self,
-        input_resources: List[str],
+        input_resources: list[str],
         dest_path: str,
-        task_runner_id: uuid.UUID,
     ):
-        files_url = self._api_client.get_download_urls(input_resources,
-                                                       task_runner_id)
+        files_url = self._api_client.get_download_urls(input_resources)
 
         for file_url in files_url:
             url = file_url["url"]
             base_path = file_url["file_path"]
+            unzip = file_url["unzip"]
             file_path = os.path.join(dest_path, base_path)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             urllib.request.urlretrieve(url, file_path)
+
+            if unzip:
+                extract_to = os.path.join(dest_path, os.path.dirname(file_path))
+                files.extract_subfolder_and_cleanup(
+                    zip_path=file_path,
+                    subfolder="artifacts/",
+                    extract_to=extract_to,
+                )

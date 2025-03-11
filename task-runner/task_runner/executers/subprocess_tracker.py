@@ -3,38 +3,35 @@ import os
 import signal
 import subprocess
 import time
-from typing import IO, List
+from typing import IO
 
 from absl import logging
 
-from task_runner.utils import loki
 from task_runner.utils import threads as threads_utils
 
 
-def log_stream(stream: IO[bytes], loki_logger: loki.LokiLogger, output: IO[str],
-               io_type: str) -> None:
+def log_stream(stream: IO[bytes], output: IO[str]) -> None:
     """
     Reads lines from a stream and logs them.
 
     This function continuously reads lines from the given stream, decodes
-    them to strings, and logs each line using the provided logger.
-    It also writes the decoded log messages to the Executer Tracker stdout.
+    them to strings, and writes the decoded log messages to the Task-Runner
+    stdout.
 
     Args:
         stream (IO[bytes]): Input stream to read from (stdout or stderr
                             from a subprocess).
-        loki_logger (LokiLogger): Logger instance to use for logging the
-                                  decoded messages.
-        output (IO[str]): Executer Tracker stdout.
-        io_type (str): The I/O type associated with the stream (e.g., stdout or
-                       stderr) used by the logger for categorizing messages.
+        output (IO[str]): Task-Runner stdout.
     """
     for line in stream:
-        log_message = line.decode("utf-8")
-        loki_logger.log_text(log_message, io_type=io_type)
-        output.write(log_message)
-        output.flush()
-    loki_logger.flush(io_type)
+        try:
+            log_message = line.decode("utf-8")
+        except UnicodeDecodeError as e:
+            logging.exception("Exception while decoding log message: %s", e)
+            log_message = line.decode("utf-8", errors="replace")
+        finally:
+            output.write(log_message)
+            output.flush()
 
 
 class SubprocessTracker:
@@ -46,12 +43,11 @@ class SubprocessTracker:
 
     def __init__(
         self,
-        args: List[str],
+        args: list[str],
         working_dir,
         stdout,
         stderr,
         stdin,
-        loki_logger,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
@@ -59,7 +55,6 @@ class SubprocessTracker:
         self.stdout = stdout
         self.stderr = stderr
         self.stdin = stdin
-        self.loki_logger = loki_logger
         self.threads = []
 
     def run(self):
@@ -83,16 +78,16 @@ class SubprocessTracker:
             if self.subproc.stdout is not None:
                 stdout_thread = threads_utils.ExceptionThread(
                     target=log_stream,
-                    args=(self.subproc.stdout, self.loki_logger, self.stdout,
-                          loki.IOTypes.STD_OUT))
+                    args=(self.subproc.stdout, self.stdout),
+                )
                 stdout_thread.start()
                 self.threads.append(stdout_thread)
 
             if self.subproc.stderr is not None:
                 stderr_thread = threads_utils.ExceptionThread(
                     target=log_stream,
-                    args=(self.subproc.stderr, self.loki_logger, self.stderr,
-                          loki.IOTypes.STD_ERR))
+                    args=(self.subproc.stderr, self.stderr),
+                )
                 stderr_thread.start()
                 self.threads.append(stderr_thread)
 

@@ -1,4 +1,4 @@
-name: ${GITHUB_REPOSITORY#*\/}
+name: task-runner-env
 
 channels:
   - conda-forge
