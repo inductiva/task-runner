@@ -56,22 +56,18 @@ class ApiClient:
     def __init__(
         self,
         api_url: str,
-        user_api_key: Optional[str] = None,
-        task_runner_token: Optional[str] = None,
+        user_api_key: str,
         request_timeout_s: int = 300,
     ):
-        if (user_api_key is None) == (task_runner_token is None):
-            raise RuntimeError(
-                "Exactly one of USER_API_KEY and EXECUTER_TRACKER_TOKEN "
-                "should be set.")
+        if user_api_key is None:
+            raise RuntimeError("USER_API_KEY must be set.")
 
         self._url = api_url
         self._request_timeout_s = request_timeout_s
-        self._headers = {"User-Agent": task_runner.get_api_agent()}
-        if user_api_key is not None:
-            self._headers["X-API-Key"] = user_api_key
-        if task_runner_token is not None:
-            self._headers["X-Executer-Tracker-Token"] = task_runner_token
+        self._headers = {
+            "User-Agent": task_runner.get_api_agent(),
+            "X-API-Key": user_api_key,
+        }
         self._task_runner_uuid = None
 
     @classmethod
@@ -79,7 +75,6 @@ class ApiClient:
         return cls(
             api_url=os.getenv("API_URL", "https://api.inductiva.ai"),
             user_api_key=os.getenv("USER_API_KEY"),
-            task_runner_token=os.getenv("EXECUTER_TRACKER_TOKEN"),
         )
 
     def _log_response(self, resp: requests.Response):
@@ -234,9 +229,10 @@ class ApiClient:
             method="PUT",
         )
 
-    def create_local_machine_group(self,
-                                   machine_group_name: Optional[str] = None
-                                  ) -> uuid.UUID:
+    def create_local_machine_group(
+        self,
+        machine_group_name: Optional[str] = None,
+    ) -> uuid.UUID:
         resp = self._request(
             "POST",
             "/compute/group",
@@ -244,6 +240,8 @@ class ApiClient:
                 "provider_id": "LOCAL",
                 "name": machine_group_name,
                 "disk_size_gb": host.get_total_memory() // 1e9,
+                "cpu_cores_logical": host.get_cpu_count().logical,
+                "cpu_cores_physical": host.get_cpu_count().physical,
             },
         )
 
@@ -350,12 +348,10 @@ class ApiClient:
         def _signed_url_info(signed_url):
             parsed_url = urllib.parse.urlparse(signed_url)
             path_parts = parsed_url.path.strip(os.sep).split(os.sep)
-
             _, root_name, *sub_parts = path_parts
             is_output_zip = sub_parts[-1].endswith(OUTPUT_ZIP_FILENAME)
-            file_path = f"{root_name}/{os.sep.join(sub_parts)}" \
-                if is_output_zip \
-                else os.sep.join(sub_parts[1:])
+            sub_path = os.sep.join(sub_parts)
+            file_path = f"{root_name}/{sub_path}" if is_output_zip else sub_path
 
             return {
                 "url": signed_url,
