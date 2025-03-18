@@ -42,7 +42,9 @@ def get_cpu_count() -> CPUCount:
 
 
 def get_gpu_count() -> Optional[GPUCount]:
-    if len(GPUtil.getGPUs()) == 0:
+    gpus = GPUtil.getGPUs()
+
+    if not gpus:
         return None
 
-    return GPUCount(count=len(GPUtil.getGPUs()), name=GPUtil.getGPUs()[0].name)
+    return GPUCount(count=len(gpus), name=gpus[0].name)
