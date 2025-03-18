@@ -28,7 +28,7 @@ def _get_task_runner_info(local_mode: bool) -> dict:
     logging.info("\t> CPUs (physical): %s", cpu_count.physical)
     logging.info("\t> Memory: %s B", memory)
     if gpu_count:
-        logging.info("\t> GPUs count: %s", gpu_count.count)
+        logging.info("\t> GPU count: %s", gpu_count.count)
         logging.info("\t> GPU name: %s", gpu_count.name)
 
     default_host_name = "local-mode-name" if local_mode else None
