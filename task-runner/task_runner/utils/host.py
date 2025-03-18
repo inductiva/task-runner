@@ -1,5 +1,6 @@
 """Utilities to get information about the host machine the task-runner is on."""
 from dataclasses import dataclass
+from typing import Optional
 
 import psutil
 import torch
@@ -9,6 +10,7 @@ import torch
 class CPUCount:
     logical: int
     physical: int
+
 
 @dataclass
 class GPUCount:
@@ -39,7 +41,9 @@ def get_cpu_count() -> CPUCount:
     )
 
 
-def get_gpu_count() -> GPUCount:
-    return GPUCount(
-        count=torch.cuda.device_count(),
-        name=torch.cuda.get_device_properties(0).name)
+def get_gpu_count() -> Optional[GPUCount]:
+    if torch.cuda.device_count() == 0:
+        return None
+
+    return GPUCount(count=torch.cuda.device_count(),
+                    name=torch.cuda.get_device_name())

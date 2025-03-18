@@ -10,7 +10,6 @@ import task_runner
 import task_runner.api_client
 from task_runner.utils import host
 
-
 import torch
 
 
@@ -30,10 +29,9 @@ def _get_task_runner_info(local_mode: bool) -> dict:
     logging.info("\t> CPUs (logical): %s", cpu_count.logical)
     logging.info("\t> CPUs (physical): %s", cpu_count.physical)
     logging.info("\t> Memory: %s B", memory)
-    logging.info("\t> GPUs: %s", gpu_count.count)
-    logging.info("\t> GPUs: %s", torch.cuda.get_device_name())
-    for i in range(gpu_count.count):
-        logging.info("\t> GPUs name: %s", torch.cuda.get_device_properties(i).name)
+    if gpu_count:
+        logging.info("\t> GPUs count: %s", gpu_count.count)
+        logging.info("\t> GPU name: %s", gpu_count.name)
 
     default_host_name = "local-mode-name" if local_mode else None
     default_host_id = "local-mode-id" if local_mode else None
