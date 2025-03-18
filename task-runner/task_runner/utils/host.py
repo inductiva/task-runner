@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import psutil
-import torch
+import GPUtil
 
 
 @dataclass
@@ -15,7 +15,7 @@ class CPUCount:
 @dataclass
 class GPUCount:
     count: int
-    name: int
+    name: str
 
 
 def get_total_memory() -> int:
@@ -42,8 +42,8 @@ def get_cpu_count() -> CPUCount:
 
 
 def get_gpu_count() -> Optional[GPUCount]:
-    if torch.cuda.device_count() == 0:
+    if len(GPUtil.getGpus()) == 0:
         return None
 
-    return GPUCount(count=torch.cuda.device_count(),
-                    name=torch.cuda.get_device_name())
+    return GPUCount(count=len(GPUtil.getGpus()),
+                    name=len(GPUtil.getGpus())[0].name)

@@ -10,8 +10,6 @@ import task_runner
 import task_runner.api_client
 from task_runner.utils import host
 
-import torch
-
 
 def _get_task_runner_info(local_mode: bool) -> dict:
     cpu_count = host.get_cpu_count()

@@ -6,4 +6,4 @@ fsspec
 gcsfs
 stream-zip==0.0.81
 pysocks
-torch
+gputil
