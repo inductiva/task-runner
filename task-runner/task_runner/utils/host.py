@@ -2,8 +2,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
-import psutil
 import GPUtil
+import psutil
 
 
 @dataclass
