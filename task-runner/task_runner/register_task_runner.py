@@ -31,8 +31,8 @@ def _get_task_runner_info(local_mode: bool) -> dict:
     logging.info("\t> CPUs (physical): %s", cpu_count.physical)
     logging.info("\t> Memory: %s B", memory)
     logging.info("\t> GPUs: %s", gpu_count.count)
-    logging.info("\t> GPUs name: %s", gpu_count.name)
-    logging.info("\t debug: %s", torch.cuda.get_device_properties)
+    for i in range(gpu_count.count):
+        logging.info("\t> GPUs name: %s", torch.cuda.get_device_properties(i).name)
 
     default_host_name = "local-mode-name" if local_mode else None
     default_host_id = "local-mode-id" if local_mode else None
