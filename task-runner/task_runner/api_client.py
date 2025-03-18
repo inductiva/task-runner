@@ -242,8 +242,11 @@ class ApiClient:
                 "disk_size_gb": host.get_total_memory() // 1e9,
                 "cpu_cores_logical": host.get_cpu_count().logical,
                 "cpu_cores_physical": host.get_cpu_count().physical,
-                "gpu_count": host.get_gpu_count().count if host.get_gpu_count() else None,
-                "gpu_name": host.get_gpu_count().name if host.get_gpu_count() else None,
+                "gpu_count":
+                    host.get_gpu_count().count
+                    if host.get_gpu_count() else None,
+                "gpu_name":
+                    host.get_gpu_count().name if host.get_gpu_count() else None,
             },
         )
 
