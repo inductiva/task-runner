@@ -31,6 +31,7 @@ def _get_task_runner_info(local_mode: bool) -> dict:
     logging.info("\t> CPUs (physical): %s", cpu_count.physical)
     logging.info("\t> Memory: %s B", memory)
     logging.info("\t> GPUs: %s", gpu_count.count)
+    logging.info("\t> GPUs: %s", torch.cuda.get_device_name())
     for i in range(gpu_count.count):
         logging.info("\t> GPUs name: %s", torch.cuda.get_device_properties(i).name)
 
