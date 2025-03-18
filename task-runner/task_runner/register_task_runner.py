@@ -11,6 +11,9 @@ import task_runner.api_client
 from task_runner.utils import host
 
 
+import torch
+
+
 def _get_task_runner_info(local_mode: bool) -> dict:
     cpu_count = host.get_cpu_count()
     gpu_count = host.get_gpu_count()
@@ -29,6 +32,7 @@ def _get_task_runner_info(local_mode: bool) -> dict:
     logging.info("\t> Memory: %s B", memory)
     logging.info("\t> GPUs: %s", gpu_count.count)
     logging.info("\t> GPUs name: %s", gpu_count.name)
+    logging.info("\t debug: %s", torch.cuda.get_device_properties)
 
     default_host_name = "local-mode-name" if local_mode else None
     default_host_id = "local-mode-id" if local_mode else None
