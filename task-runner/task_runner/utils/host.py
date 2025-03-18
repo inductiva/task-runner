@@ -10,6 +10,11 @@ class CPUCount:
     logical: int
     physical: int
 
+@dataclass
+class GPUCount:
+    count: int
+    name: int
+
 
 def get_total_memory() -> int:
     """Get the total amount of virtual memory in bytes."""
@@ -35,6 +40,6 @@ def get_cpu_count() -> CPUCount:
 
 
 def get_gpu_count() -> int:
-    for i in range(torch.cuda.device_count()):
-        print(torch.cuda.get_device_properties(i).name)
-    return torch.cuda.device_count()
+    return GPUCount(
+        count=torch.cuda.device_count(),
+        name=torch.cuda.get_device_properties(0).name)
