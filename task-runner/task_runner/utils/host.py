@@ -13,9 +13,9 @@ class CPUCount:
 
 
 @dataclass
-class GPUCount:
-    count: int
-    name: str
+class GPUInfo:
+    count: int = 0
+    name: str = None
 
 
 def get_total_memory() -> int:
@@ -41,10 +41,10 @@ def get_cpu_count() -> CPUCount:
     )
 
 
-def get_gpu_count() -> Optional[GPUCount]:
+def get_gpu_count() -> Optional[GPUInfo]:
     gpus = GPUtil.getGPUs()
 
     if not gpus:
         return None
 
-    return GPUCount(count=len(gpus), name=gpus[0].name)
+    return GPUInfo(count=len(gpus), name=gpus[0].name)
