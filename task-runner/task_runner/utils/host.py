@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 
 import psutil
+import torch
 
 
 @dataclass
@@ -31,3 +32,7 @@ def get_cpu_count() -> CPUCount:
         logical=psutil.cpu_count(logical=True),
         physical=psutil.cpu_count(logical=False),
     )
+
+
+def get_gpu_count() -> int:
+    return torch.cuda.device_count()

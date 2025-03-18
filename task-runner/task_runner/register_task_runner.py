@@ -13,6 +13,7 @@ from task_runner.utils import host
 
 def _get_task_runner_info(local_mode: bool) -> dict:
     cpu_count = host.get_cpu_count()
+    gpu_count = host.get_gpu_count()
     memory = host.get_total_memory()
 
     task_runner_info = {
@@ -26,6 +27,7 @@ def _get_task_runner_info(local_mode: bool) -> dict:
     logging.info("\t> CPUs (logical): %s", cpu_count.logical)
     logging.info("\t> CPUs (physical): %s", cpu_count.physical)
     logging.info("\t> Memory: %s B", memory)
+    logging.info("\t> GPUs: %s", gpu_count)
 
     default_host_name = "local-mode-name" if local_mode else None
     default_host_id = "local-mode-id" if local_mode else None
