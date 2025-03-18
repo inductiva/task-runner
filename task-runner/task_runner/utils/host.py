@@ -35,4 +35,6 @@ def get_cpu_count() -> CPUCount:
 
 
 def get_gpu_count() -> int:
+    for i in range(torch.cuda.device_count()):
+        print(torch.cuda.get_device_properties(i).name)
     return torch.cuda.device_count()
