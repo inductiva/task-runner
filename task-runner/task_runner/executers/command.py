@@ -82,7 +82,7 @@ class Command():
 
 
 def _check_format(tokens, prompts):
-    """Check command security."""
+    """Check command format."""
     if not tokens:
         raise ValueError(f"Command '{' '.join(tokens)}' is empty.")
 
