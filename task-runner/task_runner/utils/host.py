@@ -41,7 +41,7 @@ def get_cpu_count() -> CPUCount:
     )
 
 
-def get_gpu_count() -> Optional[GPUInfo]:
+def get_gpu_info() -> Optional[GPUInfo]:
     gpus = GPUtil.getGPUs()
 
     if not gpus:
