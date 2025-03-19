@@ -18,6 +18,7 @@ class ApptainerImageSource(enum.Enum):
     LOCAL_FILESYSTEM = "local-filesystem"
     INDUCTIVA_APPTAINER_CACHE = "inductiva-apptainer-cache"
     DOCKER_HUB = "docker-hub"
+    INDUCTIVA_HUB = "inductiva-hub"
 
 
 class ApptainerImageNotFoundError(Exception):
@@ -62,7 +63,7 @@ class ApptainerImagesManager:
         if "://" in image_uri:
             uri_prefix, image_name = image_uri.split("://")
         else:
-            uri_prefix = "docker"
+            uri_prefix = "docker"  #Docker stays by default
             image_name = image_uri
 
         return f"{uri_prefix}://{image_name}"
@@ -201,7 +202,9 @@ class ApptainerImagesManager:
         )
         source = ApptainerImageSource.INDUCTIVA_APPTAINER_CACHE
 
+        # If .sif file does not exist we should download it from here
         if not downloaded:
+            # Pull it from here
             self._apptainer_pull(image_uri, sif_local_path)
             source = ApptainerImageSource.DOCKER_HUB
 

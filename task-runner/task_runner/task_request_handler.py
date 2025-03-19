@@ -290,6 +290,7 @@ class TaskRequestHandler:
                 },
             )
 
+            # TODO: This is where it gets the container image
             image_path, download_time, container_source, image_size = (
                 self.apptainer_images_manager.get(image_uri))
 
