@@ -13,4 +13,4 @@ def test_empty_command():
 def test_long_command():
     """Test long command."""
     with pytest.raises(ValueError):
-        executers.Command("a" * 257)
+        executers.Command("a" * 513)
