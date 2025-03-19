@@ -95,7 +95,7 @@ def _check_format(tokens, prompts):
 def _check_length(cmd_elem):
     """Checks for length limits in a command element."""
 
-    maximum_elem_len = 256
+    maximum_elem_len = 512
     if len(cmd_elem) > maximum_elem_len:
         raise ValueError(f"Command element '{cmd_elem}' is too long.")
 
