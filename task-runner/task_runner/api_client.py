@@ -248,8 +248,7 @@ class ApiClient:
                 "cpu_cores_physical":
                     host.get_cpu_count().physical,
                 "gpu_count":
-                    host.get_gpu_info().count
-                    if host.get_gpu_info() else None,
+                    host.get_gpu_info().count if host.get_gpu_info() else None,
                 "gpu_name":
                     host.get_gpu_info().name if host.get_gpu_info() else None,
             },
