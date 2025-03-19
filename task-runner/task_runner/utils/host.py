@@ -14,8 +14,8 @@ class CPUCount:
 
 @dataclass
 class GPUInfo:
-    count: int = 0
-    name: str = None
+    count: int
+    name: str
 
 
 def get_total_memory() -> int:
