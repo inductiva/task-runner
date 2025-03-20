@@ -121,6 +121,7 @@ def main(_):
 
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
         local_cache_dir=executer_images_dir,
+        api_client=api_client,
         remote_storage_url=executer_images_remote_storage,
     )
 

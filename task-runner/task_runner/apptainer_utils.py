@@ -11,7 +11,10 @@ import time
 from typing import Optional
 
 import fsspec
+import requests
 from absl import logging
+
+import task_runner
 
 
 class ApptainerImageSource(enum.Enum):
@@ -40,6 +43,7 @@ class ApptainerImagesManager:
     def __init__(
         self,
         local_cache_dir: str,
+        api_client: task_runner.ApiClient,
         remote_storage_url: Optional[str] = None,
     ):
         self._local_cache_dir = local_cache_dir
@@ -55,6 +59,8 @@ class ApptainerImagesManager:
                 remote_storage_spec)
             self._remote_storage_dir = remote_storage_dir
 
+        self._api_client = api_client
+
     def _normalize_image_uri(self, image_uri: str) -> str:
         """Check if the image URI is fully qualified.
 
@@ -63,7 +69,7 @@ class ApptainerImagesManager:
         if "://" in image_uri:
             uri_prefix, image_name = image_uri.split("://")
         else:
-            uri_prefix = "docker"  #Docker stays by default
+            uri_prefix = "docker"
             image_name = image_uri
 
         return f"{uri_prefix}://{image_name}"
@@ -154,61 +160,122 @@ class ApptainerImagesManager:
 
         return False
 
-    def get(self, image: str) -> tuple[str, float, ApptainerImageSource]:
-        """Makes the requested Apptainer image available locally.
-
-        If the image is not available in the local directory, it is attempted
-        to be fetched from the remote storage. If it is not available in the
-        remote storage, it is pulled and coverted with the apptainer pull
-        command and the provided image URI.
+    def _download_inductiva_image(
+        self,
+        image_path: str,
+        sif_local_path: str,
+    ) -> bool:
+        """Downloads a .sif image from a GSB using a signed URL.
 
         Args:
-            image: String representing the image to be converted. If it has
-                the .sif extension, it is considered a SIF image name.
-                Otherwise, it is considered a Docker image URI and is converted
-                to the expected SIF image name.
+            bucket: The bucket name extracted from the inductiva URI.
+            file_path: The file path within the bucket.
+            sif_local_path: Local path where the image will be stored.
 
         Returns:
-            The path to the local Apptainer image file.
+            True if the image was successfully downloaded; False otherwise.
+        """
+        # Get the signed URL for downloading
+        signed_url_data = self._api_client.get_signed_urls([image_path],
+                                                           operation="download")
+
+        if not signed_url_data:
+            logging.error("Failed to retrieve signed URL for: %s", image_path)
+            return False
+
+        signed_url = signed_url_data[0]
+        logging.info("Signed URL obtained: %s", signed_url)
+
+        try:
+            logging.info("Start donwloading .sif")
+            # Download the .sif file from the signed URL
+            with requests.get(signed_url, stream=True) as response:
+                response.raise_for_status(
+                )  # Raise an error for failed HTTP responses
+                with open(sif_local_path, "wb") as file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        file.write(chunk)
+
+            logging.info("Downloaded Inductiva image to: %s", sif_local_path)
+            return True
+
+        except requests.exceptions.RequestException as e:
+            logging.error("Error downloading Inductiva image: %s", str(e))
+            return False
+
+    def _parse_inductiva_uri(self, image: str) -> tuple[str, str]:
+        """Extracts the bucket and file path from an Inductiva URI."""
+        try:
+            stripped = image[len("inductiva://"):]  # Remove prefix
+            folder, file_path = stripped.split("/", 1)
+            return f"{folder}/{file_path}"
+        except ValueError:
+            raise ApptainerImageNotFoundError(
+                f"Invalid Inductiva image format: {image}")
+
+    def _get_local_sif_path(self, image_path) -> str:
+        """Generates a local cache file path for an Inductiva image."""
+        return os.path.join(self._local_cache_dir,
+                            f"inductiva_{os.path.basename(image_path)}")
+
+    def _pull_or_fetch_remote_image(self, image_uri: str,
+                                    sif_local_path: str) -> bool:
+        """Fetches an image from remote storage or pulls it using Apptainer."""
+        if self._get_from_remote_storage(self._image_uri_to_sif_name(image_uri),
+                                         sif_local_path):
+            return True
+        logging.info("Pulling image")
+        self._apptainer_pull(image_uri, sif_local_path)
+        return os.path.exists(sif_local_path)
+
+    def get(self, image: str) -> tuple[str, float, ApptainerImageSource]:
+        """Fetches the requested Apptainer image and makes it available locally.
+
+        If the image is an Inductiva image, it is downloaded via a signed URL.
+        Otherwise, it is fetched from the remote storage or pulled 
+        using Apptainer.
+
+        Args:
+            image: The image URI or file name.
+
+        Returns:
+            A tuple containing:
+                - The local path to the Apptainer image.
+                - The time taken to fetch the image.
+                - The image source.
 
         Raises:
-            ApptainerImageNotFoundError: If the image is not found in the
-                remote storage and cannot be pulled.
+            ApptainerImageNotFoundError: If the image cannot be retrieved.
         """
+        logging.info("Fetching SIF image: %s", image)
 
-        logging.info("Fetching SIF image for Docker image: %s", image)
-
-        if image.endswith(".sif"):
-            sif_image_name = image
+        # Determine if the image is Inductiva-based
+        if image.startswith("inductiva://"):
+            image_path = self._parse_inductiva_uri(image)
+            sif_local_path = self._get_local_sif_path(image_path)
+            image_source = ApptainerImageSource.INDUCTIVA_HUB
+            fetch_method = self._download_inductiva_image
+            fetch_args = (image_path, sif_local_path)
         else:
             image_uri = self._normalize_image_uri(image)
-            sif_image_name = self._image_uri_to_sif_name(image_uri)
+            sif_local_path = os.path.join(
+                self._local_cache_dir, self._image_uri_to_sif_name(image_uri))
+            image_source = ApptainerImageSource.DOCKER_HUB
+            fetch_method = self._pull_or_fetch_remote_image
+            fetch_args = (image_uri, sif_local_path)
 
-        sif_local_path = os.path.join(self._local_cache_dir, sif_image_name)
-
+        # Return if already cached
+        logging.info(f"sif_local_path: {sif_local_path}")
         if os.path.exists(sif_local_path):
-            logging.info("SIF image found locally: %s", sif_image_name)
-            image_size = os.path.getsize(sif_local_path)
+            logging.info("SIF image found locally: %s", sif_local_path)
             return (sif_local_path, 0, ApptainerImageSource.LOCAL_FILESYSTEM,
-                    image_size)
+                    os.path.getsize(sif_local_path))
 
-        logging.info("SIF image not found locally: %s", sif_image_name)
+        # Attempt to fetch the image
+        download_start = time.time()
+        if not fetch_method(*fetch_args):
+            raise ApptainerImageNotFoundError(f"Image not found: {image}")
+        download_time = time.time() - download_start
 
-        donwload_start = time.time()
-
-        downloaded = self._get_from_remote_storage(
-            sif_image_name,
-            sif_local_path,
-        )
-        source = ApptainerImageSource.INDUCTIVA_APPTAINER_CACHE
-
-        # If .sif file does not exist we should download it from here
-        if not downloaded:
-            # Pull it from here
-            self._apptainer_pull(image_uri, sif_local_path)
-            source = ApptainerImageSource.DOCKER_HUB
-
-        download_time = time.time() - donwload_start
-        logging.info("Apptainer image downloaded in %s seconds", download_time)
-        image_size = os.path.getsize(sif_local_path)
-        return sif_local_path, download_time, source, image_size
+        return sif_local_path, download_time, image_source, os.path.getsize(
+            sif_local_path)
