@@ -175,11 +175,14 @@ class ApptainerImagesManager:
         Returns:
             True if the image was successfully downloaded; False otherwise.
         """
-        self._file_manager.download_input_resources(
-            [image_path],
-            sif_local_path,
-        )
-        return True
+        try:
+            self._file_manager.download_input_resources(
+                [image_path],
+                sif_local_path,
+            )
+            return True
+        except Exception:  # noqa BLE001
+            return False
 
     def _parse_inductiva_uri(self, image: str) -> tuple[str, str]:
         """Extracts the bucket and file path from an Inductiva URI."""
