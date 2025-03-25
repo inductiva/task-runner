@@ -16,12 +16,14 @@ from absl import logging
 
 import task_runner
 
+INDUCTIVA_IMAGE_PREFIX = "inductiva://"
+
 
 class ApptainerImageSource(enum.Enum):
     LOCAL_FILESYSTEM = "local-filesystem"
     INDUCTIVA_APPTAINER_CACHE = "inductiva-apptainer-cache"
     DOCKER_HUB = "docker-hub"
-    INDUCTIVA_HUB = "inductiva-hub"
+    USER_STORAGE = "user-storage"
 
 
 class ApptainerImageNotFoundError(Exception):
@@ -43,7 +45,7 @@ class ApptainerImagesManager:
     def __init__(
         self,
         local_cache_dir: str,
-        api_client: task_runner.ApiClient,
+        file_manager: task_runner.BaseFileManager,
         remote_storage_url: Optional[str] = None,
     ):
         self._local_cache_dir = local_cache_dir
@@ -59,7 +61,7 @@ class ApptainerImagesManager:
                 remote_storage_spec)
             self._remote_storage_dir = remote_storage_dir
 
-        self._api_client = api_client
+        self._file_manager = file_manager
 
     def _normalize_image_uri(self, image_uri: str) -> str:
         """Check if the image URI is fully qualified.
@@ -168,47 +170,25 @@ class ApptainerImagesManager:
         """Downloads a .sif image from a GSB using a signed URL.
 
         Args:
-            bucket: The bucket name extracted from the inductiva URI.
-            file_path: The file path within the bucket.
+            image_path: The file path within the bucket.
             sif_local_path: Local path where the image will be stored.
 
         Returns:
             True if the image was successfully downloaded; False otherwise.
         """
-        # Get the signed URL for downloading
-        signed_url_data = self._api_client.get_signed_urls([image_path],
-                                                           operation="download")
-
-        if not signed_url_data:
-            logging.error("Failed to retrieve signed URL for: %s", image_path)
-            return False
-
-        signed_url = signed_url_data[0]
-        logging.info("Signed URL obtained: %s", signed_url)
-
         try:
-            logging.info("Start donwloading .sif")
-            # Download the .sif file from the signed URL
-            with requests.get(signed_url, stream=True) as response:
-                response.raise_for_status(
-                )  # Raise an error for failed HTTP responses
-                with open(sif_local_path, "wb") as file:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        file.write(chunk)
-
-            logging.info("Downloaded Inductiva image to: %s", sif_local_path)
+            self._file_manager.download_input_resources(
+                [image_path],
+                sif_local_path,
+            )
             return True
-
-        except requests.exceptions.RequestException as e:
-            logging.error("Error downloading Inductiva image: %s", str(e))
+        except Exception:
             return False
 
     def _parse_inductiva_uri(self, image: str) -> tuple[str, str]:
         """Extracts the bucket and file path from an Inductiva URI."""
         try:
-            stripped = image[len("inductiva://"):]  # Remove prefix
-            folder, file_path = stripped.split("/", 1)
-            return f"{folder}/{file_path}"
+            return image.removeprefix(INDUCTIVA_IMAGE_PREFIX)
         except ValueError:
             raise ApptainerImageNotFoundError(
                 f"Invalid Inductiva image format: {image}")
@@ -250,7 +230,7 @@ class ApptainerImagesManager:
         logging.info("Fetching SIF image: %s", image)
 
         # Determine if the image is Inductiva-based
-        if image.startswith("inductiva://"):
+        if image.startswith(INDUCTIVA_IMAGE_PREFIX):
             image_path = self._parse_inductiva_uri(image)
             sif_local_path = self._get_local_sif_path(image_path)
             image_source = ApptainerImageSource.INDUCTIVA_HUB

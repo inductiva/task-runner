@@ -119,14 +119,15 @@ def main(_):
     task_runner_uuid = task_runner_access_info.id
     _log_task_runner_id(task_runner_id_path, task_runner_uuid)
 
+    file_manager = task_runner.WebApiFileManager(
+        api_client, task_runner_id=task_runner_uuid)
+
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
         local_cache_dir=executer_images_dir,
-        api_client=api_client,
+        file_manager=file_manager,
         remote_storage_url=executer_images_remote_storage,
     )
 
-    file_manager = task_runner.WebApiFileManager(
-        api_client, task_runner_id=task_runner_uuid)
     task_fetcher = task_runner.WebApiTaskFetcher(
         api_client=api_client,
         task_runner_id=task_runner_uuid,
