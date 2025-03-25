@@ -11,7 +11,6 @@ import time
 from typing import Optional
 
 import fsspec
-import requests
 from absl import logging
 
 import task_runner
@@ -176,14 +175,11 @@ class ApptainerImagesManager:
         Returns:
             True if the image was successfully downloaded; False otherwise.
         """
-        try:
-            self._file_manager.download_input_resources(
-                [image_path],
-                sif_local_path,
-            )
-            return True
-        except Exception:
-            return False
+        self._file_manager.download_input_resources(
+            [image_path],
+            sif_local_path,
+        )
+        return True
 
     def _parse_inductiva_uri(self, image: str) -> tuple[str, str]:
         """Extracts the bucket and file path from an Inductiva URI."""
