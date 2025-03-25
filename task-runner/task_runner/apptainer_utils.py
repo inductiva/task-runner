@@ -192,7 +192,7 @@ class ApptainerImagesManager:
     def _get_local_sif_path(self, image_path) -> str:
         """Generates a local cache file path for an Inductiva image."""
         return os.path.join(self._local_cache_dir,
-                            f"inductiva_{os.path.basename(image_path)}")
+                            f"{os.path.basename(image_path)}")
 
     def _pull_or_fetch_remote_image(self, image_uri: str,
                                     sif_local_path: str) -> bool:
@@ -229,9 +229,9 @@ class ApptainerImagesManager:
         if image.startswith(INDUCTIVA_IMAGE_PREFIX):
             image_path = self._parse_inductiva_uri(image)
             sif_local_path = self._get_local_sif_path(image_path)
-            image_source = ApptainerImageSource.INDUCTIVA_HUB
+            image_source = ApptainerImageSource.USER_STORAGE
             fetch_method = self._download_inductiva_image
-            fetch_args = (image_path, sif_local_path)
+            fetch_args = (image_path, self._local_cache_dir)
         else:
             image_uri = self._normalize_image_uri(image)
             sif_local_path = os.path.join(
