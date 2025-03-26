@@ -34,6 +34,7 @@ class BaseFileManager(abc.ABC):
         local_path: str,
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
+        compress_with: str = "AUTO",
     ):
         pass
 
@@ -84,6 +85,7 @@ class WebApiFileManager(BaseFileManager):
         local_path: str,
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
+        compress_with: str = "AUTO",
     ):
         if stream_zip:
             data = files.get_zip_generator(local_path)
@@ -91,7 +93,11 @@ class WebApiFileManager(BaseFileManager):
         else:
             operation = operations_logger.start_operation(
                 OperationName.COMPRESS_OUTPUT, task_id)
-            zip_path, zip_duration = files.make_zip_archive(local_path)
+            if compress_with == "SEVEN_Z":
+                zip_path, zip_duration = files.compress_with_seven_z(local_path)
+            else:
+                zip_path, zip_duration = files.make_zip_archive(local_path)
+
             operation.end(attributes={"execution_time_s": zip_duration})
 
             data = open(zip_path, "rb")
