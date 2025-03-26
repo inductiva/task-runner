@@ -277,6 +277,7 @@ def make_zip_archive(
 
     return output_zip
 
+
 @utils.execution_time_with_result
 def compress_with_seven_z(
     directory_name: str,
@@ -284,8 +285,10 @@ def compress_with_seven_z(
     archive_name: str = "archive.zip",
 ) -> str:
     zip_path = f"/tmp/{archive_name}"
-    args = ["7z", "a", "-tzip", f"-mx={compression_level}", "-mmt=on",
-            zip_path, directory_name, "-bso0", "-bsp0"]
+    args = [
+        "7z", "a", "-tzip", f"-mx={compression_level}", "-mmt=on", zip_path,
+        directory_name, "-bso0", "-bsp0"
+    ]
     subprocess.run(args, check=True)
     return zip_path
 
