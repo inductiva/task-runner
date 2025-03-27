@@ -49,15 +49,24 @@ class List(Operation):
             else:
                 contents.append(file)
         return contents
-    
+
+
 class Top(Operation):
+    """Class for the Top Operation."""
 
     def execute(self):
         return self.top()
 
-    def top(self):
-        result = subprocess.run(["top", "-b", "-n", "1"], capture_output=True, text=True)
-        return result
+    def top(self) -> str:
+        """Run the top command and return the output.
+
+        Will only run the top command once and return the output.
+        """
+        result = subprocess.run(["top", "-b", "-H", "-n", "1"],
+                                capture_output=True,
+                                check=False,
+                                text=True)
+        return result.stdout
 
 
 class Tail(Operation):
