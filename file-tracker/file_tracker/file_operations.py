@@ -1,5 +1,6 @@
-import abc
 import os
+import abc
+import subprocess
 from collections import deque
 
 
@@ -20,6 +21,8 @@ class Operation:
             return List
         elif type == "tail":
             return Tail
+        elif type == "top":
+            return Top
         else:
             raise OperationError(f"Unknown operation type: {type}")
 
@@ -46,6 +49,15 @@ class List(Operation):
             else:
                 contents.append(file)
         return contents
+    
+class Top(Operation):
+
+    def execute(self):
+        return self.top()
+
+    def top(self):
+        result = subprocess.run(["top", "-b", "-n", "1"], capture_output=True, text=True)
+        return result
 
 
 class Tail(Operation):
