@@ -1,5 +1,7 @@
 import os
 import abc
+import time
+import logging
 import subprocess
 from collections import deque
 
@@ -23,6 +25,8 @@ class Operation:
             return Tail
         elif type == "top":
             return Top
+        elif type == "last_modified_file":
+            return LastModifiedFile
         else:
             raise OperationError(f"Unknown operation type: {type}")
 
@@ -67,6 +71,51 @@ class Top(Operation):
                                 check=False,
                                 text=True)
         return result.stdout
+
+class LastModifiedFile(Operation):
+    """Class for the LastModifiedFile Operation."""
+
+    def execute(self):
+        return self.last_modified_file()
+
+    def last_modified_file(self) -> str:
+        most_recent_file = None
+        time_since_last_mod= None
+        most_recent_timestamp = 0
+
+        directory = os.getcwd()
+
+        logging.warning("##############################")
+        logging.warning("Directory: " + directory)
+        logging.warning("##############################")
+
+        # Walk through the directory recursively
+        for root, _, files in os.walk(directory):
+            for file in files:
+                file_path = os.path.join(root, file)
+                # Get the timestamp of the file's last modification
+                timestamp = os.path.getmtime(file_path)
+                
+                # Check if this file is the most recently modified
+                if timestamp > most_recent_timestamp:
+                    most_recent_file = file_path
+                    most_recent_timestamp = timestamp
+        
+        # Get the current timestamp (now)
+        now_timestamp = time.time()
+
+        # If a most recent file exists, calculate time since last modification
+        if most_recent_file:
+            time_since_last_mod = now_timestamp - most_recent_timestamp
+    
+        ret_dic = {
+            "most_recent_file": most_recent_file,
+            "most_recent_timestamp": most_recent_timestamp,
+            "now_timestamp": now_timestamp,
+            "time_since_last_mod": time_since_last_mod
+        }
+
+        return ret_dic
 
 
 class Tail(Operation):
