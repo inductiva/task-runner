@@ -278,6 +278,21 @@ def make_zip_archive(
     return output_zip
 
 
+@utils.execution_time_with_result
+def compress_with_seven_z(
+    directory_name: str,
+    compression_level: int = 1,
+    archive_name: str = "archive.zip",
+) -> str:
+    zip_path = f"/tmp/{archive_name}"
+    args = [
+        "7z", "a", "-tzip", f"-mx={compression_level}", "-mmt=on", zip_path,
+        directory_name, "-bso0", "-bsp0"
+    ]
+    subprocess.run(args, check=True)
+    return zip_path
+
+
 def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
     """
     Extracts everything from the ZIP file, moves the files from the subfolder
