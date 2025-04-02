@@ -12,8 +12,7 @@ class OperationError(Exception):
 class Operation:
 
     #defined at the end of the document
-    SUPPORTED_OPERATIONS = {
-    }
+    SUPPORTED_OPERATIONS = {}
 
     @classmethod
     def from_request(cls, request):
@@ -187,7 +186,7 @@ class Tail(Operation):
             raise OperationError(f"File is not a text file: {filename}")
         return content.split('\n')
 
-    
+
 # Initialize SUPPORTED_OPERATIONS after defining all classes
 Operation.SUPPORTED_OPERATIONS = {
     "ls": List,
