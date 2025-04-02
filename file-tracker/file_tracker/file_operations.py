@@ -9,6 +9,30 @@ class OperationError(Exception):
     pass
 
 
+class Operation:
+
+    #defined at the end of the document
+    SUPPORTED_OPERATIONS = {
+    }
+
+    @classmethod
+    def from_request(cls, request):
+        operation = cls._get_class(request["type"])
+        return operation(**request["args"])
+
+    @classmethod
+    def _get_class(cls, type):
+
+        if type in cls.SUPPORTED_OPERATIONS:
+            return cls.SUPPORTED_OPERATIONS[type]
+        else:
+            raise OperationError(f"Unknown operation type: {type}")
+
+    @abc.abstractmethod
+    def execute(self):
+        raise NotImplementedError("Subclasses must implement this method")
+
+
 class List(Operation):
 
     def __init__(self):
@@ -163,29 +187,11 @@ class Tail(Operation):
             raise OperationError(f"File is not a text file: {filename}")
         return content.split('\n')
 
-
-class Operation:
-
-    SUPPORTED_OPERATIONS = {
-        "ls": List,
-        "tail": Tail,
-        "top": Top,
-        "last_modified_file": LastModifiedFile
-    }
-
-    @classmethod
-    def from_request(cls, request):
-        operation = cls._get_class(request["type"])
-        return operation(**request["args"])
-
-    @classmethod
-    def _get_class(cls, type):
-
-        if type in cls.SUPPORTED_OPERATIONS:
-            return cls.SUPPORTED_OPERATIONS[type]
-        else:
-            raise OperationError(f"Unknown operation type: {type}")
-
-    @abc.abstractmethod
-    def execute(self):
-        raise NotImplementedError("Subclasses must implement this method")
+    
+# Initialize SUPPORTED_OPERATIONS after defining all classes
+Operation.SUPPORTED_OPERATIONS = {
+    "ls": List,
+    "tail": Tail,
+    "top": Top,
+    "last_modified_file": LastModifiedFile
+}
