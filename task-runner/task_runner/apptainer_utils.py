@@ -16,6 +16,7 @@ from absl import logging
 import task_runner
 
 INDUCTIVA_IMAGE_PREFIX = "inductiva://"
+INDUCTIVA_USER_STORAGE_DEFAULT_FOLDER = "my-containers"
 
 
 class ApptainerImageSource(enum.Enum):
@@ -187,7 +188,11 @@ class ApptainerImagesManager:
     def _parse_inductiva_uri(self, image: str) -> tuple[str, str]:
         """Extracts the bucket and file path from an Inductiva URI."""
         try:
-            return image.removeprefix(INDUCTIVA_IMAGE_PREFIX)
+            path = image.removeprefix(INDUCTIVA_IMAGE_PREFIX)
+            if "/" not in path:
+                # User provided just the image name -> use default folder
+                path = os.path.join(INDUCTIVA_USER_STORAGE_DEFAULT_FOLDER, path)
+            return path
         except ValueError:
             raise ApptainerImageNotFoundError(
                 f"Invalid Inductiva image format: {image}")
