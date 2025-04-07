@@ -185,7 +185,7 @@ class ApptainerImagesManager:
         except Exception:  # noqa BLE001
             return False
 
-    def _parse_inductiva_uri(self, image: str) -> tuple[str, str]:
+    def _parse_inductiva_uri(self, image: str) -> str:
         """Extracts the bucket and file path from an Inductiva URI."""
         try:
             path = image.removeprefix(INDUCTIVA_IMAGE_PREFIX)
