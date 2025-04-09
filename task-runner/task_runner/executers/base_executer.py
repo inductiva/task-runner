@@ -94,7 +94,6 @@ class BaseExecuter(ABC):
         self.on_gpu = os.getenv("ON_GPU",
                                 "false").lower() in ("true", "t", "yes", "y", 1)
 
-
     def load_input_configuration(self):
         """Method that loads the executers' inputs.
 
@@ -151,7 +150,6 @@ class BaseExecuter(ABC):
         to generate the required files.
         """
         return None
-
 
     def run_subprocess(
         self,
