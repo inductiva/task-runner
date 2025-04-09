@@ -35,7 +35,7 @@ class ExecuterSubProcessError(Exception):
 class BaseExecuter(ABC):
     """Base class to implement concrete executers.
 
-    The `load_input_configuration` and `pack_output` methods perform
+    The `load_input_configuration` method perform
     boilerplate code used in all executers. The `execute` method is abstract
     and should and should be implemented by all executers. Check the docstring
     of the `execute` method for information about how to handle inputs and
@@ -50,7 +50,6 @@ class BaseExecuter(ABC):
     INPUT_FILENAME = "input.json"
     OUTPUT_DIRNAME = "output"
     ARTIFACTS_DIRNAME = "artifacts"
-    OUTPUT_FILENAME = "output.json"
     STDOUT_LOGS_FILENAME = "stdout.txt"
     STDERR_LOGS_FILENAME = "stderr.txt"
 
@@ -84,12 +83,9 @@ class BaseExecuter(ABC):
         logging.info("Created output directory: %s", self.output_dir)
         logging.info("Created artifacts directory: %s", self.artifacts_dir)
 
-        self._create_output_json_file()
-
         self._lock = threading.Lock()
         self.is_shutting_down = threading.Event()
 
-        self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
                                              self.STDOUT_LOGS_FILENAME)
         self.stderr_logs_path = os.path.join(self.artifacts_dir,
@@ -98,12 +94,6 @@ class BaseExecuter(ABC):
         self.on_gpu = os.getenv("ON_GPU",
                                 "false").lower() in ("true", "t", "yes", "y", 1)
 
-    def _create_output_json_file(self):
-        self.output_json_path = os.path.join(self.output_dir,
-                                             self.OUTPUT_FILENAME)
-
-        with open(self.output_json_path, "w", encoding="UTF-8") as f:
-            json.dump([], f)
 
     def load_input_configuration(self):
         """Method that loads the executers' inputs.
@@ -162,30 +152,6 @@ class BaseExecuter(ABC):
         """
         return None
 
-    def pack_output(self):
-        """Method that packs the output to send for the client.
-
-        This method assumes that the return value of the executer is stored
-        in the object's `return_value` property.
-        For simulators that don't have a specific output, but rather output
-        a series of files, then `return_value` doesn't need to be set, as by
-        default the contents of the `artifacts_dir` directory are considered to
-        be the output.
-        For other executers that return a specific value, the `return_value`
-        must be set with the object expected in the client. For executers that
-        return more than one value, e.g. eigen decomposition, which returns the
-        eigenvalues and eigenvectors, then `return_value` must be a tuple with
-        the two objects in the order expected in the client.
-        """
-        with open(self.output_json_path, "w", encoding="UTF-8") as f:
-            if self.return_value is None:
-                json_obj = []
-            elif isinstance(self.return_value, tuple):
-                json_obj = list(self.return_value)
-            else:
-                json_obj = [self.return_value]
-
-            json.dump(json_obj, f)
 
     def run_subprocess(
         self,
@@ -312,7 +278,6 @@ class BaseExecuter(ABC):
             self.post_process()
             with self._lock:
                 self.is_shutting_down.set()
-            self.pack_output()
         except ExecuterSubProcessError as e:
             exit_code = e.exit_code
         except ExecuterKilledError:
