@@ -12,17 +12,19 @@ from collections import namedtuple
 
 import psutil
 from absl import logging
-from task_runner import SystemMetricsLogger, executers
+
+from task_runner import SystemMonitor, executers
 from task_runner.executers import command, mpi_configuration
 
 
 def system_metrics_log(
-    logger: SystemMetricsLogger,
+    logger: SystemMonitor,
     finished_event: threading.Event,
 ):
     while not finished_event.is_set():
-        logger.log()
-        time.sleep(1)
+        logger.log_metrics()
+        logger.monitor_output()
+        time.sleep(5)
 
 
 class ExecuterKilledError(Exception):
@@ -94,10 +96,10 @@ class BaseExecuter(ABC):
         self._lock = threading.Lock()
         self.is_shutting_down = threading.Event()
 
-        self.system_metrics_logger = SystemMetricsLogger(self.artifacts_dir)
+        self.system_monitor = SystemMonitor(self.artifacts_dir)
         self.system_metrics_thread = threading.Thread(
             target=system_metrics_log,
-            args=(self.system_metrics_logger, self.is_shutting_down),
+            args=(self.system_monitor, self.is_shutting_down),
             daemon=True,
         )
 
@@ -107,8 +109,8 @@ class BaseExecuter(ABC):
         self.stderr_logs_path = os.path.join(self.artifacts_dir,
                                              self.STDERR_LOGS_FILENAME)
 
-        self.on_gpu = os.getenv("ON_GPU", "false").lower() in ("true", "t",
-                                                               "yes", "y", 1)
+        self.on_gpu = os.getenv("ON_GPU",
+                                "false").lower() in ("true", "t", "yes", "y", 1)
 
     def load_input_configuration(self):
         """Method that loads the executers' inputs.
@@ -201,7 +203,7 @@ class BaseExecuter(ABC):
             if self.is_shutting_down.is_set():
                 raise ExecuterKilledError()
 
-        self.system_metrics_logger.change_command(" ".join(cmd.args))
+        self.system_monitor.change_command(" ".join(cmd.args))
 
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
