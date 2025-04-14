@@ -1,5 +1,6 @@
 import abc
 import os
+import pathlib
 import time
 import urllib
 import urllib.request
@@ -33,6 +34,7 @@ class BaseFileManager(abc.ABC):
         local_path: str,
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
+        compress_with: str = "AUTO",
     ):
         pass
 
@@ -57,6 +59,12 @@ class WebApiFileManager(BaseFileManager):
         self._api_client = api_client
         self._task_runner_id = task_runner_id
 
+    def _get_storage_dir(self, task_dir_remote: str) -> str:
+        """Removes the user bucket prefix from `task_dir_remote`"""
+        task_path = pathlib.Path(task_dir_remote)
+        storage_dir = task_path.relative_to(task_path.parts[0])
+        return str(storage_dir)
+
     @utils.execution_time
     @override
     def download_input(
@@ -65,12 +73,8 @@ class WebApiFileManager(BaseFileManager):
         task_dir_remote: str,
         dest_path: str,
     ):
-        del task_dir_remote  # unused
-
-        url = self._api_client.get_download_input_url(
-            self._task_runner_id,
-            task_id,
-        )
+        storage_dir = self._get_storage_dir(task_dir_remote)
+        url = self._api_client.get_download_input_url(storage_dir)
         urllib.request.urlretrieve(url, dest_path)
 
     @override
@@ -81,22 +85,25 @@ class WebApiFileManager(BaseFileManager):
         local_path: str,
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
+        compress_with: str = "AUTO",
     ):
-        del task_dir_remote  # unused
-
         if stream_zip:
             data = files.get_zip_generator(local_path)
             zip_duration = None
         else:
             operation = operations_logger.start_operation(
                 OperationName.COMPRESS_OUTPUT, task_id)
-            zip_path, zip_duration = files.make_zip_archive(local_path)
+            if compress_with == "SEVEN_Z":
+                zip_path, zip_duration = files.compress_with_seven_z(local_path)
+            else:
+                zip_path, zip_duration = files.make_zip_archive(local_path)
+
             operation.end(attributes={"execution_time_s": zip_duration})
 
             data = open(zip_path, "rb")
 
-        upload_info = self._api_client.get_upload_output_url(
-            task_runner_id=self._task_runner_id, task_id=task_id)
+        storage_dir = self._get_storage_dir(task_dir_remote)
+        upload_info = self._api_client.get_upload_output_url(storage_dir)
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
@@ -130,10 +137,8 @@ class WebApiFileManager(BaseFileManager):
         self,
         input_resources: list[str],
         dest_path: str,
-        task_runner_id: uuid.UUID,
     ):
-        files_url = self._api_client.get_download_urls(input_resources,
-                                                       task_runner_id)
+        files_url = self._api_client.get_download_urls(input_resources)
 
         for file_url in files_url:
             url = file_url["url"]

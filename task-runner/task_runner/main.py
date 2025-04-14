@@ -14,9 +14,11 @@ Usage (note the required environment variables):
 """
 import json
 import os
+import socket
 import sys
 import uuid
 
+import socks
 from absl import app, logging
 from inductiva_api.task_status import TaskRunnerTerminationReason
 
@@ -40,7 +42,30 @@ def _log_task_runner_id(path, task_runner_id: uuid.UUID):
         json.dump({"id": str(task_runner_id)}, f)
 
 
+def _set_socks_proxy():
+    """
+    Sets the SOCKS proxy configuration if the environment variables
+    SOCKS_PROXY_HOST and SOCKS_PROXY_PORT are provided.
+    """
+    socks_proxy_host = os.getenv('SOCKS_PROXY_HOST', None)
+    socks_proxy_port = os.getenv('SOCKS_PROXY_PORT', None)
+
+    if socks_proxy_host and socks_proxy_port:
+        try:
+            socks_proxy_port = int(socks_proxy_port)
+            socks.set_default_proxy(socks.SOCKS5, socks_proxy_host,
+                                    socks_proxy_port)
+            socket.socket = socks.socksocket
+            logging.info(
+                f"SOCKS proxy set to {socks_proxy_host}:{socks_proxy_port}")
+        except ValueError:
+            logging.error(f"Invalid SOCKS proxy port: {socks_proxy_port}")
+        except OSError as e:
+            logging.error(f"Socket-related error occurred: {e}")
+
+
 def main(_):
+    _set_socks_proxy()
     workdir = os.getenv("WORKDIR", "/workdir")
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR", "/apptainer")
     if not executer_images_dir:
@@ -71,14 +96,16 @@ def main(_):
     max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
     api_client = task_runner.ApiClient.from_env()
+    api_file_tracker = task_runner.ApiFileTracker.from_env()
 
-    machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
-
-    machine_group_id = machine_group_info.id
-    local_mode = machine_group_info.local_mode
-
-    if local_mode:
-        api_client.start_local_machine_group(machine_group_id)
+    try:
+        machine_group_info = task_runner.MachineGroupInfo.from_api(api_client)
+        machine_group_id = machine_group_info.id
+        local_mode = machine_group_info.local_mode
+    except RuntimeError as e:
+        logging.error(str(e))
+        api_file_tracker.terminate()
+        sys.exit(1)
 
     logging.info("Using machine group: %s", machine_group_id)
 
@@ -92,13 +119,15 @@ def main(_):
     task_runner_uuid = task_runner_access_info.id
     _log_task_runner_id(task_runner_id_path, task_runner_uuid)
 
+    file_manager = task_runner.WebApiFileManager(
+        api_client, task_runner_id=task_runner_uuid)
+
     apptainer_images_manager = apptainer_utils.ApptainerImagesManager(
         local_cache_dir=executer_images_dir,
+        file_manager=file_manager,
         remote_storage_url=executer_images_remote_storage,
     )
 
-    file_manager = task_runner.WebApiFileManager(
-        api_client, task_runner_id=task_runner_uuid)
     task_fetcher = task_runner.WebApiTaskFetcher(
         api_client=api_client,
         task_runner_id=task_runner_uuid,
@@ -111,8 +140,6 @@ def main(_):
         api_client=api_client,
         task_runner_id=task_runner_uuid,
     )
-
-    api_file_tracker = task_runner.ApiFileTracker.from_env()
 
     request_handler = TaskRequestHandler(
         task_runner_uuid=task_runner_uuid,
@@ -171,6 +198,8 @@ def main(_):
                                                 save_traceback=True)
 
             monitoring_flag = False
+
+    api_file_tracker.terminate()
 
 
 if __name__ == "__main__":

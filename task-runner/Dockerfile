@@ -1,8 +1,13 @@
 FROM python:3.9
 
-ENV LOCAL_MODE true
+ENV LOCAL_MODE=true
+ENV EXECUTER_IMAGES_DIR=/executer-images
 
-RUN apt-get update && apt-get install -y wget
+ARG API_URL=https://api.inductiva.ai
+ENV API_URL=${API_URL}
+
+RUN apt-get update && apt-get install -y wget p7zip-full
+
 RUN cd /tmp \
     && wget https://github.com/apptainer/apptainer/releases/download/v1.3.3/apptainer_1.3.3_amd64.deb \
     && apt-get install -y ./apptainer_1.3.3_amd64.deb \
@@ -19,8 +24,6 @@ RUN make install
 RUN ldconfig
 ENV MPIRUN_BIN_PATH_TEMPLATE /opt/openmpi/{version}/bin/mpirun
 
-RUN apt-get install -y gmsh
-
 # Install the package dependencies in the requirements file.
 COPY /task-runner/requirements.txt /requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /requirements.txt
@@ -33,5 +36,13 @@ COPY ./common/events /common/events
 RUN pip install --no-cache-dir --upgrade /common/events
 COPY ./common/task_status /common/task_status
 RUN pip install --no-cache-dir --upgrade /common/task_status
+
+RUN useradd -m -s /bin/bash task-runner
+RUN mkdir /workdir
+RUN mkdir /executer-images
+VOLUME /executer-images
+RUN chown task-runner:task-runner /workdir
+RUN chown task-runner:task-runner /executer-images
+USER task-runner
 
 CMD ["python", "./task_runner/main.py"]

@@ -15,6 +15,7 @@ import shutil
 import threading
 import time
 import traceback
+from typing import Optional
 from uuid import UUID
 
 from absl import logging
@@ -31,7 +32,7 @@ from task_runner import (
     utils,
 )
 from task_runner.operations_logger import OperationName, OperationsLogger
-from task_runner.utils import files, loki
+from task_runner.utils import files
 
 KILL_MESSAGE = "kill"
 INTERRUPT_MESSAGE = "interrupt"
@@ -50,7 +51,6 @@ def task_message_listener_loop(
     listener: task_message_listener.BaseTaskMessageListener,
     task_id: str,
     kill_task_thread_queue: queue.Queue,
-    logger_enabled: threading.Event,
 ) -> None:
     """Function to handle the kill request for the running task.
 
@@ -73,15 +73,6 @@ def task_message_listener_loop(
 
         elif message == KILL_MESSAGE:
             kill_task_thread_queue.put(KILL_MESSAGE)
-            return
-
-        elif message == ENABLE_LOGGING_STREAM_MESSAGE:
-            logger_enabled.set()
-            logging.info("Logging stream enabled.")
-
-        elif message == DISABLE_LOGGING_STREAM_MESSAGE:
-            logger_enabled.clear()
-            logging.info("Logging stream disabled.")
 
 
 def interrupt_task_ttl_exceeded(
@@ -153,7 +144,7 @@ class TaskRequestHandler:
         event_logger: task_runner.BaseEventLogger,
         message_listener: task_message_listener.BaseTaskMessageListener,
         file_manager: task_runner.BaseFileManager,
-        api_file_tracker: task_runner.ApiFileTracker = None,
+        api_file_tracker: Optional[task_runner.ApiFileTracker] = None,
     ):
         self.task_runner_uuid = task_runner_uuid
         self.workdir = workdir
@@ -165,14 +156,12 @@ class TaskRequestHandler:
         self.file_manager = file_manager
         self.api_file_tracker = api_file_tracker
         self.task_id = None
-        self.loki_logger = None
         self.task_workdir = None
         self.apptainer_image_path = None
         self.threads = []
         self.cleaning_up = False
         self._message_listener_thread = None
         self._kill_task_thread_queue = None
-        self._logger_enabled = threading.Event()
         self._shutting_down = False
         self._operations_logger = OperationsLogger(self.api_client)
 
@@ -273,13 +262,8 @@ class TaskRequestHandler:
         # convert to bool because stream_zip is either 't' or 'f'
         self.stream_zip = True if request.get("stream_zip",
                                               "t") == "t" else False
+        self.compress_with = request.get("compress_with", "AUTO")
         self.cleaning_up = False
-        self.loki_logger = loki.LokiLogger(
-            task_id=self.task_id,
-            project_id=self.project_id,
-            enabled=self._logger_enabled,
-        )
-        self._logger_enabled.clear()
         self._kill_task_thread_queue = queue.Queue()
 
         self._log_task_picked_up()
@@ -292,7 +276,6 @@ class TaskRequestHandler:
                     self.message_listener,
                     self.task_id,
                     self._kill_task_thread_queue,
-                    self._logger_enabled,
                 ),
                 daemon=True,
             )
@@ -308,13 +291,13 @@ class TaskRequestHandler:
                 },
             )
 
-            image_path, download_time, container_source = (
+            image_path, download_time, container_source, image_size = (
                 self.apptainer_images_manager.get(image_uri))
 
             operation.end(attributes={
                 "execution_time_s": download_time,
                 "source": container_source.value,
-                "size_bytes": os.path.getsize(image_path),
+                "size_bytes": image_size,
             },)
 
             self.apptainer_image_path = image_path
@@ -322,6 +305,8 @@ class TaskRequestHandler:
             if download_time is not None:
                 self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE,
                                        download_time)
+
+                self._post_task_metric(utils.EXECUTER_IMAGE_SIZE, image_size)
 
             if self._check_task_killed():
                 self._publish_event(
@@ -443,7 +428,7 @@ class TaskRequestHandler:
         # by the task files
         if self.input_resources:
             download_duration = self.file_manager.download_input_resources(
-                self.input_resources, sim_workdir, self.task_runner_uuid)
+                self.input_resources, sim_workdir)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -603,6 +588,7 @@ class TaskRequestHandler:
                 self.task_dir_remote,
                 output_dir,
                 stream_zip=self.stream_zip,
+                compress_with=self.compress_with,
                 operations_logger=self._operations_logger,
             ))
 
@@ -680,7 +666,6 @@ class TaskRequestHandler:
             self.task_workdir,
             self.apptainer_image_path,
             copy.deepcopy(self.mpi_config),
-            self.loki_logger,
             executers.ExecCommandLogger(
                 self.task_id,
                 self._operations_logger,

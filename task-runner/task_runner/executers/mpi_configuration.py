@@ -47,7 +47,7 @@ class MPIClusterConfiguration():
 
         mpi_share_path = None
         mpi_hostfile_path = None
-        mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "--allow-run-as-root")
+        mpi_extra_args = os.getenv("MPI_EXTRA_ARGS", "")
         mpirun_bin_path_template = os.getenv("MPIRUN_BIN_PATH_TEMPLATE",
                                              "mpirun")
         mpi_default_version = os.getenv("MPI_DEFAULT_VERSION", DEFAULT_VERSION)

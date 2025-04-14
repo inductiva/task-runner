@@ -34,19 +34,19 @@ class MockExecuter(
             if self.is_shutting_down.is_set():
                 raise executers.base_executer.ExecuterKilledError()
 
-        self.subprocess = executers.SubprocessTracker(
-            args=cmd.args,
-            working_dir=working_dir,
-            stdout=mock.MagicMock(),
-            stderr=mock.MagicMock(),
-            stdin=mock.MagicMock(),
-            loki_logger=mock.MagicMock(),
-        )
-        self.subprocess.run()
-        exit_code = self.subprocess.wait()
-        if exit_code != 0:
-            raise executers.base_executer.ExecuterSubProcessError(
-                f"Command {cmd} failed with exit code {exit_code}")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            self.subprocess = executers.SubprocessTracker(
+                args=cmd.args,
+                working_dir=tmp_dir,
+                stdout=mock.MagicMock(),
+                stderr=mock.MagicMock(),
+                stdin=mock.MagicMock(),
+            )
+            self.subprocess.run()
+            exit_code = self.subprocess.wait()
+            if exit_code != 0:
+                raise executers.base_executer.ExecuterSubProcessError(
+                    f"Command {cmd} failed with exit code {exit_code}")
 
 
 class MockMessageListener(task_message_listener.BaseTaskMessageListener):
@@ -130,6 +130,7 @@ def fixture_task_request_handler(
         container_path,
         0.0,
         apptainer_utils.ApptainerImageSource.LOCAL_FILESYSTEM,
+        0,
     )
 
     event_logger = mock.MagicMock()

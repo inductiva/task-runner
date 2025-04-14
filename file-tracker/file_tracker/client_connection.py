@@ -1,3 +1,5 @@
+import asyncio
+import json
 import logging
 import os
 
@@ -7,7 +9,7 @@ from aiortc import (
     RTCPeerConnection,
     RTCSessionDescription,
 )
-from file_operations import OperationError, ls, tail
+from file_operations import Operation, OperationError
 from operation_response import OperationResponse, OperationStatus
 
 
@@ -28,32 +30,42 @@ class ClientConnection:
         self.path = os.path.join(task_id, "output", "artifacts")
 
     async def setup_connection(self, data):
+        channel_closed = asyncio.Event()
 
         @self.pc.on("datachannel")
         def on_datachannel(channel):
 
             @channel.on("message")
             async def on_message(message):
+                message = json.loads(message)
                 response = OperationResponse()
                 try:
-                    if message == "ls":
-                        response.message = ls(self.path)
-
-                    elif message.startswith("tail:"):
-                        filename = message.split(":")[1]
-                        response.message = tail(self.path, filename)
-                    else:
-                        response = OperationResponse(
-                            status=OperationStatus.INVALID,
-                            message="Unknown command")
-                except OperationError as e:
-                    response = OperationResponse(status=OperationStatus.ERROR,
+                    operation = Operation.from_request(message)
+                except (OperationError, ValueError) as e:
+                    response = OperationResponse(status=OperationStatus.INVALID,
                                                  message=str(e))
-                finally:
                     channel.send(response.to_json_string())
+                    return
+
+                operation.path = self.path
+                while not channel_closed.is_set():
+                    try:
+                        response.message = operation.execute()
+                    except OperationError as e:
+                        response = OperationResponse(
+                            status=OperationStatus.ERROR, message=str(e))
+                    finally:
+                        if response.message is not None:
+                            channel.send(response.to_json_string())
+
+                    if message.get("follow", False):
+                        await asyncio.sleep(1)
+                    else:
+                        break
 
             @channel.on("close")
             async def on_close():
+                channel_closed.set()
                 await self.close()
                 logging.info("PeerConnection closed")
 

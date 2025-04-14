@@ -23,3 +23,9 @@ from task_runner.task_message_listener import (
     WebApiTaskMessageListener,
 )
 from task_runner.task_request_handler import TaskRequestHandler
+
+__version__ = "0.1.0"
+
+
+def get_api_agent():
+    return f"TaskRunner/{__version__}/python"
