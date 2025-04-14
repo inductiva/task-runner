@@ -2,6 +2,7 @@ import csv
 import datetime
 import enum
 import os
+from typing import List, Optional
 
 import psutil
 
@@ -23,10 +24,15 @@ SYSTEM_METRICS_TO_FUNC = {
 
 class SystemMetricsLogger:
 
-    def __init__(self,
-                 metrics,
-                 log_file_path,
-                 log_file_name="system_metrics.csv"):
+    def __init__(
+        self,
+        log_file_path: str,
+        log_file_name: str = "system_metrics.csv",
+        metrics: Optional[List[SystemMetrics]] = None,
+    ):
+        if not metrics:
+            metrics = [metric for metric in SystemMetrics]
+
         self.metrics = metrics
         self.log_file = os.path.join(log_file_path, log_file_name)
         self._create_log_file()

@@ -13,7 +13,7 @@ from task_runner.file_manager import (
     WebApiFileManager,
 )
 from task_runner.machine_group import MachineGroupInfo
-from task_runner.system_metrics_logger import SystemMetrics, SystemMetricsLogger
+from task_runner.system_metrics_logger import SystemMetricsLogger
 from task_runner.task_fetcher import (
     BaseTaskFetcher,
     WebApiTaskFetcher,
