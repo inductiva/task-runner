@@ -6,7 +6,12 @@ ENV EXECUTER_IMAGES_DIR=/executer-images
 ARG API_URL=https://api.inductiva.ai
 ENV API_URL=${API_URL}
 
-RUN apt-get update && apt-get install -y wget p7zip-full
+RUN apt-get update && apt-get install -y wget
+
+RUN wget https://www.7-zip.org/a/7z2409-linux-x64.tar.xz && \
+    tar -xf 7z2409-linux-x64.tar.xz && \
+    mv 7zz /usr/local/bin/ && chmod +x /usr/local/bin/7zz && \
+    rm -rf 7z2301-linux-x64.tar.xz
 
 RUN cd /tmp \
     && wget https://github.com/apptainer/apptainer/releases/download/v1.3.3/apptainer_1.3.3_amd64.deb \
