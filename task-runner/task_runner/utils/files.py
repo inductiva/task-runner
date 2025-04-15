@@ -313,7 +313,7 @@ def compress_with_seven_z(
 ) -> str:
     zip_path = f"/tmp/{archive_name}"
     args = [
-        "7z", "a", "-tzip", f"-mx={compression_level}", "-mmt=on", zip_path,
+        "7zz", "a", "-tzip", f"-mx={compression_level}", "-mmt=on", zip_path,
         directory_name, "-bso0", "-bsp0"
     ]
     subprocess.run(args, check=True)
