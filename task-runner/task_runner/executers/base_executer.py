@@ -9,6 +9,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from typing import Literal
 
 import psutil
 from absl import logging
@@ -17,14 +18,20 @@ from task_runner import SystemMonitor, executers
 from task_runner.executers import command, mpi_configuration
 
 
-def system_metrics_log(
-    logger: SystemMonitor,
+def system_monitoring(
+    system_monitor: SystemMonitor,
+    monitoring_type: Literal["metrics", "output"],
+    period_seconds: float,
     finished_event: threading.Event,
 ):
+    functions = {
+        "metrics": system_monitor.log_metrics,
+        "output": system_monitor.monitor_output,
+    }
+
     while not finished_event.is_set():
-        logger.log_metrics()
-        logger.monitor_output()
-        time.sleep(5)
+        functions[monitoring_type]()
+        time.sleep(period_seconds)
 
 
 class ExecuterKilledError(Exception):
@@ -69,6 +76,7 @@ class BaseExecuter(ABC):
         container_image: str,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
         exec_command_logger: executers.ExecCommandLogger,
+        system_monitor: SystemMonitor,
     ):
         """Performs initial setup of the executer.
 
@@ -86,6 +94,7 @@ class BaseExecuter(ABC):
                                                     self.OUTPUT_DIRNAME,
                                                     self.ARTIFACTS_DIRNAME)
         self.exec_command_logger = exec_command_logger
+        self.system_monitor = system_monitor
 
         logging.info("Working directory: %s", self.working_dir)
 
@@ -96,10 +105,15 @@ class BaseExecuter(ABC):
         self._lock = threading.Lock()
         self.is_shutting_down = threading.Event()
 
-        self.system_monitor = SystemMonitor(self.artifacts_dir)
         self.system_metrics_thread = threading.Thread(
-            target=system_metrics_log,
-            args=(self.system_monitor, self.is_shutting_down),
+            target=system_monitoring,
+            args=(self.system_monitor, "metrics", 1, self.is_shutting_down),
+            daemon=True,
+        )
+
+        self.output_monitoring_thread = threading.Thread(
+            target=system_monitoring,
+            args=(self.system_monitor, "output", 5, self.is_shutting_down),
             daemon=True,
         )
 
@@ -289,6 +303,7 @@ class BaseExecuter(ABC):
         """Method used to run the executer."""
         exit_code = 0
         self.system_metrics_thread.start()
+        self.output_monitoring_thread.start()
         try:
             self.load_input_configuration()
             self.pre_process()

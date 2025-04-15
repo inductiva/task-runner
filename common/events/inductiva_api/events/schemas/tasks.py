@@ -23,6 +23,10 @@ class TaskWorkFinished(TaskEvent):
     machine_id: uuid.UUID
 
 
+class TaskOutputStalled(TaskEvent):
+    machine_id: uuid.UUID
+
+
 class TaskOutputUploaded(TaskEvent):
     machine_id: uuid.UUID
     new_status: Optional[str] = None

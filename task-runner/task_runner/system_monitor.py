@@ -2,10 +2,14 @@ import csv
 import datetime
 import enum
 import os
-from typing import List, Literal
+from typing import List, Literal, Optional, Tuple
+from uuid import UUID
 
 import psutil
 from absl import logging
+from inductiva_api import events
+
+from task_runner import BaseEventLogger, utils
 
 
 class SystemMetrics(enum.Enum):
@@ -28,8 +32,17 @@ class SystemMonitor:
     METRICS_FILE_NAME = "system_metrics.csv"
     OUTPUT_MONITORING_FILE_NAME = "output_update.csv"
 
-    def __init__(self, logs_dir: str):
+    def __init__(
+        self,
+        logs_dir: str,
+        task_id: str,
+        task_runner_uuid: UUID,
+        event_logger: BaseEventLogger,
+    ):
         self.logs_dir = logs_dir
+        self.task_id = task_id
+        self.task_runner_uuid = task_runner_uuid
+        self.event_logger = event_logger
         self.command = None
         self.metrics = [metric for metric in SystemMetrics]
 
@@ -41,11 +54,6 @@ class SystemMonitor:
         self.output_monitoring_file_path = os.path.join(
             logs_dir,
             self.OUTPUT_MONITORING_FILE_NAME,
-        )
-        self.output_monitoring_headers = ["time", "last-modified-file"]
-        self._create_log_file(
-            self.output_monitoring_file_path,
-            self.output_monitoring_headers,
         )
 
     def _write_csv(self, mode: Literal["a", "w"], file_path: str, row: List):
@@ -59,22 +67,21 @@ class SystemMonitor:
     def _log_row(self, file_path: str, row: List):
         self._write_csv(mode="a", file_path=file_path, row=row)
 
-    def _get_last_data_row(self, file_path: str):
+    def _get_last_data_row(self, file_path: str) -> Optional[List]:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 rows = list(reader)
-                if len(rows) <= 1:
+                if len(rows) < 1:
                     return None
                 return rows[-1]
         except Exception as e:  # noqa: BLE001
             logging.error(f"An error occurred: {e}")
             return None
 
-    def _get_last_modified_file(self):
+    def _get_last_modified_file(self) -> Tuple[Optional[float], Optional[str]]:
         last_epoch_timestamp = 0
         most_recent_file_epoch_timestamp = 0
-        most_recent_file_timestamp_iso = None
         most_recent_file = None
 
         last_row = self._get_last_data_row(self.output_monitoring_file_path)
@@ -87,11 +94,9 @@ class SystemMonitor:
         for root, _, files in os.walk(self.logs_dir):
             for file in files:
                 file_path = os.path.join(root, file)
-                print("file_path:", file_path)
 
                 # Skip metrics log file
                 if file_path == self.metrics_file_path:
-                    print("Skip!")
                     continue
 
                 # Get the timestamp of the file's last modification
@@ -102,32 +107,39 @@ class SystemMonitor:
                     most_recent_file = file_path
                     most_recent_file_epoch_timestamp = epoch_timestamp
 
-        if most_recent_file_epoch_timestamp > last_epoch_timestamp:
-            most_recent_file_timestamp_iso = datetime.datetime.fromtimestamp(
-                most_recent_file_epoch_timestamp,
-                tz=datetime.timezone.utc,
-            ).isoformat()
+        if most_recent_file_epoch_timestamp <= last_epoch_timestamp:
+            return None, None
 
-        print("most_recent_timestamp:", most_recent_file_timestamp_iso)
-        print("most_recent_file:", most_recent_file)
-
-        return most_recent_file_timestamp_iso, most_recent_file
+        return most_recent_file_epoch_timestamp, most_recent_file
 
     def change_command(self, command):
         self.command = command
 
     def log_metrics(self):
-        row = [datetime.datetime.now(), self.command
+        row = [utils.now_utc().isoformat(), self.command
               ] + [SYSTEM_METRICS_TO_FUNC[metric]() for metric in self.metrics]
         self._log_row(file_path=self.metrics_file_path, row=row)
 
     def monitor_output(self):
-        timestamp, file_path = self._get_last_modified_file()
+        epoch_timestamp, file_path = self._get_last_modified_file()
 
-        if timestamp is not None:
-            self._log_row(
-                file_path=self.output_monitoring_file_path,
-                row=[timestamp, file_path],
+        if epoch_timestamp is not None:
+            timestamp = datetime.datetime.fromtimestamp(
+                epoch_timestamp,
+                tz=datetime.timezone.utc,
             )
 
-            # TODO: post event if timestamp is older than 1 hour
+            # Always overwrite CSV without headers
+            self._write_csv(
+                mode="w",
+                file_path=self.output_monitoring_file_path,
+                row=[timestamp.isoformat(), file_path],
+            )
+
+            # Post event when output is stalled for more than 30 minutes
+            if timestamp > utils.now_utc() - datetime.timedelta(seconds=1):
+                self.event_logger.log(
+                    events.TaskOutputStalled(
+                        id=self.task_id,
+                        machine_id=self.task_runner_uuid,
+                    ))
