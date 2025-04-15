@@ -210,7 +210,7 @@ def get_seven_zip_stream_process(
         -an     : Disable archive name (used when outputting to stdout).
     """
     args = [
-        "7z", "a", "-tzip", "-mx=1", "-mmt=on", "-bso0", "-bsp0", "-so", "-an",
+        "7zz", "a", "-tzip", "-mx=1", "-mmt=on", "-bso0", "-bsp0", "-so", "-an",
         local_path
     ]
     return subprocess.Popen(args, bufsize, stdout=subprocess.PIPE)
