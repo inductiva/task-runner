@@ -198,6 +198,16 @@ def get_seven_zip_stream_process(
     ZIP archive and returns a process object. The process will write to
     standard output and is configured with the specified buffer size.
     Use the process standard output as a stream.
+    
+    7z arguments used:
+        a       : Add files to archive.
+        -tzip   : Set the archive type to ZIP.
+        -mx=1   : Set compression level to 1 (fastest).
+        -mmt=on : Enable multithreading.
+        -bso0   : Disable standard output messages.
+        -bsp0   : Disable progress indicator on standard error.
+        -so     : Write the archive to standard output.
+        -an     : Disable archive name (used when outputting to stdout).
     """
     args = [
         "7z", "a", "-tzip", "-mx=1", "-mmt=on", "-bso0", "-bsp0", "-so", "-an",
