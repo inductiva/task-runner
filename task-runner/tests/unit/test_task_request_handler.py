@@ -88,13 +88,6 @@ def download_input_side_effect(
         del task_id, task_dir_remote  # unused
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with open(
-                    os.path.join(tmp_dir, "input.json"),
-                    "w",
-                    encoding="utf-8",
-            ) as f:
-                json.dump(task_request_payload, f)
-
             os.makedirs(os.path.join(tmp_dir, "sim_dir"), exist_ok=True)
 
             if tmp_zip_path.endswith(".zip"):

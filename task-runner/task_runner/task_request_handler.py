@@ -662,12 +662,15 @@ class TaskRequestHandler:
         if executer_class is None:
             raise ValueError(f"Executer not found for simulator: {simulator}")
 
+        extra_params = json.loads(request.get("extra_params", {}))
+
         return executer_class(
-            self.task_workdir,
-            self.apptainer_image_path,
-            copy.deepcopy(self.mpi_config),
-            executers.ExecCommandLogger(
+            working_dir=self.task_workdir,
+            container_image=self.apptainer_image_path,
+            mpi_config=copy.deepcopy(self.mpi_config),
+            exec_command_logger=executers.ExecCommandLogger(
                 self.task_id,
                 self._operations_logger,
             ),
+            extra_params=extra_params,
         )

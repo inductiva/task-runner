@@ -6,7 +6,6 @@ import shutil
 from task_runner import executers
 from task_runner.utils import files
 
-
 class ArbitraryCommandsExecuter(executers.BaseExecuter):
     """Concrete implementation of an Executer to run arbitrary commands."""
 
