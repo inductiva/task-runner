@@ -1,4 +1,5 @@
 """Test TaskRequestHandler class."""
+import json
 import os
 import queue
 import shutil
@@ -143,21 +144,22 @@ def _setup_mock_task(
     unblock_download_input: Optional[threading.Event] = None,
 ):
     task_id = "umx0oyincuy41x3u7fyazcwjr"
+    extra_params = json.dumps({
+        "sim_dir": "sim_dir",
+        "run_subprocess_dir": None,
+        "container_image": "unused",
+        "commands": [{
+            "cmd": command,
+            "prompts": []
+        } for command in commands]
+    })
     task_request = {
         "id": task_id,
         "project_id": uuid.uuid4(),
         "task_dir": task_id,
         "container_image": "docker://alpine:latest",  # unused in test
         "simulator": "arbitrary_commands",
-        "extra_params": {
-            "sim_dir": "sim_dir",
-            "run_subprocess_dir": None,
-            "container_image": "unused",
-            "commands": [{
-                "cmd": command,
-                "prompts": []
-            } for command in commands]
-        }
+        "extra_params": extra_params,
     }
 
     if time_to_live_seconds is not None:
