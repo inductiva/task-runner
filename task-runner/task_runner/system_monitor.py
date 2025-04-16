@@ -99,10 +99,8 @@ class SystemMonitor:
                 if file_path == self.metrics_file_path:
                     continue
 
-                # Get the timestamp of the file's last modification
                 epoch_timestamp = os.path.getmtime(file_path)
 
-                # Check if this file is the most recently modified
                 if epoch_timestamp > most_recent_file_epoch_timestamp:
                     most_recent_file = file_path
                     most_recent_file_epoch_timestamp = epoch_timestamp
@@ -137,9 +135,11 @@ class SystemMonitor:
             )
 
             # Post event when output is stalled for more than 30 minutes
-            if timestamp > utils.now_utc() - datetime.timedelta(seconds=1):
+            if timestamp < utils.now_utc() - datetime.timedelta(minutes=30):
                 self.event_logger.log(
                     events.TaskOutputStalled(
                         id=self.task_id,
                         machine_id=self.task_runner_uuid,
+                        last_modified_file=os.path.basename(file_path),
+                        last_modified_file_timestamp=timestamp,
                     ))

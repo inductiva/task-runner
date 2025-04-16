@@ -113,7 +113,7 @@ class BaseExecuter(ABC):
 
         self.output_monitoring_thread = threading.Thread(
             target=system_monitoring,
-            args=(self.system_monitor, "output", 5, self.is_shutting_down),
+            args=(self.system_monitor, "output", 60, self.is_shutting_down),
             daemon=True,
         )
 
