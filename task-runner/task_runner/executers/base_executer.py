@@ -3,7 +3,6 @@
 Check the `BaseExecuter` docstring for more information on the class and
 its usage.
 """
-import json
 import os
 import threading
 import time

@@ -1,5 +1,4 @@
 """Test TaskRequestHandler class."""
-import json
 import os
 import queue
 import shutil
@@ -70,19 +69,8 @@ class MockMessageListener(task_message_listener.BaseTaskMessageListener):
 
 
 def download_input_side_effect(
-        commands: list[str],
         unblock_download_input: Optional[threading.Event] = None):
     """Get function to use as side_effect for file_manager.download_input."""
-
-    task_request_payload = {
-        "sim_dir": "sim_dir",
-        "run_subprocess_dir": None,
-        "container_image": "unused",
-        "commands": [{
-            "cmd": command,
-            "prompts": []
-        } for command in commands]
-    }
 
     def _side_effect(task_id, task_dir_remote, tmp_zip_path):
         del task_id, task_dir_remote  # unused
@@ -161,6 +149,9 @@ def _setup_mock_task(
         "task_dir": task_id,
         "container_image": "docker://alpine:latest",  # unused in test
         "simulator": "arbitrary_commands",
+        "extra_params": {
+            "commands": commands
+        },
     }
 
     if time_to_live_seconds is not None:
@@ -168,7 +159,7 @@ def _setup_mock_task(
 
     handler.file_manager.download_input = mock.MagicMock(
         side_effect=download_input_side_effect(
-            commands=commands, unblock_download_input=unblock_download_input))
+            unblock_download_input=unblock_download_input))
 
     handler.file_manager.upload_output = mock.MagicMock(return_value=(0, 0, 0))
 
