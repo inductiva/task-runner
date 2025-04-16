@@ -150,8 +150,14 @@ def _setup_mock_task(
         "container_image": "docker://alpine:latest",  # unused in test
         "simulator": "arbitrary_commands",
         "extra_params": {
-            "commands": commands
-        },
+            "sim_dir": "sim_dir",
+            "run_subprocess_dir": None,
+            "container_image": "unused",
+            "commands": [{
+                "cmd": command,
+                "prompts": []
+            } for command in commands]
+        }
     }
 
     if time_to_live_seconds is not None:
