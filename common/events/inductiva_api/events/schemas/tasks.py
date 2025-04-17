@@ -1,4 +1,5 @@
 """Events related to tasks."""
+import datetime
 import uuid
 from typing import Optional
 
@@ -21,6 +22,12 @@ class TaskWorkStarted(TaskEvent):
 
 class TaskWorkFinished(TaskEvent):
     machine_id: uuid.UUID
+
+
+class TaskOutputStalled(TaskEvent):
+    machine_id: uuid.UUID
+    last_modified_file_path: str
+    last_modified_file_timestamp: datetime.datetime
 
 
 class TaskOutputUploaded(TaskEvent):

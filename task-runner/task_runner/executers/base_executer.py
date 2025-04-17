@@ -13,8 +13,18 @@ from collections import namedtuple
 import psutil
 from absl import logging
 
-from task_runner import executers
+from task_runner import SystemMonitor, executers
 from task_runner.executers import command, mpi_configuration
+
+
+def periodic_thread(
+    function: callable,
+    period_seconds: float,
+    finished_event: threading.Event,
+):
+    while not finished_event.is_set():
+        function()
+        time.sleep(period_seconds)
 
 
 class ExecuterKilledError(Exception):
@@ -59,6 +69,7 @@ class BaseExecuter(ABC):
         container_image: str,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
         exec_command_logger: executers.ExecCommandLogger,
+        system_monitor: SystemMonitor,
     ):
         """Performs initial setup of the executer.
 
@@ -76,6 +87,7 @@ class BaseExecuter(ABC):
                                                     self.OUTPUT_DIRNAME,
                                                     self.ARTIFACTS_DIRNAME)
         self.exec_command_logger = exec_command_logger
+        self.system_monitor = system_monitor
 
         logging.info("Working directory: %s", self.working_dir)
 
@@ -83,9 +95,25 @@ class BaseExecuter(ABC):
         logging.info("Created output directory: %s", self.output_dir)
         logging.info("Created artifacts directory: %s", self.artifacts_dir)
 
+        self.system_monitor.setup_logs(self.artifacts_dir)
+
         self._lock = threading.Lock()
         self.is_shutting_down = threading.Event()
 
+        self.system_metrics_thread = threading.Thread(
+            target=periodic_thread,
+            args=(self.system_monitor.log_metrics, 30, self.is_shutting_down),
+            daemon=True,
+        )
+
+        self.output_monitoring_thread = threading.Thread(
+            target=periodic_thread,
+            args=(self.system_monitor.monitor_output, 60,
+                  self.is_shutting_down),
+            daemon=True,
+        )
+
+        self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
                                              self.STDOUT_LOGS_FILENAME)
         self.stderr_logs_path = os.path.join(self.artifacts_dir,
@@ -185,6 +213,8 @@ class BaseExecuter(ABC):
             if self.is_shutting_down.is_set():
                 raise ExecuterKilledError()
 
+        self.system_monitor.change_command(" ".join(cmd.args))
+
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
 
@@ -268,7 +298,8 @@ class BaseExecuter(ABC):
     def run(self):
         """Method used to run the executer."""
         exit_code = 0
-
+        self.system_metrics_thread.start()
+        self.output_monitoring_thread.start()
         try:
             self.load_input_configuration()
             self.pre_process()
