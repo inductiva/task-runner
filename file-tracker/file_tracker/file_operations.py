@@ -1,5 +1,7 @@
 import abc
 import os
+import subprocess
+import time
 from collections import deque
 
 
@@ -9,6 +11,9 @@ class OperationError(Exception):
 
 class Operation:
 
+    #defined at the end of the document
+    SUPPORTED_OPERATIONS = {}
+
     @classmethod
     def from_request(cls, request):
         operation = cls._get_class(request["type"])
@@ -16,10 +21,9 @@ class Operation:
 
     @classmethod
     def _get_class(cls, type):
-        if type == "ls":
-            return List
-        elif type == "tail":
-            return Tail
+
+        if type in cls.SUPPORTED_OPERATIONS:
+            return cls.SUPPORTED_OPERATIONS[type]
         else:
             raise OperationError(f"Unknown operation type: {type}")
 
@@ -46,6 +50,66 @@ class List(Operation):
             else:
                 contents.append(file)
         return contents
+
+
+class Top(Operation):
+    """Class for the Top Operation."""
+
+    def execute(self):
+        return self.top()
+
+    def top(self) -> str:
+        """Run the top command and return the output.
+
+        Will only run the top command once and return the output.
+        """
+        result = subprocess.run(["top", "-b", "-H", "-n", "1"],
+                                capture_output=True,
+                                check=False,
+                                text=True)
+        return result.stdout
+
+
+class LastModifiedFile(Operation):
+    """Class for the LastModifiedFile Operation."""
+
+    def execute(self):
+        return self.last_modified_file()
+
+    def last_modified_file(self) -> str:
+        most_recent_file = None
+        time_since_last_mod = None
+        most_recent_timestamp = 0
+
+        directory = os.getcwd()
+
+        # Walk through the directory recursively
+        for root, _, files in os.walk(directory):
+            for file in files:
+                file_path = os.path.join(root, file)
+                # Get the timestamp of the file's last modification
+                timestamp = os.path.getmtime(file_path)
+
+                # Check if this file is the most recently modified
+                if timestamp > most_recent_timestamp:
+                    most_recent_file = file_path
+                    most_recent_timestamp = timestamp
+
+        # Get the current timestamp (now)
+        now_timestamp = time.time()
+
+        # If a most recent file exists, calculate time since last modification
+        if most_recent_file:
+            time_since_last_mod = now_timestamp - most_recent_timestamp
+
+        ret_dic = {
+            "most_recent_file": most_recent_file,
+            "most_recent_timestamp": most_recent_timestamp,
+            "now_timestamp": now_timestamp,
+            "time_since_last_mod": time_since_last_mod
+        }
+
+        return ret_dic
 
 
 class Tail(Operation):
@@ -121,3 +185,12 @@ class Tail(Operation):
         except UnicodeDecodeError:
             raise OperationError(f"File is not a text file: {filename}")
         return content.split('\n')
+
+
+# Initialize SUPPORTED_OPERATIONS after defining all classes
+Operation.SUPPORTED_OPERATIONS = {
+    "ls": List,
+    "tail": Tail,
+    "top": Top,
+    "last_modified_file": LastModifiedFile
+}

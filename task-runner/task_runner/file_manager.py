@@ -34,6 +34,7 @@ class BaseFileManager(abc.ABC):
         local_path: str,
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
+        compress_with: str = "AUTO",
     ):
         pass
 
@@ -84,14 +85,23 @@ class WebApiFileManager(BaseFileManager):
         local_path: str,
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
+        compress_with: str = "AUTO",
     ):
         if stream_zip:
-            data = files.get_zip_generator(local_path)
+            if compress_with == "SEVEN_Z":
+                stream_process = files.get_seven_zip_stream_process(local_path)
+                data = stream_process.stdout
+            else:
+                data = files.get_zip_generator(local_path)
             zip_duration = None
         else:
             operation = operations_logger.start_operation(
                 OperationName.COMPRESS_OUTPUT, task_id)
-            zip_path, zip_duration = files.make_zip_archive(local_path)
+            if compress_with == "SEVEN_Z":
+                zip_path, zip_duration = files.compress_with_seven_z(local_path)
+            else:
+                zip_path, zip_duration = files.make_zip_archive(local_path)
+
             operation.end(attributes={"execution_time_s": zip_duration})
 
             data = open(zip_path, "rb")
@@ -117,7 +127,12 @@ class WebApiFileManager(BaseFileManager):
         operation.end(attributes={"execution_time_s": upload_time})
 
         if stream_zip:
-            size = data.total_bytes
+            if compress_with == "SEVEN_Z":
+                stream_process.stdout.close()
+                stream_process.wait()
+                size = int(resp.headers.get("x-goog-stored-content-length"))
+            else:
+                size = data.total_bytes
         else:
             data.close()
             size = os.path.getsize(zip_path)

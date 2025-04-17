@@ -262,6 +262,7 @@ class TaskRequestHandler:
         # convert to bool because stream_zip is either 't' or 'f'
         self.stream_zip = True if request.get("stream_zip",
                                               "t") == "t" else False
+        self.compress_with = request.get("compress_with", "AUTO")
         self.cleaning_up = False
         self._kill_task_thread_queue = queue.Queue()
 
@@ -587,6 +588,7 @@ class TaskRequestHandler:
                 self.task_dir_remote,
                 output_dir,
                 stream_zip=self.stream_zip,
+                compress_with=self.compress_with,
                 operations_logger=self._operations_logger,
             ))
 

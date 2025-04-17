@@ -7,6 +7,12 @@ ARG API_URL=https://api.inductiva.ai
 ENV API_URL=${API_URL}
 
 RUN apt-get update && apt-get install -y wget
+
+RUN wget https://www.7-zip.org/a/7z2409-linux-x64.tar.xz && \
+    tar -xf 7z2409-linux-x64.tar.xz && \
+    mv 7zz /usr/local/bin/ && chmod +x /usr/local/bin/7zz && \
+    rm -rf 7z2409-linux-x64.tar.xz
+
 RUN cd /tmp \
     && wget https://github.com/apptainer/apptainer/releases/download/v1.3.3/apptainer_1.3.3_amd64.deb \
     && apt-get install -y ./apptainer_1.3.3_amd64.deb \
