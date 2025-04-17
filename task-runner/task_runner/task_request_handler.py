@@ -672,7 +672,6 @@ class TaskRequestHandler:
                 operations_logger=self._operations_logger,
             ),
             SystemMonitor(
-                logs_dir=self.task_workdir,
                 task_id=self.task_id,
                 task_runner_uuid=self.task_runner_uuid,
                 event_logger=self.event_logger,

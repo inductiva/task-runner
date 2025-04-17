@@ -18,19 +18,13 @@ from task_runner import SystemMonitor, executers
 from task_runner.executers import command, mpi_configuration
 
 
-def system_monitoring(
-    system_monitor: SystemMonitor,
-    monitoring_type: Literal["metrics", "output"],
+def periodic_thread(
+    function: callable,
     period_seconds: float,
     finished_event: threading.Event,
 ):
-    functions = {
-        "metrics": system_monitor.log_metrics,
-        "output": system_monitor.monitor_output,
-    }
-
     while not finished_event.is_set():
-        functions[monitoring_type]()
+        function()
         time.sleep(period_seconds)
 
 
@@ -102,18 +96,21 @@ class BaseExecuter(ABC):
         logging.info("Created output directory: %s", self.output_dir)
         logging.info("Created artifacts directory: %s", self.artifacts_dir)
 
+        self.system_monitor.setup_logs(self.artifacts_dir)
+
         self._lock = threading.Lock()
         self.is_shutting_down = threading.Event()
 
         self.system_metrics_thread = threading.Thread(
-            target=system_monitoring,
-            args=(self.system_monitor, "metrics", 1, self.is_shutting_down),
+            target=periodic_thread,
+            args=(self.system_monitor.log_metrics, 30, self.is_shutting_down),
             daemon=True,
         )
 
         self.output_monitoring_thread = threading.Thread(
-            target=system_monitoring,
-            args=(self.system_monitor, "output", 60, self.is_shutting_down),
+            target=periodic_thread,
+            args=(self.system_monitor.monitor_output, 60,
+                  self.is_shutting_down),
             daemon=True,
         )
 

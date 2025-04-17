@@ -26,7 +26,7 @@ class TaskWorkFinished(TaskEvent):
 
 class TaskOutputStalled(TaskEvent):
     machine_id: uuid.UUID
-    last_modified_file: str
+    last_modified_file_path: str
     last_modified_file_timestamp: datetime.datetime
 
 

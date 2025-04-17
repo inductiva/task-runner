@@ -33,17 +33,18 @@ class SystemMonitor:
 
     def __init__(
         self,
-        logs_dir: str,
         task_id: str,
         task_runner_uuid: UUID,
         event_logger: BaseEventLogger,
     ):
-        self.logs_dir = logs_dir
         self.task_id = task_id
         self.task_runner_uuid = task_runner_uuid
         self.event_logger = event_logger
         self.command = None
         self.metrics = [metric for metric in SystemMetrics]
+
+    def setup_logs(self, logs_dir: str):
+        self.logs_dir = logs_dir
 
         self.metrics_file_path = os.path.join(logs_dir, self.METRICS_FILE_NAME)
         self.metrics_headers = ["time", "command"
@@ -118,6 +119,6 @@ class SystemMonitor:
                     events.TaskOutputStalled(
                         id=self.task_id,
                         machine_id=self.task_runner_uuid,
-                        last_modified_file=os.path.basename(file_path),
+                        last_modified_file_path=os.path.basename(file_path),
                         last_modified_file_timestamp=timestamp,
                     ))
