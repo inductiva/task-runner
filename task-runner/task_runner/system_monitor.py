@@ -67,28 +67,9 @@ class SystemMonitor:
     def _log_row(self, file_path: str, row: List):
         self._write_csv(mode="a", file_path=file_path, row=row)
 
-    def _get_last_data_row(self, file_path: str) -> Optional[List]:
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                rows = list(reader)
-                if len(rows) < 1:
-                    return None
-                return rows[-1]
-        except Exception as e:  # noqa: BLE001
-            logging.error(f"An error occurred: {e}")
-            return None
-
     def _get_last_modified_file(self) -> Tuple[Optional[float], Optional[str]]:
-        last_epoch_timestamp = 0
-        most_recent_file_epoch_timestamp = 0
+        most_recent_file_epoch_timestamp = None
         most_recent_file = None
-
-        last_row = self._get_last_data_row(self.output_monitoring_file_path)
-
-        if last_row:
-            last_epoch_timestamp = datetime.datetime.fromisoformat(
-                last_row[0]).timestamp()
 
         # Walk through the directory recursively
         for root, _, files in os.walk(self.logs_dir):
@@ -101,12 +82,10 @@ class SystemMonitor:
 
                 epoch_timestamp = os.path.getmtime(file_path)
 
-                if epoch_timestamp > most_recent_file_epoch_timestamp:
+                if (not most_recent_file_epoch_timestamp or
+                        epoch_timestamp > most_recent_file_epoch_timestamp):
                     most_recent_file = file_path
                     most_recent_file_epoch_timestamp = epoch_timestamp
-
-        if most_recent_file_epoch_timestamp <= last_epoch_timestamp:
-            return None, None
 
         return most_recent_file_epoch_timestamp, most_recent_file
 
