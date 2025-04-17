@@ -25,6 +25,7 @@ from inductiva_api.task_status import task_status
 import task_runner
 from task_runner import (
     ApiClient,
+    SystemMonitor,
     api_methods_config,
     apptainer_utils,
     executers,
@@ -667,7 +668,12 @@ class TaskRequestHandler:
             self.apptainer_image_path,
             copy.deepcopy(self.mpi_config),
             executers.ExecCommandLogger(
-                self.task_id,
-                self._operations_logger,
+                task_id=self.task_id,
+                operations_logger=self._operations_logger,
+            ),
+            SystemMonitor(
+                task_id=self.task_id,
+                task_runner_uuid=self.task_runner_uuid,
+                event_logger=self.event_logger,
             ),
         )

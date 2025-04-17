@@ -28,6 +28,7 @@ class WebApiLogger(BaseEventLogger):
 
     @override
     def log(self, event: Event):
-        logging.info("Logging event: %s", event)
+        event_name = event.__class__.__name__
+        logging.info("Logging event: %s, %s", event_name, event)
         self._log_event(event)
-        logging.info("Event logged: %s", event)
+        logging.info("Event logged: %s", event_name)
