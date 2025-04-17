@@ -9,7 +9,6 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import namedtuple
-from typing import Literal
 
 import psutil
 from absl import logging
