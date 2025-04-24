@@ -76,8 +76,9 @@ class SystemMonitor:
             for file in files:
                 file_path = os.path.join(root, file)
 
-                # Skip metrics log file
-                if file_path == self.metrics_file_path:
+                # Skip metrics and last modified file log files
+                if file_path in (self.metrics_file_path,
+                                 self.output_monitoring_file_path):
                     continue
 
                 epoch_timestamp = os.path.getmtime(file_path)
