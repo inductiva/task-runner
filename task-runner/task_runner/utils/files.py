@@ -211,9 +211,12 @@ def get_seven_zip_stream_process(
     """
     args = [
         "7zz", "a", "-tzip", "-mx=1", "-mmt=on", "-bso0", "-bsp0", "-so", "-an",
-        local_path
+        "*"
     ]
-    return subprocess.Popen(args, bufsize, stdout=subprocess.PIPE)
+    return subprocess.Popen(args,
+                            bufsize,
+                            cwd=local_path,
+                            stdout=subprocess.PIPE)
 
 
 def get_zip_generator(
@@ -314,13 +317,13 @@ def compress_with_seven_z(
     zip_path = f"/tmp/{archive_name}"
     args = [
         "7zz", "a", "-tzip", f"-mx={compression_level}", "-mmt=on", zip_path,
-        directory_name, "-bso0", "-bsp0"
+        "*", "-bso0", "-bsp0"
     ]
-    subprocess.run(args, check=True)
+    subprocess.run(args, cwd=directory_name, check=True)
     return zip_path
 
 
-def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
+def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to, workdir):
     """
     Extracts everything from the ZIP file, moves the files from the subfolder
     to the target location, and cleans up the rest.
@@ -328,9 +331,10 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
     :param zip_path: Path to the ZIP file.
     :param subfolder: The name of the subfolder to extract.
     :param extract_to: The final directory to move the files to.
+    :param workdir: The working directory
     """
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=workdir) as temp_dir:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
 

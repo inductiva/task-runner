@@ -293,7 +293,7 @@ class TaskRequestHandler:
             )
 
             image_path, download_time, container_source, image_size = (
-                self.apptainer_images_manager.get(image_uri))
+                self.apptainer_images_manager.get(image_uri, self.workdir))
 
             operation.end(attributes={
                 "execution_time_s": download_time,
@@ -429,7 +429,7 @@ class TaskRequestHandler:
         # by the task files
         if self.input_resources:
             download_duration = self.file_manager.download_input_resources(
-                self.input_resources, sim_workdir)
+                self.input_resources, sim_workdir, self.workdir)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
