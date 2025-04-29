@@ -172,7 +172,7 @@ class ApptainerImagesManager:
         Args:
             image_path: The file path within the bucket.
             sif_local_path: Local path where the image will be stored.
-            sim_dir: The working directory
+            workdir: The working directory
 
         Returns:
             True if the image was successfully downloaded; False otherwise.
