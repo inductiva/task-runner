@@ -185,8 +185,7 @@ class TaskRequestHandler:
         self._publish_event(events.TaskOutputUploaded(
             id=self.task_id,
             machine_id=self.task_runner_uuid,
-            new_status=new_task_status,
-            output_size=output_size),
+            new_status=new_task_status),
                             force=force)
         return True
 
