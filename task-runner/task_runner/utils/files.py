@@ -323,7 +323,7 @@ def compress_with_seven_z(
     return zip_path
 
 
-def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
+def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to, workdir):
     """
     Extracts everything from the ZIP file, moves the files from the subfolder
     to the target location, and cleans up the rest.
@@ -331,9 +331,10 @@ def extract_subfolder_and_cleanup(zip_path, subfolder, extract_to):
     :param zip_path: Path to the ZIP file.
     :param subfolder: The name of the subfolder to extract.
     :param extract_to: The final directory to move the files to.
+    :param workdir: The working directory
     """
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(dir=workdir) as temp_dir:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
 

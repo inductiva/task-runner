@@ -165,12 +165,14 @@ class ApptainerImagesManager:
         self,
         image_path: str,
         sif_local_path: str,
+        workdir: str,
     ) -> bool:
         """Downloads a .sif image from a GSB using a signed URL.
 
         Args:
             image_path: The file path within the bucket.
             sif_local_path: Local path where the image will be stored.
+            workdir: The working directory
 
         Returns:
             True if the image was successfully downloaded; False otherwise.
@@ -179,6 +181,7 @@ class ApptainerImagesManager:
             self._file_manager.download_input_resources(
                 [image_path],
                 sif_local_path,
+                workdir,
             )
             return True
         except Exception:  # noqa BLE001
@@ -207,7 +210,11 @@ class ApptainerImagesManager:
         self._apptainer_pull(image_uri, sif_local_path)
         return os.path.exists(sif_local_path)
 
-    def get(self, image: str) -> tuple[str, float, ApptainerImageSource]:
+    def get(
+        self,
+        image: str,
+        workdir: str,
+    ) -> tuple[str, float, ApptainerImageSource]:
         """Fetches the requested Apptainer image and makes it available locally.
 
         If the image is an Inductiva image, it is downloaded via a signed URL.
@@ -216,6 +223,7 @@ class ApptainerImagesManager:
 
         Args:
             image: The image URI or file name.
+            workdir: The working directory.
 
         Returns:
             A tuple containing:
@@ -234,7 +242,7 @@ class ApptainerImagesManager:
             sif_local_path = self._get_local_sif_path(image_path)
             image_source = ApptainerImageSource.USER_STORAGE
             fetch_method = self._download_inductiva_image
-            fetch_args = (image_path, self._local_cache_dir)
+            fetch_args = (image_path, self._local_cache_dir, workdir)
         else:
             image_uri = self._normalize_image_uri(image)
             sif_local_path = os.path.join(
