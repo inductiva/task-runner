@@ -44,6 +44,7 @@ class BaseFileManager(abc.ABC):
         input_resources: list[str],
         dest_path: str,
         task_runner_id: uuid.UUID,
+        workdir: str,
     ):
         pass
 
@@ -146,6 +147,7 @@ class WebApiFileManager(BaseFileManager):
         self,
         input_resources: list[str],
         dest_path: str,
+        workdir: str,
     ):
         files_url = self._api_client.get_download_urls(input_resources)
 
@@ -163,4 +165,5 @@ class WebApiFileManager(BaseFileManager):
                     zip_path=file_path,
                     subfolder="artifacts/",
                     extract_to=extract_to,
+                    workdir=workdir,
                 )
