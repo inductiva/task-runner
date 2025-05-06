@@ -6,6 +6,7 @@ from typing import List, Literal, Optional, Tuple
 from uuid import UUID
 
 import psutil
+from absl import logging
 from inductiva_api import events
 
 from task_runner import BaseEventLogger, utils
@@ -79,6 +80,12 @@ class SystemMonitor:
                 # Skip metrics and last modified file log files
                 if file_path in (self.metrics_file_path,
                                  self.output_monitoring_file_path):
+                    continue
+
+                logging.info("Checking file %s", file_path)
+
+                # Skip files that do not exist
+                if not os.path.exists(file_path):
                     continue
 
                 epoch_timestamp = os.path.getmtime(file_path)
