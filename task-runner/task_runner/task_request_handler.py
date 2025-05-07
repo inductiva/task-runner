@@ -181,12 +181,11 @@ class TaskRequestHandler:
         self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
 
     def save_output(self, new_task_status=None, force=False):
-        output_size = self._pack_output()
+        _ = self._pack_output()
         self._publish_event(events.TaskOutputUploaded(
             id=self.task_id,
             machine_id=self.task_runner_uuid,
-            new_status=new_task_status,
-            output_size=output_size),
+            new_status=new_task_status),
                             force=force)
         return True
 
