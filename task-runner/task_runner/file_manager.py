@@ -1,12 +1,13 @@
 import abc
 import os
 import pathlib
-import time
 import urllib
 import urllib.request
 import uuid
 
 import requests
+import requests.adapters
+import urllib3
 from typing_extensions import override
 
 import task_runner
@@ -78,6 +79,37 @@ class WebApiFileManager(BaseFileManager):
         url = self._api_client.get_download_input_url(storage_dir)
         urllib.request.urlretrieve(url, dest_path)
 
+    @staticmethod
+    @utils.execution_time_with_result
+    def upload(method: str, url: str, data) -> requests.Response:
+        retry = urllib3.Retry(
+            total=None,  # no limit on retry count
+            backoff_factor=2,  # exponential backoff factor
+            status_forcelist=[
+                403,  # Forbidden
+                408,  # Request Timeout
+                429,  # Too Many Requests
+                500,  # Internal Server Error
+                502,  # Bad Gateway
+                503,  # Service Unavailable
+                504,  # Gateway Timeout
+            ],  # the HTTP status codes to retry on
+        )
+
+        adapter = requests.adapters.HTTPAdapter(max_retries=retry)
+
+        session = requests.Session()
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+
+        return session.request(
+            method=method,
+            url=url,
+            data=data,
+            timeout=WebApiFileManager.REQUEST_TIMEOUT_S,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+
     @override
     def upload_output(
         self,
@@ -112,17 +144,8 @@ class WebApiFileManager(BaseFileManager):
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
-        start_time = time.time()
-        resp = requests.request(
-            method=upload_info.method,
-            url=upload_info.url,
-            data=data,
-            timeout=self.REQUEST_TIMEOUT_S,
-            headers={
-                "Content-Type": "application/octet-stream",
-            },
-        )
-        upload_time = time.time() - start_time
+        resp, upload_time = WebApiFileManager.upload(upload_info.method,
+                                                     upload_info.url, data)
         resp.raise_for_status()
 
         operation.end(attributes={"execution_time_s": upload_time})
