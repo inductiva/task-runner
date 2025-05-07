@@ -1,6 +1,7 @@
 import abc
 import os
 import pathlib
+import typing
 import urllib
 import urllib.request
 import uuid
@@ -46,6 +47,54 @@ class BaseFileManager(abc.ABC):
         dest_path: str,
         task_runner_id: uuid.UUID,
         workdir: str,
+    ):
+        pass
+
+
+class Retry(urllib3.Retry):
+    """
+    Custom `Retry` class that extends `urllib3.Retry` with additional 
+    retry-handling behavior.
+
+    This subclass overrides the `increment` method to inject custom logic on 
+    each retry attempt by calling a dedicated `_handle_retry` method.
+    This hook can be used to perform side effects (e.g., logging or sending
+    notifications) before the next retry is attempted.
+    """
+    
+    def __init__(
+        self,
+        total: bool | int | None,
+        status_forcelist: typing.Collection[int] | None,
+        backoff_factor: float,
+    ) -> None:
+        super().__init__(
+            total=total,
+            status_forcelist=status_forcelist,
+            backoff_factor=backoff_factor,
+        )
+
+    def increment(
+        self,
+        method: str | None = None,
+        url: str | None = None,
+        response: urllib3.BaseHTTPResponse | None = None,
+        error: Exception | None = None,
+        _pool: urllib3.connectionpool.ConnectionPool | None = None,
+        _stacktrace: typing.TracebackType | None = None,
+    ) -> typing.Self:
+        self._handle_retry(method, url, response, error, _pool, _stacktrace)
+        new = super().increment(method, url, response, error, _pool,_stacktrace)
+        return new
+
+    def _handle_retry(
+        self,
+        method: str | None = None,
+        url: str | None = None,
+        response: urllib3.BaseHTTPResponse | None = None,
+        error: Exception | None = None,
+        _pool: urllib3.connectionpool.ConnectionPool | None = None,
+        _stacktrace: typing.TracebackType | None = None,
     ):
         pass
 
