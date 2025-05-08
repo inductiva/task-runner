@@ -1,6 +1,7 @@
 import abc
 import os
 import pathlib
+import traceback
 import typing
 import urllib
 import urllib.request
@@ -9,6 +10,7 @@ import uuid
 import requests
 import requests.adapters
 import urllib3
+from inductiva_api import events
 from typing_extensions import override
 
 import task_runner
@@ -34,6 +36,7 @@ class BaseFileManager(abc.ABC):
         task_id: str,
         task_dir_remote: str,
         local_path: str,
+        task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
         event_logger: task_runner.BaseEventLogger,
         stream_zip: bool = True,
@@ -68,6 +71,8 @@ class Retry(urllib3.Retry):
         total: bool | int | None,
         status_forcelist: typing.Collection[int] | None,
         backoff_factor: float,
+        task_id: str,
+        task_runner_uuid: uuid.UUID,
         event_logger: task_runner.BaseEventLogger,
     ) -> None:
         super().__init__(
@@ -75,6 +80,8 @@ class Retry(urllib3.Retry):
             status_forcelist=status_forcelist,
             backoff_factor=backoff_factor,
         )
+        self.task_id = task_id
+        self.task_runner_uuid = self.task_runner_uuid
         self.event_logger = event_logger
 
     def increment(
@@ -99,7 +106,14 @@ class Retry(urllib3.Retry):
         pool: urllib3.connectionpool.ConnectionPool | None = None,
         stacktrace: typing.TracebackType | None = None,
     ):
-        pass
+        message = utils.get_exception_root_cause_message(error)
+        self.event_logger.log(
+            events.TaskOutputUploadFailed(
+                id=self.task_id,
+                machine_id=self.task_runner_uuid,
+                error_message=message,
+                traceback=traceback.format_exc(),
+            ))
 
 
 class WebApiFileManager(BaseFileManager):
@@ -133,7 +147,8 @@ class WebApiFileManager(BaseFileManager):
 
     @staticmethod
     @utils.execution_time_with_result
-    def upload(method: str, url: str, data,
+    def upload(method: str, url: str, data, task_id: str,
+               task_runner_uuid: uuid.UUID,
                event_logger: task_runner.BaseEventLogger) -> requests.Response:
         retry = Retry(
             total=None,  # no limit on retry count
@@ -147,6 +162,8 @@ class WebApiFileManager(BaseFileManager):
                 503,  # Service Unavailable
                 504,  # Gateway Timeout
             ],  # the HTTP status codes to retry on
+            task_id=task_id,
+            task_runner_uuid=task_runner_uuid,
             event_logger=event_logger,
         )
 
@@ -170,6 +187,7 @@ class WebApiFileManager(BaseFileManager):
         task_id: str,
         task_dir_remote: str,
         local_path: str,
+        task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
         event_logger: task_runner.BaseEventLogger,
         stream_zip: bool = True,
@@ -203,6 +221,8 @@ class WebApiFileManager(BaseFileManager):
             method=upload_info.method,
             url=upload_info.url,
             data=data,
+            task_id=task_id,
+            task_runner_uuid=task_runner_uuid,
             event_logger=event_logger,
         )
         resp.raise_for_status()

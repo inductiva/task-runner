@@ -591,6 +591,7 @@ class TaskRequestHandler:
                 compress_with=self.compress_with,
                 operations_logger=self._operations_logger,
                 event_logger=self.event_logger,
+                task_runner_uuid=self.task_runner_uuid,
             )
 
         logging.info("Output zipped in: %s seconds", zip_duration)
