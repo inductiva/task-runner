@@ -393,7 +393,7 @@ class TaskRequestHandler:
                 self._publish_event(
                     events.TaskOutputUploadFailed(
                         id=self.task_id,
-                        machine_id=self.executer_uuid,
+                        machine_id=self.task_runner_uuid,
                         error_message=message,
                         traceback=traceback.format_exc(),
                     ))
