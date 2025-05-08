@@ -81,6 +81,10 @@ class SystemMonitor:
                                  self.output_monitoring_file_path):
                     continue
 
+                # Skip files that do not exist
+                if not os.path.exists(file_path):
+                    continue
+
                 epoch_timestamp = os.path.getmtime(file_path)
 
                 if (not most_recent_file_epoch_timestamp or

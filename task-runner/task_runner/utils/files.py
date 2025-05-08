@@ -211,9 +211,12 @@ def get_seven_zip_stream_process(
     """
     args = [
         "7zz", "a", "-tzip", "-mx=1", "-mmt=on", "-bso0", "-bsp0", "-so", "-an",
-        local_path
+        "*"
     ]
-    return subprocess.Popen(args, bufsize, stdout=subprocess.PIPE)
+    return subprocess.Popen(args,
+                            bufsize,
+                            cwd=local_path,
+                            stdout=subprocess.PIPE)
 
 
 def get_zip_generator(
@@ -314,9 +317,9 @@ def compress_with_seven_z(
     zip_path = f"/tmp/{archive_name}"
     args = [
         "7zz", "a", "-tzip", f"-mx={compression_level}", "-mmt=on", zip_path,
-        directory_name, "-bso0", "-bsp0"
+        "*", "-bso0", "-bsp0"
     ]
-    subprocess.run(args, check=True)
+    subprocess.run(args, cwd=directory_name, check=True)
     return zip_path
 
 
