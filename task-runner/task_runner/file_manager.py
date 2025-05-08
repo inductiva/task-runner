@@ -35,6 +35,7 @@ class BaseFileManager(abc.ABC):
         task_dir_remote: str,
         local_path: str,
         operations_logger: OperationsLogger,
+        event_logger: task_runner.BaseEventLogger,
         stream_zip: bool = True,
         compress_with: str = "AUTO",
     ):
@@ -61,18 +62,20 @@ class Retry(urllib3.Retry):
     This hook can be used to perform side effects (e.g., logging or sending
     notifications) before the next retry is attempted.
     """
-    
+
     def __init__(
         self,
         total: bool | int | None,
         status_forcelist: typing.Collection[int] | None,
         backoff_factor: float,
+        event_logger: task_runner.BaseEventLogger,
     ) -> None:
         super().__init__(
             total=total,
             status_forcelist=status_forcelist,
             backoff_factor=backoff_factor,
         )
+        self.event_logger = event_logger
 
     def increment(
         self,
@@ -80,11 +83,11 @@ class Retry(urllib3.Retry):
         url: str | None = None,
         response: urllib3.BaseHTTPResponse | None = None,
         error: Exception | None = None,
-        _pool: urllib3.connectionpool.ConnectionPool | None = None,
-        _stacktrace: typing.TracebackType | None = None,
+        pool: urllib3.connectionpool.ConnectionPool | None = None,
+        stacktrace: typing.TracebackType | None = None,
     ) -> typing.Self:
-        self._handle_retry(method, url, response, error, _pool, _stacktrace)
-        new = super().increment(method, url, response, error, _pool,_stacktrace)
+        self._handle_retry(method, url, response, error, pool, stacktrace)
+        new = super().increment(method, url, response, error, pool, stacktrace)
         return new
 
     def _handle_retry(
@@ -93,8 +96,8 @@ class Retry(urllib3.Retry):
         url: str | None = None,
         response: urllib3.BaseHTTPResponse | None = None,
         error: Exception | None = None,
-        _pool: urllib3.connectionpool.ConnectionPool | None = None,
-        _stacktrace: typing.TracebackType | None = None,
+        pool: urllib3.connectionpool.ConnectionPool | None = None,
+        stacktrace: typing.TracebackType | None = None,
     ):
         pass
 
@@ -130,8 +133,9 @@ class WebApiFileManager(BaseFileManager):
 
     @staticmethod
     @utils.execution_time_with_result
-    def upload(method: str, url: str, data) -> requests.Response:
-        retry = urllib3.Retry(
+    def upload(method: str, url: str, data,
+               event_logger: task_runner.BaseEventLogger) -> requests.Response:
+        retry = Retry(
             total=None,  # no limit on retry count
             backoff_factor=2,  # exponential backoff factor
             status_forcelist=[
@@ -143,6 +147,7 @@ class WebApiFileManager(BaseFileManager):
                 503,  # Service Unavailable
                 504,  # Gateway Timeout
             ],  # the HTTP status codes to retry on
+            event_logger=event_logger,
         )
 
         adapter = requests.adapters.HTTPAdapter(max_retries=retry)
@@ -166,6 +171,7 @@ class WebApiFileManager(BaseFileManager):
         task_dir_remote: str,
         local_path: str,
         operations_logger: OperationsLogger,
+        event_logger: task_runner.BaseEventLogger,
         stream_zip: bool = True,
         compress_with: str = "AUTO",
     ):
@@ -193,8 +199,12 @@ class WebApiFileManager(BaseFileManager):
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
-        resp, upload_time = WebApiFileManager.upload(upload_info.method,
-                                                     upload_info.url, data)
+        resp, upload_time = WebApiFileManager.upload(
+            method=upload_info.method,
+            url=upload_info.url,
+            data=data,
+            event_logger=event_logger,
+        )
         resp.raise_for_status()
 
         operation.end(attributes={"execution_time_s": upload_time})
