@@ -84,9 +84,7 @@ class ObserverManager:
     def run(self, sim_dir, task_id):
         """The main loop for checking observers."""
 
-        logging.info("Starting observer manager loop")
         while not self._stop_event.is_set():
-            logging.info("Checking observers")
             observers_to_check = self._observers.copy()
             for observer_id, observer in observers_to_check.items():
                 observer_type = observer.observer_type
