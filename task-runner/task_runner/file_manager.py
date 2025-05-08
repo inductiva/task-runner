@@ -81,7 +81,7 @@ class Retry(urllib3.Retry):
             backoff_factor=backoff_factor,
         )
         self.task_id = task_id
-        self.task_runner_uuid = self.task_runner_uuid
+        self.task_runner_uuid = task_runner_uuid
         self.event_logger = event_logger
 
     def increment(
