@@ -18,7 +18,6 @@ import traceback
 from typing import Optional
 from uuid import UUID
 
-import observers
 from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import task_status
@@ -30,6 +29,7 @@ from task_runner import (
     api_methods_config,
     apptainer_utils,
     executers,
+    observers,
     task_message_listener,
     utils,
 )
