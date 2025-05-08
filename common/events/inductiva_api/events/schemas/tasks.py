@@ -54,3 +54,7 @@ class TaskExecutionFailed(TaskEvent):
     error_message: str
     machine_id: uuid.UUID
     traceback: Optional[str] = None
+
+
+class ObserverTriggered(TaskEvent):
+    observer_id: str
