@@ -2,6 +2,7 @@ import abc
 import os
 import pathlib
 import traceback
+import types
 import typing
 import urllib
 import urllib.request
@@ -91,7 +92,7 @@ class Retry(urllib3.Retry):
         response: urllib3.BaseHTTPResponse | None = None,
         error: Exception | None = None,
         pool: urllib3.connectionpool.ConnectionPool | None = None,
-        stacktrace: typing.TracebackType | None = None,
+        stacktrace: types.TracebackType | None = None,
     ) -> typing.Self:
         self._handle_retry(method, url, response, error, pool, stacktrace)
         new = super().increment(method, url, response, error, pool, stacktrace)
@@ -104,7 +105,7 @@ class Retry(urllib3.Retry):
         response: urllib3.BaseHTTPResponse | None = None,
         error: Exception | None = None,
         pool: urllib3.connectionpool.ConnectionPool | None = None,
-        stacktrace: typing.TracebackType | None = None,
+        stacktrace: types.TracebackType | None = None,
     ):
         message = utils.get_exception_root_cause_message(error)
         self.event_logger.log(
