@@ -115,7 +115,6 @@ class WebApiFileManager(BaseFileManager):
 
         return fail_upload_hook
 
-
     @staticmethod
     @utils.execution_time_with_result
     def retry_upload(
