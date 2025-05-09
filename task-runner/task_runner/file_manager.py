@@ -131,7 +131,7 @@ class WebApiFileManager(BaseFileManager):
 
     @staticmethod
     @utils.execution_time_with_result
-    async def retry_upload(
+    def retry_upload(
             method: str, url: str, data, task_id: str,
             task_runner_uuid: uuid.UUID,
             event_logger: task_runner.BaseEventLogger) -> requests.Response:
