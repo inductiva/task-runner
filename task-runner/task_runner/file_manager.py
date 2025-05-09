@@ -186,7 +186,7 @@ class WebApiFileManager(BaseFileManager):
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
-        resp, upload_time = WebApiFileManager.upload(
+        resp, upload_time = WebApiFileManager.retry_upload(
             method=upload_info.method,
             url=upload_info.url,
             data=data,
