@@ -64,7 +64,7 @@ class WebApiFileManager(BaseFileManager):
         502,  # Bad Gateway
         503,  # Service Unavailable
         504,  # Gateway Timeout
-    ],  # the HTTP status codes to retry on
+    ]  # the HTTP status codes to retry on
 
     def __init__(
         self,
@@ -94,13 +94,15 @@ class WebApiFileManager(BaseFileManager):
 
     @staticmethod
     def upload(method: str, url: str, data) -> requests.Response:
-        return requests.request(
+        response = requests.request(
             method=method,
             url=url,
             data=data,
             timeout=WebApiFileManager.REQUEST_TIMEOUT_S,
             headers={"Content-Type": "application/octet-stream"},
         )
+        response.raise_for_status()
+        return response
 
     @staticmethod
     def make_fail_upload_hook(task_id: str, task_runner_uuid: uuid.UUID,
@@ -125,7 +127,7 @@ class WebApiFileManager(BaseFileManager):
 
     @staticmethod
     def is_retryable_http_error(exception: Exception) -> bool:
-        return (isinstance(exception, requests.HTTPError) and
+        return (isinstance(exception, requests.exceptions.HTTPError) and
                 exception.response.status_code
                 in WebApiFileManager.DEFAULT_RETRYABLE_HTTP_STATUSES)
 
@@ -137,7 +139,7 @@ class WebApiFileManager(BaseFileManager):
             event_logger: task_runner.BaseEventLogger) -> requests.Response:
         for attempt in tenacity.Retrying(
                 stop=tenacity.stop_never,
-                wait=tenacity.wait_exponential(multiplier=1, exponent=2),
+                wait=tenacity.wait_exponential(),
                 retry=tenacity.retry_if_exception(
                     WebApiFileManager.is_retryable_http_error),
                 before_sleep=WebApiFileManager.make_fail_upload_hook(
@@ -194,7 +196,6 @@ class WebApiFileManager(BaseFileManager):
             task_runner_uuid=task_runner_uuid,
             event_logger=event_logger,
         )
-        resp.raise_for_status()
 
         operation.end(attributes={"execution_time_s": upload_time})
 
