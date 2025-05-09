@@ -1,7 +1,6 @@
 import os
 import re
 import threading
-import time
 from enum import Enum
 from typing import Dict, Union
 
@@ -107,7 +106,7 @@ class ObserverManager:
                             events.ObserverTriggered(id=task_id,
                                                      observer_id=observer_id))
 
-            time.sleep(self._check_interval_seconds)
+            self._stop_event.wait(self._check_interval_seconds)
 
     def stop(self):
         self._stop_event.set()
