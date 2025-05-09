@@ -56,16 +56,6 @@ class BaseFileManager(abc.ABC):
 class WebApiFileManager(BaseFileManager):
     REQUEST_TIMEOUT_S = 60
 
-    DEFAULT_RETRYABLE_HTTP_STATUSES = [
-        403,  # Forbidden
-        408,  # Request Timeout
-        429,  # Too Many Requests
-        500,  # Internal Server Error
-        502,  # Bad Gateway
-        503,  # Service Unavailable
-        504,  # Gateway Timeout
-    ]  # the HTTP status codes to retry on
-
     def __init__(
         self,
         api_client: task_runner.ApiClient,
@@ -125,11 +115,6 @@ class WebApiFileManager(BaseFileManager):
 
         return fail_upload_hook
 
-    @staticmethod
-    def is_retryable_http_error(exception: Exception) -> bool:
-        return (isinstance(exception, requests.exceptions.HTTPError) and
-                exception.response.status_code
-                in WebApiFileManager.DEFAULT_RETRYABLE_HTTP_STATUSES)
 
     @staticmethod
     @utils.execution_time_with_result
@@ -140,8 +125,6 @@ class WebApiFileManager(BaseFileManager):
         for attempt in tenacity.Retrying(
                 stop=tenacity.stop_never,
                 wait=tenacity.wait_exponential(),
-                retry=tenacity.retry_if_exception(
-                    WebApiFileManager.is_retryable_http_error),
                 before_sleep=WebApiFileManager.make_fail_upload_hook(
                     task_id=task_id,
                     task_runner_uuid=task_runner_uuid,
