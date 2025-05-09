@@ -2,15 +2,12 @@ import abc
 import os
 import pathlib
 import traceback
-import types
-import typing
 import urllib
 import urllib.request
 import uuid
 
 import requests
-import requests.adapters
-import urllib3
+import tenacity
 from inductiva_api import events
 from typing_extensions import override
 
@@ -56,69 +53,18 @@ class BaseFileManager(abc.ABC):
         pass
 
 
-class Retry(urllib3.Retry):
-    """
-    Custom `Retry` class that extends `urllib3.Retry` with additional 
-    retry-handling behavior.
-
-    This subclass overrides the `increment` method to inject custom logic on 
-    each retry attempt by calling a dedicated `_handle_retry` method.
-    This hook can be used to perform side effects (e.g., logging or sending
-    notifications) before the next retry is attempted.
-    """
-
-    def __init__(
-        self,
-        total: bool | int | None,
-        status_forcelist: typing.Collection[int] | None,
-        backoff_factor: float,
-        task_id: str,
-        task_runner_uuid: uuid.UUID,
-        event_logger: task_runner.BaseEventLogger,
-    ) -> None:
-        super().__init__(
-            total=total,
-            status_forcelist=status_forcelist,
-            backoff_factor=backoff_factor,
-        )
-        self.task_id = task_id
-        self.task_runner_uuid = task_runner_uuid
-        self.event_logger = event_logger
-
-    def increment(
-        self,
-        method: str | None = None,
-        url: str | None = None,
-        response: urllib3.BaseHTTPResponse | None = None,
-        error: Exception | None = None,
-        pool: urllib3.connectionpool.ConnectionPool | None = None,
-        stacktrace: types.TracebackType | None = None,
-    ) -> typing.Self:
-        self._handle_retry(method, url, response, error, pool, stacktrace)
-        new = super().increment(method, url, response, error, pool, stacktrace)
-        return new
-
-    def _handle_retry(
-        self,
-        method: str | None = None,
-        url: str | None = None,
-        response: urllib3.BaseHTTPResponse | None = None,
-        error: Exception | None = None,
-        pool: urllib3.connectionpool.ConnectionPool | None = None,
-        stacktrace: types.TracebackType | None = None,
-    ):
-        message = utils.get_exception_root_cause_message(error)
-        self.event_logger.log(
-            events.TaskOutputUploadFailed(
-                id=self.task_id,
-                machine_id=self.task_runner_uuid,
-                error_message=message,
-                traceback=traceback.format_exc(),
-            ))
-
-
 class WebApiFileManager(BaseFileManager):
     REQUEST_TIMEOUT_S = 60
+
+    DEFAULT_RETRYABLE_HTTP_STATUSES = [
+        403,  # Forbidden
+        408,  # Request Timeout
+        429,  # Too Many Requests
+        500,  # Internal Server Error
+        502,  # Bad Gateway
+        503,  # Service Unavailable
+        504,  # Gateway Timeout
+    ],  # the HTTP status codes to retry on
 
     def __init__(
         self,
@@ -147,40 +93,62 @@ class WebApiFileManager(BaseFileManager):
         urllib.request.urlretrieve(url, dest_path)
 
     @staticmethod
-    @utils.execution_time_with_result
-    def upload(method: str, url: str, data, task_id: str,
-               task_runner_uuid: uuid.UUID,
-               event_logger: task_runner.BaseEventLogger) -> requests.Response:
-        retry = Retry(
-            total=None,  # no limit on retry count
-            backoff_factor=2,  # exponential backoff factor
-            status_forcelist=[
-                403,  # Forbidden
-                408,  # Request Timeout
-                429,  # Too Many Requests
-                500,  # Internal Server Error
-                502,  # Bad Gateway
-                503,  # Service Unavailable
-                504,  # Gateway Timeout
-            ],  # the HTTP status codes to retry on
-            task_id=task_id,
-            task_runner_uuid=task_runner_uuid,
-            event_logger=event_logger,
-        )
-
-        adapter = requests.adapters.HTTPAdapter(max_retries=retry)
-
-        session = requests.Session()
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-
-        return session.request(
+    def upload(method: str, url: str, data) -> requests.Response:
+        return requests.request(
             method=method,
             url=url,
             data=data,
             timeout=WebApiFileManager.REQUEST_TIMEOUT_S,
             headers={"Content-Type": "application/octet-stream"},
         )
+
+    @staticmethod
+    def make_fail_upload_hook(task_id: str, task_runner_uuid: uuid.UUID,
+                              event_logger: task_runner.BaseEventLogger):
+
+        def fail_upload_hook(retry_state: tenacity.RetryCallState):
+            error = retry_state.outcome.exception()
+            if error is None:
+                return
+
+            message = utils.get_exception_root_cause_message(error)
+
+            event_logger.log(
+                events.TaskOutputUploadFailed(
+                    id=task_id,
+                    machine_id=task_runner_uuid,
+                    error_message=message,
+                    traceback=traceback.format_exc(),
+                ))
+
+        return fail_upload_hook
+
+    @staticmethod
+    def is_retryable_http_error(exception: Exception) -> bool:
+        return (isinstance(exception, requests.HTTPError) and
+                exception.response.status_code
+                in WebApiFileManager.DEFAULT_RETRYABLE_HTTP_STATUSES)
+
+    @staticmethod
+    @utils.execution_time_with_result
+    async def retry_upload(
+            method: str, url: str, data, task_id: str,
+            task_runner_uuid: uuid.UUID,
+            event_logger: task_runner.BaseEventLogger) -> requests.Response:
+        for attempt in tenacity.Retrying(
+                stop=tenacity.stop_never,
+                wait=tenacity.wait_exponential(multiplier=1, exponent=2),
+                retry=tenacity.retry_if_exception(
+                    WebApiFileManager.is_retryable_http_error),
+                before_sleep=WebApiFileManager.make_fail_upload_hook(
+                    task_id=task_id,
+                    task_runner_uuid=task_runner_uuid,
+                    event_logger=event_logger,
+                ),
+                reraise=True,
+        ):
+            with attempt:
+                return WebApiFileManager.upload(method, url, data)
 
     @override
     def upload_output(
