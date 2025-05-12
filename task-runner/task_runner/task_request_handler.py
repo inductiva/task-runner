@@ -80,7 +80,8 @@ def task_message_listener_loop(
         # Must be a observer message
         else:
             try:
-                observation_task = observers.Observer.parse_obj(message)
+                observation_task = observers.Observer.parse_obj(
+                    json.loads(message))
                 observer_manager.start_observing(observation_task)
             except Exception:  # noqa: BLE001
                 logging.error("Could not parse message: %s", message)
