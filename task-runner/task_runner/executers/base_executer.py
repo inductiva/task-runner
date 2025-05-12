@@ -3,6 +3,7 @@
 Check the `BaseExecuter` docstring for more information on the class and
 its usage.
 """
+import getpass
 import json
 import os
 import threading
@@ -112,6 +113,9 @@ class BaseExecuter(ABC):
                   self.is_shutting_down),
             daemon=True,
         )
+
+        self.commands_user = os.environ.get("COMMANDS_USER")
+        self.username = getpass.getuser()
 
         self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
@@ -249,6 +253,19 @@ class BaseExecuter(ABC):
             if working_dir:
                 process_working_dir_container = os.path.join(
                     process_working_dir_container, working_dir)
+
+            user_args = []
+            if self.commands_user is not None:
+                user_args = [
+                    "sudo",
+                    "-u",
+                    self.commands_user,
+                ]
+
+                os.system(
+                    f"sudo chown -R {self.commands_user}:{self.commands_user}"
+                    f" {task_working_dir_host}")
+
             apptainer_args = [
                 "apptainer",
                 "exec",
@@ -265,7 +282,9 @@ class BaseExecuter(ABC):
                 apptainer_args.append("--nv")
             apptainer_args.append(self.container_image)
 
-            apptainer_command_args = [*args, *apptainer_args, *cmd.args]
+            apptainer_command_args = [
+                *user_args, *args, *apptainer_args, *cmd.args
+            ]
             command_args = [*args, *cmd.args]
 
             self.subprocess = executers.SubprocessTracker(
@@ -283,6 +302,10 @@ class BaseExecuter(ABC):
             self.subprocess.run()
             exit_code = self.subprocess.wait()
             execution_time = time.perf_counter() - start
+
+            if self.commands_user is not None:
+                os.system(f"sudo chown -R {self.username}:{self.username} "
+                          f"{task_working_dir_host}")
 
             self.exec_command_logger.log_command_finished(
                 exit_code=exit_code,
