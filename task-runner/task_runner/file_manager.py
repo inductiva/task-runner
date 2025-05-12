@@ -123,7 +123,7 @@ class WebApiFileManager(BaseFileManager):
             event_logger: task_runner.BaseEventLogger) -> requests.Response:
         for attempt in tenacity.Retrying(
                 stop=tenacity.stop_after_attempt(5),
-                wait=tenacity.wait_exponential(),
+                wait=tenacity.wait_exponential(multiplier=10),
                 before_sleep=WebApiFileManager.make_fail_upload_hook(
                     task_id=task_id,
                     task_runner_uuid=task_runner_uuid,
