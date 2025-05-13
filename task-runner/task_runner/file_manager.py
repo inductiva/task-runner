@@ -1,12 +1,14 @@
 import abc
 import os
 import pathlib
-import time
+import traceback
 import urllib
 import urllib.request
 import uuid
 
 import requests
+import tenacity
+from inductiva_api import events
 from typing_extensions import override
 
 import task_runner
@@ -32,7 +34,9 @@ class BaseFileManager(abc.ABC):
         task_id: str,
         task_dir_remote: str,
         local_path: str,
+        task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
+        event_logger: task_runner.BaseEventLogger,
         stream_zip: bool = True,
         compress_with: str = "AUTO",
     ):
@@ -44,6 +48,7 @@ class BaseFileManager(abc.ABC):
         input_resources: list[str],
         dest_path: str,
         task_runner_id: uuid.UUID,
+        workdir: str,
     ):
         pass
 
@@ -77,13 +82,67 @@ class WebApiFileManager(BaseFileManager):
         url = self._api_client.get_download_input_url(storage_dir)
         urllib.request.urlretrieve(url, dest_path)
 
+    @staticmethod
+    def upload(method: str, url: str, data) -> requests.Response:
+        response = requests.request(
+            method=method,
+            url=url,
+            data=data,
+            timeout=WebApiFileManager.REQUEST_TIMEOUT_S,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        response.raise_for_status()
+        return response
+
+    @staticmethod
+    def make_fail_upload_hook(task_id: str, task_runner_uuid: uuid.UUID,
+                              event_logger: task_runner.BaseEventLogger):
+
+        def fail_upload_hook(retry_state: tenacity.RetryCallState):
+            error = retry_state.outcome.exception()
+            if error is None:
+                return
+
+            message = utils.get_exception_root_cause_message(error)
+
+            event_logger.log(
+                events.TaskOutputUploadFailed(
+                    id=task_id,
+                    machine_id=task_runner_uuid,
+                    error_message=message,
+                    traceback=traceback.format_exc(),
+                ))
+
+        return fail_upload_hook
+
+    @staticmethod
+    @utils.execution_time_with_result
+    def retry_upload(
+            method: str, url: str, data, task_id: str,
+            task_runner_uuid: uuid.UUID,
+            event_logger: task_runner.BaseEventLogger) -> requests.Response:
+        for attempt in tenacity.Retrying(
+                stop=tenacity.stop_after_attempt(5),
+                wait=tenacity.wait_exponential(multiplier=10),
+                before_sleep=WebApiFileManager.make_fail_upload_hook(
+                    task_id=task_id,
+                    task_runner_uuid=task_runner_uuid,
+                    event_logger=event_logger,
+                ),
+                reraise=True,
+        ):
+            with attempt:
+                return WebApiFileManager.upload(method, url, data)
+
     @override
     def upload_output(
         self,
         task_id: str,
         task_dir_remote: str,
         local_path: str,
+        task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
+        event_logger: task_runner.BaseEventLogger,
         stream_zip: bool = True,
         compress_with: str = "AUTO",
     ):
@@ -111,18 +170,14 @@ class WebApiFileManager(BaseFileManager):
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
-        start_time = time.time()
-        resp = requests.request(
+        resp, upload_time = WebApiFileManager.retry_upload(
             method=upload_info.method,
             url=upload_info.url,
             data=data,
-            timeout=self.REQUEST_TIMEOUT_S,
-            headers={
-                "Content-Type": "application/octet-stream",
-            },
+            task_id=task_id,
+            task_runner_uuid=task_runner_uuid,
+            event_logger=event_logger,
         )
-        upload_time = time.time() - start_time
-        resp.raise_for_status()
 
         operation.end(attributes={"execution_time_s": upload_time})
 
@@ -146,6 +201,7 @@ class WebApiFileManager(BaseFileManager):
         self,
         input_resources: list[str],
         dest_path: str,
+        workdir: str,
     ):
         files_url = self._api_client.get_download_urls(input_resources)
 
@@ -163,4 +219,5 @@ class WebApiFileManager(BaseFileManager):
                     zip_path=file_path,
                     subfolder="artifacts/",
                     extract_to=extract_to,
+                    workdir=workdir,
                 )

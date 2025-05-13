@@ -25,6 +25,7 @@ from inductiva_api.task_status import task_status
 import task_runner
 from task_runner import (
     ApiClient,
+    SystemMonitor,
     api_methods_config,
     apptainer_utils,
     executers,
@@ -180,12 +181,11 @@ class TaskRequestHandler:
         self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
 
     def save_output(self, new_task_status=None, force=False):
-        output_size = self._pack_output()
+        _ = self._pack_output()
         self._publish_event(events.TaskOutputUploaded(
             id=self.task_id,
             machine_id=self.task_runner_uuid,
-            new_status=new_task_status,
-            output_size=output_size),
+            new_status=new_task_status),
                             force=force)
         return True
 
@@ -292,7 +292,7 @@ class TaskRequestHandler:
             )
 
             image_path, download_time, container_source, image_size = (
-                self.apptainer_images_manager.get(image_uri))
+                self.apptainer_images_manager.get(image_uri, self.workdir))
 
             operation.end(attributes={
                 "execution_time_s": download_time,
@@ -393,7 +393,7 @@ class TaskRequestHandler:
                 self._publish_event(
                     events.TaskOutputUploadFailed(
                         id=self.task_id,
-                        machine_id=self.executer_uuid,
+                        machine_id=self.task_runner_uuid,
                         error_message=message,
                         traceback=traceback.format_exc(),
                     ))
@@ -428,7 +428,7 @@ class TaskRequestHandler:
         # by the task files
         if self.input_resources:
             download_duration = self.file_manager.download_input_resources(
-                self.input_resources, sim_workdir)
+                self.input_resources, sim_workdir, self.workdir)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -582,7 +582,7 @@ class TaskRequestHandler:
         if output_total_files is not None:
             self._post_task_metric(utils.OUTPUT_TOTAL_FILES, output_total_files)
 
-        output_zipped_bytes, zip_duration, upload_duration = (
+        output_zipped_bytes, zip_duration, upload_duration = \
             self.file_manager.upload_output(
                 self.task_id,
                 self.task_dir_remote,
@@ -590,7 +590,9 @@ class TaskRequestHandler:
                 stream_zip=self.stream_zip,
                 compress_with=self.compress_with,
                 operations_logger=self._operations_logger,
-            ))
+                event_logger=self.event_logger,
+                task_runner_uuid=self.task_runner_uuid,
+            )
 
         logging.info("Output zipped in: %s seconds", zip_duration)
 
@@ -671,6 +673,11 @@ class TaskRequestHandler:
             exec_command_logger=executers.ExecCommandLogger(
                 self.task_id,
                 self._operations_logger,
+            ),
+            system_monitor=SystemMonitor(
+                task_id=self.task_id,
+                task_runner_uuid=self.task_runner_uuid,
+                event_logger=self.event_logger,
             ),
             extra_params=extra_params,
         )

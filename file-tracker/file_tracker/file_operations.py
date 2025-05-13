@@ -70,6 +70,10 @@ class Top(Operation):
         return result.stdout
 
 
+LAST_MODIFIED_FILE_PATH_SUFFIX = "output/artifacts/output_update.csv"
+METRICS_FILE_PATH_SUFFIX = "output/artifacts/system_metrics.csv"
+
+
 class LastModifiedFile(Operation):
     """Class for the LastModifiedFile Operation."""
 
@@ -89,6 +93,10 @@ class LastModifiedFile(Operation):
                 file_path = os.path.join(root, file)
                 # Get the timestamp of the file's last modification
                 timestamp = os.path.getmtime(file_path)
+
+                if file_path.endswith(LAST_MODIFIED_FILE_PATH_SUFFIX) or \
+                        file_path.endswith(METRICS_FILE_PATH_SUFFIX):
+                    continue
 
                 # Check if this file is the most recently modified
                 if timestamp > most_recent_timestamp:
