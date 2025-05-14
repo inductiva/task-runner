@@ -3,7 +3,6 @@
 Check the `BaseExecuter` docstring for more information on the class and
 its usage.
 """
-import getpass
 import json
 import os
 import threading
@@ -115,7 +114,6 @@ class BaseExecuter(ABC):
         )
 
         self.commands_user = os.environ.get("COMMANDS_USER")
-        self.username = getpass.getuser()
 
         self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
@@ -262,10 +260,6 @@ class BaseExecuter(ABC):
                     self.commands_user,
                 ]
 
-                os.system(
-                    f"sudo chown -R {self.commands_user}:{self.commands_user}"
-                    f" {task_working_dir_host}")
-
             apptainer_args = [
                 "apptainer",
                 "exec",
@@ -302,10 +296,6 @@ class BaseExecuter(ABC):
             self.subprocess.run()
             exit_code = self.subprocess.wait()
             execution_time = time.perf_counter() - start
-
-            if self.commands_user is not None:
-                os.system(f"sudo chown -R {self.username}:{self.username} "
-                          f"{task_working_dir_host}")
 
             self.exec_command_logger.log_command_finished(
                 exit_code=exit_code,
