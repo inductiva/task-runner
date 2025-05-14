@@ -113,6 +113,8 @@ class BaseExecuter(ABC):
             daemon=True,
         )
 
+        self.commands_user = os.environ.get("COMMANDS_USER")
+
         self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
                                              self.STDOUT_LOGS_FILENAME)
@@ -249,6 +251,15 @@ class BaseExecuter(ABC):
             if working_dir:
                 process_working_dir_container = os.path.join(
                     process_working_dir_container, working_dir)
+
+            user_args = []
+            if self.commands_user is not None:
+                user_args = [
+                    "sudo",
+                    "-u",
+                    self.commands_user,
+                ]
+
             apptainer_args = [
                 "apptainer",
                 "exec",
@@ -265,7 +276,9 @@ class BaseExecuter(ABC):
                 apptainer_args.append("--nv")
             apptainer_args.append(self.container_image)
 
-            apptainer_command_args = [*args, *apptainer_args, *cmd.args]
+            apptainer_command_args = [
+                *user_args, *args, *apptainer_args, *cmd.args
+            ]
             command_args = [*args, *cmd.args]
 
             self.subprocess = executers.SubprocessTracker(
