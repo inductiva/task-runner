@@ -24,9 +24,7 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
         shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         if self.commands_user:
-            os.system(
-                f"chown -R {self.commands_user}:task-runner-group {self.working_dir}"
-            )
+            os.system(f"sudo chown -R {self.commands_user} {self.working_dir}")
 
         # Save this timestamp to detect which files were created or modified
         timestamp = files.get_most_recent_timestamp(self.artifacts_dir)
