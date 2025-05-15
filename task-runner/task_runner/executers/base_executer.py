@@ -263,6 +263,7 @@ class BaseExecuter(ABC):
             apptainer_args = [
                 "apptainer",
                 "exec",
+                "--contain",
                 "--bind",
                 f"{task_working_dir_host}:{task_working_dir_container}",
                 "--pwd",
