@@ -44,7 +44,7 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                 if message.status == task_runner.HTTPStatus.SUCCESS:
                     return message.data
                 elif (message.status ==
-                        task_runner.HTTPStatus.INTERNAL_SERVER_ERROR):
+                      task_runner.HTTPStatus.INTERNAL_SERVER_ERROR):
                     time.sleep(30)
                 else:
                     logging.info("No message received, status: %s",
