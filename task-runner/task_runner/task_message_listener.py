@@ -25,7 +25,7 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
         self,
         api_client: task_runner.ApiClient,
         task_runner_id: uuid.UUID,
-        block_s: int = 30,
+        block_s: int = 1,
     ):
         self._api_client = api_client
         self._block_s = block_s
@@ -40,12 +40,17 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                     task_id,
                     block_s=self._block_s,
                 )
+
                 if message.status == task_runner.HTTPStatus.SUCCESS:
                     return message.data
-
-                if (message.status ==
+                elif (message.status ==
                         task_runner.HTTPStatus.INTERNAL_SERVER_ERROR):
                     time.sleep(30)
+                else:
+                    logging.info("No message received, status: %s",
+                                 message.status)
+                    time.sleep(10)
+
             except Exception as e:  # noqa: BLE001
                 logging.exception("Caught exception: %s", str(e))
                 time.sleep(30)
