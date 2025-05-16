@@ -20,6 +20,7 @@ class ConnectionManager:
         }
         self.loop = None
         self.connections = []
+        self._block_s = 1
 
     @classmethod
     def from_env(cls):
@@ -43,37 +44,53 @@ class ConnectionManager:
 
     async def _listen_loop(self, task_id):
         url = f"{self._signaling_server}/tasks/{task_id}/"
-        async with aiohttp.ClientSession() as session:
+        register_url = url + "register"
+        message_url = url + f"message?client={task_id}?block_s={self._block_s}"
+        offer_url = url + "offer"
 
-            await session.post(url + "register",
-                               json=self._request_data(task_id),
-                               headers=self._headers)
+        async with aiohttp.ClientSession() as session:
+            await session.post(
+                register_url,
+                json=self._request_data(task_id),
+                headers=self._headers,
+            )
 
             while True:
                 logging.info("Listening for connections")
-                async with session.get(url + f"message?client={task_id}",
-                                       headers=self._headers) as resp:
+
+                async with session.get(
+                        message_url,
+                        headers=self._headers,
+                ) as resp:
                     if resp.status == 200:
                         data = await resp.json()
+
                         if data['type'] == 'offer':
                             client_connection = ClientConnection(
                                 task_id, self._ice_url)
+
                             pc = await client_connection.setup_connection(data)
+
                             await session.post(
-                                url + "offer",
+                                offer_url,
                                 json=self._request_data(
                                     task_id,
                                     receiver_id=data['sender_id'],
                                     type='answer',
                                     sdp=pc.localDescription.sdp),
-                                headers=self._headers)
+                                headers=self._headers,
+                            )
+
                             self.connections.append(client_connection)
+
                     elif resp.status == 204:
                         logging.info("No messages.")
+                        await asyncio.sleep(10)
+
                     else:
                         logging.error("Failed to get messages: %s", await
                                       resp.text())
-                        await asyncio.sleep(5)
+                        await asyncio.sleep(30)
 
     async def close(self):
         if self.loop:
