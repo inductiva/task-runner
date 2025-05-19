@@ -37,7 +37,6 @@ def start_loop(
             elif request.status == HTTPStatus.INTERNAL_SERVER_ERROR:
                 time.sleep(30)
             else:
-                logging.info("No request received, status: %s", request.status)
                 time.sleep(10)
 
         except ConnectionError as e:

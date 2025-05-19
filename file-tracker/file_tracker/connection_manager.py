@@ -45,7 +45,7 @@ class ConnectionManager:
     async def _listen_loop(self, task_id):
         url = f"{self._signaling_server}/tasks/{task_id}/"
         register_url = url + "register"
-        message_url = url + f"message?client={task_id}&block_s={self._block_s}"
+        message_url = url + "message"
         offer_url = url + "offer"
 
         async with aiohttp.ClientSession() as session:
@@ -61,7 +61,12 @@ class ConnectionManager:
                 async with session.get(
                         message_url,
                         headers=self._headers,
+                        params={
+                            "client": task_id,
+                            "block_s": self._block_s,
+                        },
                 ) as resp:
+                    logging.info("URL: %s", resp.url)
                     if resp.status == 200:
                         data = await resp.json()
 
@@ -84,7 +89,6 @@ class ConnectionManager:
                             self.connections.append(client_connection)
 
                     elif resp.status == 204:
-                        logging.info("No messages.")
                         await asyncio.sleep(10)
 
                     else:

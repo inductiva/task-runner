@@ -47,8 +47,6 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                       task_runner.HTTPStatus.INTERNAL_SERVER_ERROR):
                     time.sleep(30)
                 else:
-                    logging.info("No message received, status: %s",
-                                 message.status)
                     time.sleep(10)
 
             except Exception as e:  # noqa: BLE001
