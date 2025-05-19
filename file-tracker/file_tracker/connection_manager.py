@@ -20,7 +20,7 @@ class ConnectionManager:
         }
         self.loop = None
         self.connections = []
-        self._block_s = 1
+        self._block_s = 30
 
     @classmethod
     def from_env(cls):
@@ -66,7 +66,6 @@ class ConnectionManager:
                             "block_s": self._block_s,
                         },
                 ) as resp:
-                    logging.info("URL: %s", resp.url)
                     if resp.status == 200:
                         data = await resp.json()
 
@@ -87,10 +86,6 @@ class ConnectionManager:
                             )
 
                             self.connections.append(client_connection)
-
-                    elif resp.status == 204:
-                        await asyncio.sleep(5)
-
                     else:
                         logging.error("Failed to get messages: %s", await
                                       resp.text())

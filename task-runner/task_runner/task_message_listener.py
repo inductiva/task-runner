@@ -47,7 +47,7 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                       task_runner.HTTPStatus.INTERNAL_SERVER_ERROR):
                     time.sleep(30)
                 else:
-                    time.sleep(10)
+                    time.sleep(5)
 
             except Exception as e:  # noqa: BLE001
                 logging.exception("Caught exception: %s", str(e))
