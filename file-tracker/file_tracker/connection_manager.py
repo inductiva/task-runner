@@ -89,7 +89,7 @@ class ConnectionManager:
                             self.connections.append(client_connection)
 
                     elif resp.status == 204:
-                        await asyncio.sleep(10)
+                        await asyncio.sleep(5)
 
                     else:
                         logging.error("Failed to get messages: %s", await
