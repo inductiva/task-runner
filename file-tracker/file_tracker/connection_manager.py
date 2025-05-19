@@ -45,7 +45,7 @@ class ConnectionManager:
     async def _listen_loop(self, task_id):
         url = f"{self._signaling_server}/tasks/{task_id}/"
         register_url = url + "register"
-        message_url = url + f"message?client={task_id}?block_s={self._block_s}"
+        message_url = url + f"message?client={task_id}&block_s={self._block_s}"
         offer_url = url + "offer"
 
         async with aiohttp.ClientSession() as session:
