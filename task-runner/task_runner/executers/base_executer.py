@@ -263,7 +263,10 @@ class BaseExecuter(ABC):
             apptainer_args = [
                 "apptainer",
                 "exec",
-                "--contain",
+                "--no-mount",
+                "cwd",
+                "--home",
+                "/home/apptainer",
                 "--bind",
                 f"{task_working_dir_host}:{task_working_dir_container}",
                 "--pwd",
@@ -298,16 +301,16 @@ class BaseExecuter(ABC):
             exit_code = self.subprocess.wait()
             execution_time = time.perf_counter() - start
 
-            self.exec_command_logger.log_command_finished(
-                exit_code=exit_code,
-                execution_time_seconds=execution_time,
-            )
-
-            if exit_code != 0:
-                raise ExecuterSubProcessError(exit_code)
-
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")
+
+        self.exec_command_logger.log_command_finished(
+            exit_code=exit_code,
+            execution_time_seconds=execution_time,
+        )
+
+        if exit_code != 0:
+            raise ExecuterSubProcessError(exit_code)
 
     def run(self):
         """Method used to run the executer."""
