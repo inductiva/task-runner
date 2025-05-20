@@ -68,13 +68,10 @@ class ConnectionManager:
                 ) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-
                         if data['type'] == 'offer':
                             client_connection = ClientConnection(
                                 task_id, self._ice_url)
-
                             pc = await client_connection.setup_connection(data)
-
                             await session.post(
                                 offer_url,
                                 json=self._request_data(
@@ -84,12 +81,15 @@ class ConnectionManager:
                                     sdp=pc.localDescription.sdp),
                                 headers=self._headers,
                             )
-
                             self.connections.append(client_connection)
+
+                    elif resp.status == 204:
+                        logging.info("No messages.")
+
                     else:
                         logging.error("Failed to get messages: %s", await
                                       resp.text())
-                        await asyncio.sleep(30)
+                        await asyncio.sleep(5)
 
     async def close(self):
         if self.loop:
