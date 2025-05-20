@@ -3,12 +3,12 @@
 Check the `BaseExecuter` docstring for more information on the class and
 its usage.
 """
-import json
 import os
 import threading
 import time
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from typing import Any
 
 import psutil
 from absl import logging
@@ -45,11 +45,9 @@ class ExecuterSubProcessError(Exception):
 class BaseExecuter(ABC):
     """Base class to implement concrete executers.
 
-    The `load_input_configuration` method perform
-    boilerplate code used in all executers. The `execute` method is abstract
-    and should and should be implemented by all executers. Check the docstring
-    of the `execute` method for information about how to handle inputs and
-    outputs of the executer.
+    The `execute` method is abstract and should and should be implemented by
+    all executers. Check the docstring of the `execute` method for information
+    about how to handle inputs and outputs of the executer.
 
     Besides implementing a custom `execute` method, executer implementations
     should use the `run_subprocess` method to run subprocesses. Also,
@@ -57,7 +55,6 @@ class BaseExecuter(ABC):
     `self.working_dir` the path in which the executer is running (useful to
     construct absolute paths from input filenames).
     """
-    INPUT_FILENAME = "input.json"
     OUTPUT_DIRNAME = "output"
     ARTIFACTS_DIRNAME = "artifacts"
     STDOUT_LOGS_FILENAME = "stdout.txt"
@@ -69,6 +66,7 @@ class BaseExecuter(ABC):
         container_image: str,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
         exec_command_logger: executers.ExecCommandLogger,
+        extra_params: dict[str, Any],
         system_monitor: SystemMonitor,
     ):
         """Performs initial setup of the executer.
@@ -88,6 +86,9 @@ class BaseExecuter(ABC):
                                                     self.ARTIFACTS_DIRNAME)
         self.exec_command_logger = exec_command_logger
         self.system_monitor = system_monitor
+
+        named_tuple_constructor = namedtuple("args", extra_params.keys())
+        self.args = named_tuple_constructor(**extra_params)
 
         logging.info("Working directory: %s", self.working_dir)
 
@@ -123,20 +124,6 @@ class BaseExecuter(ABC):
 
         self.on_gpu = os.getenv("ON_GPU",
                                 "false").lower() in ("true", "t", "yes", "y", 1)
-
-    def load_input_configuration(self):
-        """Method that loads the executers' inputs.
-
-        This method reads the inputs from a json file and creates a named
-        tuple (`self.args`) to be used in the execute method.
-        """
-        input_file_path = os.path.join(self.working_dir, self.INPUT_FILENAME)
-
-        with open(input_file_path, "r", encoding="utf-8") as f:
-            input_dict = json.load(f)
-
-        named_tuple_constructor = namedtuple("args", input_dict.keys())
-        self.args = named_tuple_constructor(**input_dict)
 
     @abstractmethod
     def execute(self):
@@ -318,7 +305,6 @@ class BaseExecuter(ABC):
         self.system_metrics_thread.start()
         self.output_monitoring_thread.start()
         try:
-            self.load_input_configuration()
             self.pre_process()
             self.execute()
             self.post_process()

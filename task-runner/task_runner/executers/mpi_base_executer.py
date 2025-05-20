@@ -1,6 +1,7 @@
 """This file provides a class to implement MPI executers."""
 import os
 import shutil
+from typing import Any
 
 from task_runner import executers
 from task_runner.executers import mpi_configuration
@@ -22,12 +23,13 @@ class MPIExecuter(executers.BaseExecuter):
         container_image,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
         exec_command_logger: executers.ExecCommandLogger,
+        extra_params: dict[str, Any],
         sim_binary,
         file_type,
         sim_specific_input_filename,
     ):
         super().__init__(working_dir, container_image, mpi_config,
-                         exec_command_logger)
+                         exec_command_logger, extra_params)
         self.sim_binary = sim_binary
         self.sim_specific_input_filename = sim_specific_input_filename
         self.file_type = file_type
