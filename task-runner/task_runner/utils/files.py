@@ -198,7 +198,7 @@ def get_seven_zip_stream_process(
     ZIP archive and returns a process object. The process will write to
     standard output and is configured with the specified buffer size.
     Use the process standard output as a stream.
-    
+
     7z arguments used:
         a       : Add files to archive.
         -tzip   : Set the archive type to ZIP.
@@ -385,7 +385,6 @@ def remove_before_time(directory: str, reference_time_ns: float):
             continue
 
         if file.is_symlink() and not file.exists():
-            file.unlink()
             removed.append(file)
             continue
 
@@ -394,7 +393,6 @@ def remove_before_time(directory: str, reference_time_ns: float):
            file_stat.st_ctime_ns > reference_time_ns:
             continue
 
-        file.unlink()
         removed.append(file)
 
     return removed
