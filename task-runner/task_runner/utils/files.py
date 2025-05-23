@@ -369,23 +369,24 @@ def get_most_recent_timestamp(directory_name: str) -> Optional[float]:
     return max(map(_most_recent_timestamp, filenames), default=None)
 
 
-def remove_before_time(directory: str, reference_time_ns: float):
+def get_last_modified_before_time(directory: str, reference_time_ns: float):
     """
-    Remove files in the specified directory that have a modification or
+    Get files in the specified directory that have a modification or
     creation time earlier than the given reference time.
     """
     directory = pathlib.Path(directory)
     if not directory.is_dir():
         raise ValueError(f"Not a directory: '{directory}'.")
 
-    removed = []
+    result = []
     for file in directory.iterdir():
         if file.is_dir():
-            removed.extend(remove_before_time(file, reference_time_ns))
+            result.extend(get_last_modified_before_time(file,
+                                                        reference_time_ns))
             continue
 
         if file.is_symlink() and not file.exists():
-            removed.append(file)
+            result.append(file)
             continue
 
         file_stat = file.stat()
@@ -393,6 +394,6 @@ def remove_before_time(directory: str, reference_time_ns: float):
            file_stat.st_ctime_ns > reference_time_ns:
             continue
 
-        removed.append(file)
+        result.append(file)
 
-    return removed
+    return result

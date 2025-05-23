@@ -6,7 +6,6 @@ import shutil
 
 from task_runner import executers
 from task_runner.utils import files
-from absl import logging
 
 
 class ArbitraryCommandsExecuter(executers.BaseExecuter):
@@ -42,7 +41,7 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
             if not timestamp:
                 return
 
-            files_to_remove = files.remove_before_time(
+            files_to_remove = files.get_last_modified_before_time(
                 directory=self.artifacts_dir, reference_time_ns=timestamp)
 
             if original_username:
@@ -50,4 +49,4 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
                     f"sudo chown -R {original_username} {self.working_dir}")
 
             for f in files_to_remove:
-                f.unlink(missing_ok=True)
+                f.unlink()

@@ -61,16 +61,15 @@ def test_remove_before_time_without_file_changes(request, fixture_name):
     directory = request.getfixturevalue(fixture_name)
     timestamp = files.get_most_recent_timestamp(directory.name)
     before = files.get_directory_filenames(directory_name=directory.name)
-    removed = files.remove_before_time(directory=directory.name,
-                                       reference_time_ns=timestamp)
-    after = files.get_directory_filenames(directory_name=directory.name)
+    removed = files.get_last_modified_before_time(directory=directory.name,
+                                                  reference_time_ns=timestamp)
+    files.get_directory_filenames(directory_name=directory.name)
     assert len(removed) == len(before)
-    assert not after
 
 
 def test_remove_before_time_with_file_changes(directory):
     """
-    Test that only files created or modified after the reference time remain in 
+    Test that only files created or modified after the reference time remain in
     the directory.
     """
     timestamp = files.get_most_recent_timestamp(directory.name)
@@ -91,8 +90,8 @@ def test_remove_before_time_with_file_changes(directory):
         file.write("\n")
         file.flush()
 
-    removed = files.remove_before_time(directory=directory.name,
-                                       reference_time_ns=timestamp)
+    removed = files.get_last_modified_before_time(directory=directory.name,
+                                                  reference_time_ns=timestamp)
     assert len(removed) == 3
 
     filenames = files.get_directory_filenames(directory_name=directory.name)
