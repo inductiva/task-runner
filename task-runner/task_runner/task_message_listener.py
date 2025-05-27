@@ -25,7 +25,7 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
         self,
         api_client: task_runner.ApiClient,
         task_runner_id: uuid.UUID,
-        block_s: int = 0,
+        block_s: int = 30,
     ):
         self._api_client = api_client
         self._block_s = block_s
@@ -46,8 +46,6 @@ class WebApiTaskMessageListener(BaseTaskMessageListener):
                 elif (message.status ==
                       task_runner.HTTPStatus.INTERNAL_SERVER_ERROR):
                     time.sleep(30)
-                else:
-                    time.sleep(5)
 
             except Exception as e:  # noqa: BLE001
                 logging.exception("Caught exception: %s", str(e))

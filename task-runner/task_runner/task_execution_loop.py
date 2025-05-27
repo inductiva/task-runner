@@ -12,7 +12,7 @@ from task_runner.cleanup import ScaleDownTimeoutError
 def start_loop(
     task_fetcher: BaseTaskFetcher,
     request_handler: TaskRequestHandler,
-    block_s: int = 0,
+    block_s: int = 30,
     max_idle_timeout: Optional[int] = None,
 ):
     logging.info("Starting execution loop ...")
@@ -36,8 +36,6 @@ def start_loop(
                 idle_timestamp = time.time()
             elif request.status == HTTPStatus.INTERNAL_SERVER_ERROR:
                 time.sleep(30)
-            else:
-                time.sleep(5)
 
         except ConnectionError as e:
             logging.exception("Connection Error: %s", str(e))
