@@ -12,7 +12,7 @@ from task_runner.cleanup import ScaleDownTimeoutError
 def start_loop(
     task_fetcher: BaseTaskFetcher,
     request_handler: TaskRequestHandler,
-    block_s: int = 1,
+    block_s: int = 0,
     max_idle_timeout: Optional[int] = None,
 ):
     logging.info("Starting execution loop ...")
