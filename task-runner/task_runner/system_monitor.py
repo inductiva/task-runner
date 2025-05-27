@@ -36,12 +36,21 @@ class SystemMonitor:
         task_id: str,
         task_runner_uuid: UUID,
         event_logger: BaseEventLogger,
+        output_stalled_threshold_minutes: Optional[int] = 30,
+        output_monitoring_file_expanded: bool = False,
     ):
         self.task_id = task_id
         self.task_runner_uuid = task_runner_uuid
         self.event_logger = event_logger
         self.command = None
         self.metrics = [metric for metric in SystemMetrics]
+
+        self.output_stalled_threshold = datetime.timedelta(
+            minutes=output_stalled_threshold_minutes
+        ) if output_stalled_threshold_minutes else None
+
+        self.output_monitoring_file_mode = (
+            "a" if output_monitoring_file_expanded else "w")
 
     def setup_logs(self, logs_dir: str):
         self.logs_dir = logs_dir
@@ -111,15 +120,17 @@ class SystemMonitor:
                 tz=datetime.timezone.utc,
             )
 
-            # Always overwrite CSV without headers
+            # Do not use CSV headers
             self._write_csv(
-                mode="w",
+                mode=self.output_monitoring_file_mode,
                 file_path=self.output_monitoring_file_path,
                 row=[timestamp.isoformat(), file_path],
             )
 
-            # Post event when output is stalled for more than 30 minutes
-            if timestamp < utils.now_utc() - datetime.timedelta(minutes=30):
+            # Post event when output is not modified for the
+            # specified threshold
+            if (self.output_stalled_threshold and timestamp
+                    < utils.now_utc() - self.output_stalled_threshold):
                 self.event_logger.log(
                     events.TaskOutputStalled(
                         id=self.task_id,
