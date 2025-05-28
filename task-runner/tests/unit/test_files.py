@@ -63,7 +63,6 @@ def test_remove_before_time_without_file_changes(request, fixture_name):
     before = files.get_directory_filenames(directory_name=directory.name)
     removed = files.get_last_modified_before_time(directory=directory.name,
                                                   reference_time_ns=timestamp)
-    files.get_directory_filenames(directory_name=directory.name)
     assert len(removed) == len(before)
 
 
