@@ -49,4 +49,4 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
                     f"sudo chown -R {original_username} {self.working_dir}")
 
             for f in files_to_remove:
-                f.unlink()
+                f.unlink(missing_ok=True)
