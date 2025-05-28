@@ -659,6 +659,7 @@ class TaskRequestHandler:
             Python command to execute received request.
         """
         simulator = request["simulator"]
+        container_image = request["container_image"]
 
         executer_class = api_methods_config.get_executer(simulator)
         if executer_class is None:
@@ -676,5 +677,7 @@ class TaskRequestHandler:
                 task_id=self.task_id,
                 task_runner_uuid=self.task_runner_uuid,
                 event_logger=self.event_logger,
+                output_stalled_threshold_minutes=None
+                if "openfast" in container_image else 30,
             ),
         )
