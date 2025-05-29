@@ -13,9 +13,18 @@ from collections import namedtuple
 import psutil
 from absl import logging
 
-from task_runner import executers
+from task_runner import SystemMonitor, executers
 from task_runner.executers import command, mpi_configuration
-from task_runner.utils import loki
+
+
+def periodic_thread(
+    function: callable,
+    period_seconds: float,
+    finished_event: threading.Event,
+):
+    while not finished_event.is_set():
+        function()
+        time.sleep(period_seconds)
 
 
 class ExecuterKilledError(Exception):
@@ -36,7 +45,7 @@ class ExecuterSubProcessError(Exception):
 class BaseExecuter(ABC):
     """Base class to implement concrete executers.
 
-    The `load_input_configuration` and `pack_output` methods perform
+    The `load_input_configuration` method perform
     boilerplate code used in all executers. The `execute` method is abstract
     and should and should be implemented by all executers. Check the docstring
     of the `execute` method for information about how to handle inputs and
@@ -51,7 +60,6 @@ class BaseExecuter(ABC):
     INPUT_FILENAME = "input.json"
     OUTPUT_DIRNAME = "output"
     ARTIFACTS_DIRNAME = "artifacts"
-    OUTPUT_FILENAME = "output.json"
     STDOUT_LOGS_FILENAME = "stdout.txt"
     STDERR_LOGS_FILENAME = "stderr.txt"
 
@@ -60,8 +68,8 @@ class BaseExecuter(ABC):
         working_dir: str,
         container_image: str,
         mpi_config: mpi_configuration.MPIClusterConfiguration,
-        loki_logger: loki.LokiLogger,
         exec_command_logger: executers.ExecCommandLogger,
+        system_monitor: SystemMonitor,
     ):
         """Performs initial setup of the executer.
 
@@ -74,8 +82,12 @@ class BaseExecuter(ABC):
         self.output_dir = os.path.join(self.working_dir, self.OUTPUT_DIRNAME)
         self.artifacts_dir = os.path.join(self.output_dir,
                                           self.ARTIFACTS_DIRNAME)
-        self.loki_logger = loki_logger
+        self.working_dir_container = "/workdir"
+        self.artifacts_dir_container = os.path.join(self.working_dir_container,
+                                                    self.OUTPUT_DIRNAME,
+                                                    self.ARTIFACTS_DIRNAME)
         self.exec_command_logger = exec_command_logger
+        self.system_monitor = system_monitor
 
         logging.info("Working directory: %s", self.working_dir)
 
@@ -83,10 +95,25 @@ class BaseExecuter(ABC):
         logging.info("Created output directory: %s", self.output_dir)
         logging.info("Created artifacts directory: %s", self.artifacts_dir)
 
-        self._create_output_json_file()
+        self.system_monitor.setup_logs(self.artifacts_dir)
 
         self._lock = threading.Lock()
         self.is_shutting_down = threading.Event()
+
+        self.system_metrics_thread = threading.Thread(
+            target=periodic_thread,
+            args=(self.system_monitor.log_metrics, 30, self.is_shutting_down),
+            daemon=True,
+        )
+
+        self.output_monitoring_thread = threading.Thread(
+            target=periodic_thread,
+            args=(self.system_monitor.monitor_output, 60,
+                  self.is_shutting_down),
+            daemon=True,
+        )
+
+        self.commands_user = os.environ.get("COMMANDS_USER")
 
         self.return_value = None
         self.stdout_logs_path = os.path.join(self.artifacts_dir,
@@ -96,13 +123,6 @@ class BaseExecuter(ABC):
 
         self.on_gpu = os.getenv("ON_GPU",
                                 "false").lower() in ("true", "t", "yes", "y", 1)
-
-    def _create_output_json_file(self):
-        self.output_json_path = os.path.join(self.output_dir,
-                                             self.OUTPUT_FILENAME)
-
-        with open(self.output_json_path, "w", encoding="UTF-8") as f:
-            json.dump([], f)
 
     def load_input_configuration(self):
         """Method that loads the executers' inputs.
@@ -161,37 +181,6 @@ class BaseExecuter(ABC):
         """
         return None
 
-    def pack_output(self):
-        """Method that packs the output to send for the client.
-
-        This method assumes that the return value of the executer is stored
-        in the object's `return_value` property.
-        For simulators that don't have a specific output, but rather output
-        a series of files, then `return_value` doesn't need to be set, as by
-        default the contents of the `artifacts_dir` directory are considered to
-        be the output.
-        For other executers that return a specific value, the `return_value`
-        must be set with the object expected in the client. For executers that
-        return more than one value, e.g. eigen decomposition, which returns the
-        eigenvalues and eigenvectors, then `return_value` must be a tuple with
-        the two objects in the order expected in the client.
-        """
-        with open(self.output_json_path, "w", encoding="UTF-8") as f:
-            if self.return_value is None:
-                json_obj = []
-            elif isinstance(self.return_value, tuple):
-                json_obj = list(self.return_value)
-            else:
-                json_obj = [self.return_value]
-
-            json.dump(json_obj, f)
-
-    def close_streams(self):
-        """Method that signals the end of log streams used by the executer."""
-        for io_type in loki.IOTypes:
-            self.loki_logger.log_text(loki.END_OF_STREAM, io_type=io_type)
-            self.loki_logger.flush(io_type)
-
     def run_subprocess(
         self,
         cmd: command.Command,
@@ -226,6 +215,8 @@ class BaseExecuter(ABC):
             if self.is_shutting_down.is_set():
                 raise ExecuterKilledError()
 
+        self.system_monitor.change_command(" ".join(cmd.args))
+
         stdin_path = os.path.join(self.working_dir, "stdin.txt")
         stdin_contents = "".join([f"{prompt}\n" for prompt in cmd.prompts])
 
@@ -239,7 +230,6 @@ class BaseExecuter(ABC):
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
             log_message = (f"# COMMAND: {cmd.args}\n"
                            f"# Working directory: {working_dir}\n")
-            self.loki_logger.log_text(log_message, io_type=loki.IOTypes.COMMAND)
             log_message += "\n"
             stdout.write(log_message)
             stderr.write(log_message)
@@ -252,29 +242,47 @@ class BaseExecuter(ABC):
                     command_config=cmd.mpi_config)
 
             # This is the directory that contains all the task related files
-            task_working_dir = self.working_dir
+            task_working_dir_host = self.working_dir
+            task_working_dir_container = self.working_dir_container
 
             # This is the directory where the command will be executed. It
             # can be a subdirectory of the task directory.
-            process_working_dir = task_working_dir
+            process_working_dir_container = task_working_dir_container
             if working_dir:
-                process_working_dir = os.path.join(process_working_dir,
-                                                   working_dir)
+                process_working_dir_container = os.path.join(
+                    process_working_dir_container, working_dir)
+
+            user_args = []
+            if self.commands_user is not None:
+                user_args = [
+                    "sudo",
+                    "-u",
+                    self.commands_user,
+                ]
+
             apptainer_args = [
                 "apptainer",
                 "exec",
+                "--no-mount",
+                "cwd",
+                "--home",
+                "/home/apptainer",
                 "--bind",
-                f"{task_working_dir}:{task_working_dir}",
+                f"{task_working_dir_host}:{task_working_dir_container}",
                 "--pwd",
-                process_working_dir,
+                process_working_dir_container,
             ]
+            if self.mpi_config.local_mode:
+                apptainer_args.append("--writable-tmpfs")
             if cmd.is_mpi and not self.mpi_config.local_mode:
                 apptainer_args.append("--sharens")
             if self.on_gpu:
                 apptainer_args.append("--nv")
             apptainer_args.append(self.container_image)
 
-            apptainer_command_args = [*args, *apptainer_args, *cmd.args]
+            apptainer_command_args = [
+                *user_args, *args, *apptainer_args, *cmd.args
+            ]
             command_args = [*args, *cmd.args]
 
             self.subprocess = executers.SubprocessTracker(
@@ -283,7 +291,6 @@ class BaseExecuter(ABC):
                 stdout=stdout,
                 stderr=stderr,
                 stdin=stdin,
-                loki_logger=self.loki_logger,
             )
             self.exec_command_logger.log_command_started(
                 command=" ".join(command_args),
@@ -294,21 +301,22 @@ class BaseExecuter(ABC):
             exit_code = self.subprocess.wait()
             execution_time = time.perf_counter() - start
 
-            self.exec_command_logger.log_command_finished(
-                exit_code=exit_code,
-                execution_time_seconds=execution_time,
-            )
-
-            if exit_code != 0:
-                raise ExecuterSubProcessError(exit_code)
-
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")
+
+        self.exec_command_logger.log_command_finished(
+            exit_code=exit_code,
+            execution_time_seconds=execution_time,
+        )
+
+        if exit_code != 0:
+            raise ExecuterSubProcessError(exit_code)
 
     def run(self):
         """Method used to run the executer."""
         exit_code = 0
-
+        self.system_metrics_thread.start()
+        self.output_monitoring_thread.start()
         try:
             self.load_input_configuration()
             self.pre_process()
@@ -316,15 +324,12 @@ class BaseExecuter(ABC):
             self.post_process()
             with self._lock:
                 self.is_shutting_down.set()
-            self.pack_output()
         except ExecuterSubProcessError as e:
             exit_code = e.exit_code
         except ExecuterKilledError:
             # The executer was killed, so we don't need to do anything;
             # the exception was raised to stop the execution.
             pass
-        finally:
-            self.close_streams()
 
         return exit_code
 

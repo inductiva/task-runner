@@ -15,7 +15,7 @@ import shutil
 import threading
 import time
 import traceback
-from typing import Dict, Tuple
+from typing import Optional
 from uuid import UUID
 
 from absl import logging
@@ -25,6 +25,7 @@ from inductiva_api.task_status import task_status
 import task_runner
 from task_runner import (
     ApiClient,
+    SystemMonitor,
     api_methods_config,
     apptainer_utils,
     executers,
@@ -32,7 +33,7 @@ from task_runner import (
     utils,
 )
 from task_runner.operations_logger import OperationName, OperationsLogger
-from task_runner.utils import files, loki
+from task_runner.utils import files
 
 KILL_MESSAGE = "kill"
 INTERRUPT_MESSAGE = "interrupt"
@@ -51,7 +52,6 @@ def task_message_listener_loop(
     listener: task_message_listener.BaseTaskMessageListener,
     task_id: str,
     kill_task_thread_queue: queue.Queue,
-    logger_enabled: threading.Event,
 ) -> None:
     """Function to handle the kill request for the running task.
 
@@ -74,15 +74,6 @@ def task_message_listener_loop(
 
         elif message == KILL_MESSAGE:
             kill_task_thread_queue.put(KILL_MESSAGE)
-            return
-
-        elif message == ENABLE_LOGGING_STREAM_MESSAGE:
-            logger_enabled.set()
-            logging.info("Logging stream enabled.")
-
-        elif message == DISABLE_LOGGING_STREAM_MESSAGE:
-            logger_enabled.clear()
-            logging.info("Logging stream disabled.")
 
 
 def interrupt_task_ttl_exceeded(
@@ -132,7 +123,7 @@ class TaskRequestHandler:
     the request for consumption.
 
     Attributes:
-        executer_uuid: UUID of the executer that handles the requests.
+        task_runner_uuid: UUID of the task_runner that handles the requests.
             Used for event logging purposes.
         workdir: Working directory.
         mpi_config: MPI configuration.
@@ -146,7 +137,7 @@ class TaskRequestHandler:
 
     def __init__(
         self,
-        executer_uuid: UUID,
+        task_runner_uuid: UUID,
         workdir: str,
         mpi_config: executers.MPIClusterConfiguration,
         apptainer_images_manager: apptainer_utils.ApptainerImagesManager,
@@ -154,8 +145,9 @@ class TaskRequestHandler:
         event_logger: task_runner.BaseEventLogger,
         message_listener: task_message_listener.BaseTaskMessageListener,
         file_manager: task_runner.BaseFileManager,
+        api_file_tracker: Optional[task_runner.ApiFileTracker] = None,
     ):
-        self.executer_uuid = executer_uuid
+        self.task_runner_uuid = task_runner_uuid
         self.workdir = workdir
         self.mpi_config = mpi_config
         self.apptainer_images_manager = apptainer_images_manager
@@ -163,15 +155,14 @@ class TaskRequestHandler:
         self.event_logger = event_logger
         self.message_listener = message_listener
         self.file_manager = file_manager
+        self.api_file_tracker = api_file_tracker
         self.task_id = None
-        self.loki_logger = None
         self.task_workdir = None
         self.apptainer_image_path = None
         self.threads = []
         self.cleaning_up = False
         self._message_listener_thread = None
         self._kill_task_thread_queue = None
-        self._logger_enabled = threading.Event()
         self._shutting_down = False
         self._operations_logger = OperationsLogger(self.api_client)
 
@@ -190,12 +181,11 @@ class TaskRequestHandler:
         self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
 
     def save_output(self, new_task_status=None, force=False):
-        output_size = self._pack_output()
+        _ = self._pack_output()
         self._publish_event(events.TaskOutputUploaded(
             id=self.task_id,
-            machine_id=self.executer_uuid,
-            new_status=new_task_status,
-            output_size=output_size),
+            machine_id=self.task_runner_uuid,
+            new_status=new_task_status),
                             force=force)
         return True
 
@@ -252,7 +242,7 @@ class TaskRequestHandler:
         except queue.Empty:
             return False
 
-    def __call__(self, request: Dict[str, str]) -> None:
+    def __call__(self, request: dict[str, str]) -> None:
         """Execute the task described by the request.
 
         Note that this method blocks until the task is completed or killed.
@@ -272,13 +262,8 @@ class TaskRequestHandler:
         # convert to bool because stream_zip is either 't' or 'f'
         self.stream_zip = True if request.get("stream_zip",
                                               "t") == "t" else False
+        self.compress_with = request.get("compress_with", "AUTO")
         self.cleaning_up = False
-        self.loki_logger = loki.LokiLogger(
-            task_id=self.task_id,
-            project_id=self.project_id,
-            enabled=self._logger_enabled,
-        )
-        self._logger_enabled.clear()
         self._kill_task_thread_queue = queue.Queue()
 
         self._log_task_picked_up()
@@ -291,7 +276,6 @@ class TaskRequestHandler:
                     self.message_listener,
                     self.task_id,
                     self._kill_task_thread_queue,
-                    self._logger_enabled,
                 ),
                 daemon=True,
             )
@@ -307,13 +291,13 @@ class TaskRequestHandler:
                 },
             )
 
-            image_path, download_time, container_source = (
-                self.apptainer_images_manager.get(image_uri))
+            image_path, download_time, container_source, image_size = (
+                self.apptainer_images_manager.get(image_uri, self.workdir))
 
             operation.end(attributes={
                 "execution_time_s": download_time,
                 "source": container_source.value,
-                "size_bytes": os.path.getsize(image_path),
+                "size_bytes": image_size,
             },)
 
             self.apptainer_image_path = image_path
@@ -322,11 +306,13 @@ class TaskRequestHandler:
                 self._post_task_metric(utils.DOWNLOAD_EXECUTER_IMAGE,
                                        download_time)
 
+                self._post_task_metric(utils.EXECUTER_IMAGE_SIZE, image_size)
+
             if self._check_task_killed():
                 self._publish_event(
                     events.TaskKilled(
                         id=self.task_id,
-                        machine_id=self.executer_uuid,
+                        machine_id=self.task_runner_uuid,
                     ))
                 return
 
@@ -336,7 +322,7 @@ class TaskRequestHandler:
                 self._publish_event(
                     events.TaskKilled(
                         id=self.task_id,
-                        machine_id=self.executer_uuid,
+                        machine_id=self.task_runner_uuid,
                     ))
                 return
 
@@ -345,7 +331,7 @@ class TaskRequestHandler:
                 events.TaskWorkStarted(
                     timestamp=computation_start_time,
                     id=self.task_id,
-                    machine_id=self.executer_uuid,
+                    machine_id=self.task_runner_uuid,
                 ))
 
             exit_code, exit_reason = self._execute_request(request)
@@ -356,7 +342,7 @@ class TaskRequestHandler:
                 events.TaskWorkFinished(
                     timestamp=computation_end_time,
                     id=self.task_id,
-                    machine_id=self.executer_uuid,
+                    machine_id=self.task_runner_uuid,
                 ))
 
             computation_seconds = (computation_end_time -
@@ -394,7 +380,7 @@ class TaskRequestHandler:
                 self._publish_event(
                     events.TaskExecutionFailed(
                         id=self.task_id,
-                        machine_id=self.executer_uuid,
+                        machine_id=self.task_runner_uuid,
                         error_message=message,
                         traceback=traceback.format_exc(),
                     ))
@@ -407,7 +393,7 @@ class TaskRequestHandler:
                 self._publish_event(
                     events.TaskOutputUploadFailed(
                         id=self.task_id,
-                        machine_id=self.executer_uuid,
+                        machine_id=self.task_runner_uuid,
                         error_message=message,
                         traceback=traceback.format_exc(),
                     ))
@@ -442,7 +428,7 @@ class TaskRequestHandler:
         # by the task files
         if self.input_resources:
             download_duration = self.file_manager.download_input_resources(
-                self.input_resources, sim_workdir, self.executer_uuid)
+                self.input_resources, sim_workdir, self.workdir)
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -484,6 +470,9 @@ class TaskRequestHandler:
         os.remove(tmp_zip_path)
         operation.end(attributes={"execution_time_s": unzip_duration})
 
+        if self.api_file_tracker:
+            self.api_file_tracker.start(self.task_id)
+
         logging.info(
             "Extracted zip to: %s, in %s seconds",
             task_workdir,
@@ -503,14 +492,14 @@ class TaskRequestHandler:
     def _execute_request(
         self,
         request,
-    ) -> Tuple[int, TaskExitReason]:
+    ) -> tuple[int, TaskExitReason]:
         """Execute the request.
 
         This uses a second thread to listen for possible "kill" messages from
         the API.
 
         Returns:
-            Tuple of the exit code of the task and a bool representing if the
+            tuple of the exit code of the task and a bool representing if the
             task was killed.
         """
         assert self.task_id is not None, (
@@ -593,14 +582,17 @@ class TaskRequestHandler:
         if output_total_files is not None:
             self._post_task_metric(utils.OUTPUT_TOTAL_FILES, output_total_files)
 
-        output_zipped_bytes, zip_duration, upload_duration = (
+        output_zipped_bytes, zip_duration, upload_duration = \
             self.file_manager.upload_output(
                 self.task_id,
                 self.task_dir_remote,
                 output_dir,
                 stream_zip=self.stream_zip,
+                compress_with=self.compress_with,
                 operations_logger=self._operations_logger,
-            ))
+                event_logger=self.event_logger,
+                task_runner_uuid=self.task_runner_uuid,
+            )
 
         logging.info("Output zipped in: %s seconds", zip_duration)
 
@@ -646,7 +638,8 @@ class TaskRequestHandler:
             logging.info("Cleaning up working directory: %s", self.task_workdir)
             shutil.rmtree(self.task_workdir, ignore_errors=True)
         self.task_workdir = None
-
+        if self.api_file_tracker:
+            self.api_file_tracker.stop(self.task_id)
         self._message_listener_thread = None
 
         for thread in self.threads:
@@ -666,6 +659,7 @@ class TaskRequestHandler:
             Python command to execute received request.
         """
         simulator = request["simulator"]
+        container_image = request["container_image"]
 
         executer_class = api_methods_config.get_executer(simulator)
         if executer_class is None:
@@ -675,9 +669,15 @@ class TaskRequestHandler:
             self.task_workdir,
             self.apptainer_image_path,
             copy.deepcopy(self.mpi_config),
-            self.loki_logger,
             executers.ExecCommandLogger(
-                self.task_id,
-                self._operations_logger,
+                task_id=self.task_id,
+                operations_logger=self._operations_logger,
+            ),
+            SystemMonitor(
+                task_id=self.task_id,
+                task_runner_uuid=self.task_runner_uuid,
+                event_logger=self.event_logger,
+                output_stalled_threshold_minutes=None
+                if "openfast" in container_image else 30,
             ),
         )

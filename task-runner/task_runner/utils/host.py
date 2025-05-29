@@ -1,6 +1,8 @@
-"""Utilities to get information about the host machine the executer is on."""
+"""Utilities to get information about the host machine the task-runner is on."""
 from dataclasses import dataclass
+from typing import Optional
 
+import GPUtil
 import psutil
 
 
@@ -8,6 +10,12 @@ import psutil
 class CPUCount:
     logical: int
     physical: int
+
+
+@dataclass
+class GPUInfo:
+    count: int
+    name: str
 
 
 def get_total_memory() -> int:
@@ -31,3 +39,12 @@ def get_cpu_count() -> CPUCount:
         logical=psutil.cpu_count(logical=True),
         physical=psutil.cpu_count(logical=False),
     )
+
+
+def get_gpu_info() -> Optional[GPUInfo]:
+    gpus = GPUtil.getGPUs()
+
+    if not gpus:
+        return None
+
+    return GPUInfo(count=len(gpus), name=gpus[0].name)

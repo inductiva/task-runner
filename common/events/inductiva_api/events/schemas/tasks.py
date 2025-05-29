@@ -1,4 +1,5 @@
 """Events related to tasks."""
+import datetime
 import uuid
 from typing import Optional
 
@@ -23,12 +24,15 @@ class TaskWorkFinished(TaskEvent):
     machine_id: uuid.UUID
 
 
+class TaskOutputStalled(TaskEvent):
+    machine_id: uuid.UUID
+    last_modified_file_path: str
+    last_modified_file_timestamp: datetime.datetime
+
+
 class TaskOutputUploaded(TaskEvent):
     machine_id: uuid.UUID
     new_status: Optional[str] = None
-    # Output size in bytes, it's optional because the output may not be
-    # available when the event is emitted by the executer tracker
-    output_size: Optional[int] = None
 
 
 class TaskOutputUploadFailed(TaskEvent):
