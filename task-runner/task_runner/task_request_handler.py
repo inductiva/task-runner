@@ -41,6 +41,8 @@ ENABLE_LOGGING_STREAM_MESSAGE = "enable_logging_stream"
 DISABLE_LOGGING_STREAM_MESSAGE = "disable_logging_stream"
 TASK_DONE_MESSAGE = "done"
 
+SIGKILL_EXIT_CODE = 137
+
 
 class TaskExitReason(enum.Enum):
     NORMAL = "normal"

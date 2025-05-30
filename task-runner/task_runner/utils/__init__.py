@@ -8,8 +8,11 @@ in the Web API codebase.
 """
 
 import datetime
+import subprocess
 import time
 from functools import wraps
+
+from absl import logging
 
 from task_runner.utils.retries import retry
 
@@ -80,3 +83,40 @@ def get_exception_root_cause_message(exc: Exception) -> str:
         root_cause = root_cause.__cause__
 
     return str(root_cause)
+
+
+def check_out_of_memory_killer(pid: int):
+    """Use grep to check if a process was killed by the OOM killer via syslog.
+
+    Args:
+        pid: The PID to check.
+
+    Returns:
+        bool: True if OOM kill log is found, False otherwise.
+    """
+    oom_message = f"Out of memory: Killed process {pid}"
+    command = f"tail -n 1000 /var/log/syslog | tac | grep -m 1 '{oom_message}'"
+
+    try:
+        completed_process = subprocess.run(
+            command,
+            capture_output=True,
+            shell=True,
+            check=True,
+        )
+
+        output = completed_process.stdout.decode(encoding="UTF-8")
+        if oom_message in output:
+            return True
+    except subprocess.CalledProcessError as e:
+        # Exit code 1 means "no matches found" — not a real error
+        if e.returncode == 1:
+            return False
+        else:
+            stdout = e.stdout.decode(encoding="UTF-8")
+            stderr = e.stderr.decode(encodign="UTF-8")
+            logging.warning(
+                "Error checking if process was killed by OOM process."
+                "\nStdout: %s\nStderr: %s", stdout, stderr)
+
+    return False

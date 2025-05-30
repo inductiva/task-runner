@@ -3,7 +3,7 @@ import os
 import signal
 import subprocess
 import time
-from typing import IO
+from typing import IO, Optional
 
 from absl import logging
 
@@ -56,6 +56,12 @@ class SubprocessTracker:
         self.stderr = stderr
         self.stdin = stdin
         self.threads = []
+
+    @property
+    def pid(self) -> Optional[int]:
+        if not self.subproc:
+            return None
+        return self.subproc.pid
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""

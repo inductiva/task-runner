@@ -13,8 +13,13 @@ from collections import namedtuple
 import psutil
 from absl import logging
 
-from task_runner import SystemMonitor, executers
+from task_runner import SystemMonitor, executers, utils
 from task_runner.executers import command, mpi_configuration
+
+# it might be 137 (128 + 9), when the process is being run with MPI for instance,
+# or when the process being run with Python is killed directly, the return will
+# be -9 (the symmetric of the signal number)
+SIGKILL_EXIT_CODES = (137, -9)
 
 
 def periodic_thread(
@@ -298,8 +303,14 @@ class BaseExecuter(ABC):
             )
             start = time.perf_counter()
             self.subprocess.run()
+            pid = self.subprocess.pid
+            assert pid is not None
             exit_code = self.subprocess.wait()
             execution_time = time.perf_counter() - start
+
+            if exit_code in SIGKILL_EXIT_CODES:
+                if utils.check_out_of_memory_killer(pid):
+                    stdout.write("\n PROCESS KILLED BY THE KERNEL'S OOM KILLER")
 
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")
