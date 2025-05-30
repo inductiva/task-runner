@@ -107,7 +107,7 @@ class BaseExecuter(ABC):
 
         self.system_metrics_thread = threading.Thread(
             target=periodic_thread,
-            args=(self.system_monitor.log_metrics, 30, self.is_shutting_down),
+            args=(self.system_monitor.log_metrics, 1, self.is_shutting_down),
             daemon=True,
         )
 
