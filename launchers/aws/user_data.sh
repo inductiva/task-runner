@@ -1,38 +1,25 @@
 #!/bin/bash
 
-# Installing Docker
+# Update system and install packages
+apt-get update -y
+apt-get install -y ca-certificates curl python-is-python3 python3-pip python3-venv
 
-sudo apt-get update -y
-sudo apt-get install -y ca-certificates curl 
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update -y
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+# Install Docker
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
 
-#Running task-runner docker container
+echo "deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+https://download.docker.com/linux/ubuntu \
+$$(. /etc/os-release && echo "$$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
 
-mkdir -p apptainer
-chmod 777 apptainer
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-docker run -d --name file-tracker --env USER_API_KEY=a --volume workdir:/workdir --network host inductiva/file-tracker:main
+usermod -aG docker ubuntu
 
-docker run -d --name task-runner --env USER_API_KEY=a --env MACHINE_GROUP_NAME=a --env HOST_NAME=$(hostname) --volume ./apptainer:/executer-images --volume workdir:/workdir --network host --privileged --platform linux/amd64 inductiva/task-runner:main
+python3 -m venv /opt/inductiva-env
+/opt/inductiva-env/bin/pip install --upgrade pip
+/opt/inductiva-env/bin/pip install inductiva[task-runner]
 
-# Install AWS CLI
-
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-sudo apt install unzip
-unzip awscliv2.zip
-sudo ./aws/install
-
-# Script that allows the VM to delete itself
-
-echo '#!/bin/bash
-export INSTANCE_ID=$(ec2metadata --instance-id)
-aws ec2 terminate-instances --instance-ids $INSTANCE_ID' > terminate_vm.sh
-chmod +x terminate_vm.sh
+INDUCTIVA_API_KEY="$INDUCTIVA_API_KEY" /opt/inductiva-env/bin/inductiva task-runner launch "$MACHINE_GROUP_NAME"
