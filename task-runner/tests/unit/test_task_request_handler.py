@@ -70,31 +70,13 @@ class MockMessageListener(task_message_listener.BaseTaskMessageListener):
 
 
 def download_input_side_effect(
-        commands: list[str],
         unblock_download_input: Optional[threading.Event] = None):
     """Get function to use as side_effect for file_manager.download_input."""
-
-    task_request_payload = {
-        "sim_dir": "sim_dir",
-        "run_subprocess_dir": None,
-        "container_image": "unused",
-        "commands": [{
-            "cmd": command,
-            "prompts": []
-        } for command in commands]
-    }
 
     def _side_effect(task_id, task_dir_remote, tmp_zip_path):
         del task_id, task_dir_remote  # unused
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with open(
-                    os.path.join(tmp_dir, "input.json"),
-                    "w",
-                    encoding="utf-8",
-            ) as f:
-                json.dump(task_request_payload, f)
-
             os.makedirs(os.path.join(tmp_dir, "sim_dir"), exist_ok=True)
 
             if tmp_zip_path.endswith(".zip"):
@@ -162,12 +144,22 @@ def _setup_mock_task(
     unblock_download_input: Optional[threading.Event] = None,
 ):
     task_id = "umx0oyincuy41x3u7fyazcwjr"
+    extra_params = json.dumps({
+        "sim_dir": "sim_dir",
+        "run_subprocess_dir": None,
+        "container_image": "unused",
+        "commands": [{
+            "cmd": command,
+            "prompts": []
+        } for command in commands]
+    })
     task_request = {
         "id": task_id,
         "project_id": uuid.uuid4(),
         "task_dir": task_id,
         "container_image": "docker://alpine:latest",  # unused in test
         "simulator": "arbitrary_commands",
+        "extra_params": extra_params,
     }
 
     if time_to_live_seconds is not None:
@@ -175,7 +167,7 @@ def _setup_mock_task(
 
     handler.file_manager.download_input = mock.MagicMock(
         side_effect=download_input_side_effect(
-            commands=commands, unblock_download_input=unblock_download_input))
+            unblock_download_input=unblock_download_input))
 
     handler.file_manager.upload_output = mock.MagicMock(return_value=(0, 0, 0))
 
