@@ -94,7 +94,8 @@ def check_out_of_memory_killer(pid: int):
     Returns:
         bool: True if OOM kill log is found, False otherwise.
     """
-    oom_message = f"Out of memory: Killed process {pid}"
+    oom_message = ("task-runner@standard.service: "
+                   "A process of this unit has been killed by the OOM killer")
     command = f"tail -n 1000 /var/log/syslog | tac | grep -m 1 '{oom_message}'"
 
     try:
