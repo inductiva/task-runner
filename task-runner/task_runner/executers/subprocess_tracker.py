@@ -207,7 +207,7 @@ class SubprocessTracker:
             process_group_id = os.getpgid(self.subproc.pid)
             command = f"kill -{sig.value} -{process_group_id}"
             if self.run_as_user:
-                command = f"sudo -u {self.run_as_user} {command}"
+                command = f"sudo -i -u {self.run_as_user} {command}"
 
             logging.info("Will send %s to %s", sig, process_group_id)
 
