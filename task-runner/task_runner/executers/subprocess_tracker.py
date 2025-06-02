@@ -135,7 +135,7 @@ class SubprocessTracker:
     def exit_gracefully(self,
                         check_interval: float = 0.1,
                         sigterm_timeout: float = 5,
-                        sigkill_delay: float = 5):
+                        sigkill_delay: float = 1):
         """Ensures we kill the subprocess after signals or exceptions.
 
         First, it sends a SIGTERM signal to request a graceful shutdown.
@@ -183,7 +183,9 @@ class SubprocessTracker:
     def _should_exit_kill_loop(self, start_time: float, timeout: int) -> bool:
         """Check if the process has exited or the timeout has been reached."""
         has_process_exited = self.subproc.poll() is not None
+        logging.info("Poll %s", self.subproc.poll())
         has_timeout_elapsed = time.time() - start_time >= timeout
+        logging.info("Has timeout elapsed %s", has_timeout_elapsed)
         return has_process_exited or has_timeout_elapsed
 
     def _invoke_signal(self, sig: signal.Signals):
