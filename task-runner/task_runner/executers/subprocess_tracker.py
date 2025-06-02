@@ -48,6 +48,7 @@ class SubprocessTracker:
         stdout,
         stderr,
         stdin,
+        run_as_user,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
@@ -56,16 +57,27 @@ class SubprocessTracker:
         self.stderr = stderr
         self.stdin = stdin
         self.threads = []
+        self.run_as_user = run_as_user
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
         logging.info("Spawning subprocess for \"%s\".", self.args)
         self.spawn_time = time.perf_counter()
 
+        user_args = []
+        if self.run_as_user is not None:
+            user_args = [
+                "sudo",
+                "-u",
+                self.run_as_user,
+            ]
+
+        args = [*user_args, *self.args]
+
         try:
             # pylint: disable=consider-using-with
             self.subproc = subprocess.Popen(
-                self.args,
+                args,
                 cwd=self.working_dir,
                 start_new_session=True,
                 stdout=subprocess.PIPE,
@@ -135,7 +147,7 @@ class SubprocessTracker:
     def exit_gracefully(self,
                         check_interval: float = 0.1,
                         sigterm_timeout: float = 5,
-                        sigkill_delay: float = 1):
+                        sigkill_delay: float = 5):
         """Ensures we kill the subprocess after signals or exceptions.
 
         First, it sends a SIGTERM signal to request a graceful shutdown.
@@ -190,9 +202,17 @@ class SubprocessTracker:
 
     def _invoke_signal(self, sig: signal.Signals):
         """Send a signal to the subprocess."""
+
         try:
             process_group_id = os.getpgid(self.subproc.pid)
+            command = f"kill -{sig.value} -{process_group_id}"
+            if self.run_as_user:
+                command = f"sudo -u {self.run_as_user} command"
+
             logging.info("Will send %s to %s", sig, process_group_id)
+
+            subprocess.run(command, check=True, shell=True)
+
             os.killpg(process_group_id, sig)
             logging.info("Sent")
         except OSError as exc:
