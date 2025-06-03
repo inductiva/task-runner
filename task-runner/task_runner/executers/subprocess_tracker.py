@@ -174,6 +174,7 @@ class SubprocessTracker:
             raise RuntimeError("subproc is not a subprocess.Popen object.")
 
         self._invoke_signal(signal.SIGTERM)
+        logging.info("Sending SIGTERM to PID %d", self.subproc.pid)
 
         start_time = time.time()
         while not self._should_exit_kill_loop(start_time, sigterm_timeout):
@@ -181,6 +182,7 @@ class SubprocessTracker:
             # (didnt exit with SIGTERM), send SIGKILL to force termination
             if time.time() - start_time >= sigkill_delay:
                 self._invoke_signal(signal.SIGKILL)
+                logging.info("Sending SIGKILL to PID %d", self.subproc.pid)
 
             time.sleep(check_interval)
 
