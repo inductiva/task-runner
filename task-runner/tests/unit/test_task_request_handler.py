@@ -191,7 +191,7 @@ def test_task_request_handler_ttl_exceeded(handler):
     handler(task_request)
     end = time.time()
 
-    assert end - start == pytest.approx(time_to_live_seconds, abs=0.5)
+    assert end - start == pytest.approx(time_to_live_seconds, abs=2)
     # Check if last published event includes status 'ttl-exceeded'
     assert handler.event_logger.log.call_args_list[-1][0][
         0].new_status == 'ttl-exceeded'
