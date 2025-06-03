@@ -146,7 +146,7 @@ class SubprocessTracker:
 
     def exit_gracefully(self,
                         check_interval: float = 0.1,
-                        sigterm_timeout: float = 5,
+                        sigterm_timeout: float = 10,
                         sigkill_delay: float = 5):
         """Ensures we kill the subprocess after signals or exceptions.
 
@@ -173,8 +173,6 @@ class SubprocessTracker:
         if not isinstance(self.subproc, subprocess.Popen):
             raise RuntimeError("subproc is not a subprocess.Popen object.")
 
-        logging.info("Sending SIGTERM to PID %d", self.subproc.pid)
-
         self._invoke_signal(signal.SIGTERM)
 
         start_time = time.time()
@@ -182,7 +180,6 @@ class SubprocessTracker:
             # After sigkill_delay, if the process is still running
             # (didnt exit with SIGTERM), send SIGKILL to force termination
             if time.time() - start_time >= sigkill_delay:
-                logging.info("Sending SIGKILL to PID %d", self.subproc.pid)
                 self._invoke_signal(signal.SIGKILL)
 
             time.sleep(check_interval)
@@ -197,8 +194,13 @@ class SubprocessTracker:
     def _should_exit_kill_loop(self, start_time: float, timeout: int) -> bool:
         """Check if the process has exited or the timeout has been reached."""
         has_process_exited = self.subproc.poll() is not None
+        are_streams_closed = all(
+            not thread.is_alive() for thread in self.threads)
+
         has_timeout_elapsed = time.time() - start_time >= timeout
-        return has_process_exited or has_timeout_elapsed
+
+        return (has_process_exited and
+                are_streams_closed) or has_timeout_elapsed
 
     def _invoke_signal(self, sig: signal.Signals):
         """Send a signal to the subprocess."""
