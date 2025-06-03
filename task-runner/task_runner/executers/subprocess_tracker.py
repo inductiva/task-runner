@@ -48,7 +48,7 @@ class SubprocessTracker:
         stdout,
         stderr,
         stdin,
-        run_as_user,
+        run_as_user=None,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
