@@ -23,7 +23,7 @@ class TaskRunnerTerminationError(Exception):
 
 
 class ScaleDownTimeoutError(TaskRunnerTerminationError):
-    """Exception raised when the timeout is reached, 
+    """Exception raised when the timeout is reached,
     and the Machine Group is scaled down."""
 
     def __init__(self):

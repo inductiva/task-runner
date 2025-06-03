@@ -124,7 +124,7 @@ def test_exit_gracefully(mock_output_files):
 
 def test_exit_gracefully_ignore_sigterm(mock_output_files):
     """Test the exit_gracefully method of SubprocessTracker.
-    
+
     This test is to ensure that the SIGTERM signal is ignored.
     """
     # Command to ignore SIGTERM and run an infinite loop

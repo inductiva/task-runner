@@ -665,19 +665,22 @@ class TaskRequestHandler:
         if executer_class is None:
             raise ValueError(f"Executer not found for simulator: {simulator}")
 
+        extra_params = json.loads(request.get("extra_params", {}))
+
         return executer_class(
-            self.task_workdir,
-            self.apptainer_image_path,
-            copy.deepcopy(self.mpi_config),
-            executers.ExecCommandLogger(
-                task_id=self.task_id,
-                operations_logger=self._operations_logger,
+            working_dir=self.task_workdir,
+            container_image=self.apptainer_image_path,
+            mpi_config=copy.deepcopy(self.mpi_config),
+            exec_command_logger=executers.ExecCommandLogger(
+                self.task_id,
+                self._operations_logger,
             ),
-            SystemMonitor(
+            system_monitor=SystemMonitor(
                 task_id=self.task_id,
                 task_runner_uuid=self.task_runner_uuid,
                 event_logger=self.event_logger,
                 output_stalled_threshold_minutes=None
                 if "openfast" in container_image else 30,
             ),
+            extra_params=extra_params,
         )
