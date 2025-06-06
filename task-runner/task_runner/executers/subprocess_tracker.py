@@ -48,6 +48,7 @@ class SubprocessTracker:
         stdout,
         stderr,
         stdin,
+        run_as_user=None,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
@@ -56,16 +57,27 @@ class SubprocessTracker:
         self.stderr = stderr
         self.stdin = stdin
         self.threads = []
+        self.run_as_user = run_as_user
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
         logging.info("Spawning subprocess for \"%s\".", self.args)
         self.spawn_time = time.perf_counter()
 
+        user_args = []
+        if self.run_as_user is not None:
+            user_args = [
+                "sudo",
+                "-u",
+                self.run_as_user,
+            ]
+
+        args = [*user_args, *self.args]
+
         try:
             # pylint: disable=consider-using-with
             self.subproc = subprocess.Popen(
-                self.args,
+                args,
                 cwd=self.working_dir,
                 start_new_session=True,
                 stdout=subprocess.PIPE,
@@ -134,8 +146,8 @@ class SubprocessTracker:
 
     def exit_gracefully(self,
                         check_interval: float = 0.1,
-                        sigterm_timeout: float = 5,
-                        sigkill_delay: float = 1):
+                        sigterm_timeout: float = 10,
+                        sigkill_delay: float = 5):
         """Ensures we kill the subprocess after signals or exceptions.
 
         First, it sends a SIGTERM signal to request a graceful shutdown.
@@ -161,37 +173,48 @@ class SubprocessTracker:
         if not isinstance(self.subproc, subprocess.Popen):
             raise RuntimeError("subproc is not a subprocess.Popen object.")
 
-        logging.info("Sending SIGTERM to PID %d", self.subproc.pid)
-
         self._invoke_signal(signal.SIGTERM)
+        logging.info("Sending SIGTERM to PID %d", self.subproc.pid)
 
         start_time = time.time()
         while not self._should_exit_kill_loop(start_time, sigterm_timeout):
             # After sigkill_delay, if the process is still running
             # (didnt exit with SIGTERM), send SIGKILL to force termination
             if time.time() - start_time >= sigkill_delay:
-                logging.info("Sending SIGKILL to PID %d", self.subproc.pid)
                 self._invoke_signal(signal.SIGKILL)
+                logging.info("Sending SIGKILL to PID %d", self.subproc.pid)
 
             time.sleep(check_interval)
 
+        logging.info("Waiting for subprocess_tracker threads join.")
         for thread in self.threads:
             thread.join()
+        logging.info("All threads joined.")
 
         return self.subproc.poll()
 
     def _should_exit_kill_loop(self, start_time: float, timeout: int) -> bool:
         """Check if the process has exited or the timeout has been reached."""
         has_process_exited = self.subproc.poll() is not None
+        are_streams_closed = all(
+            not thread.is_alive() for thread in self.threads)
+
         has_timeout_elapsed = time.time() - start_time >= timeout
-        return has_process_exited or has_timeout_elapsed
+
+        return (has_process_exited and
+                are_streams_closed) or has_timeout_elapsed
 
     def _invoke_signal(self, sig: signal.Signals):
         """Send a signal to the subprocess."""
+
         try:
             process_group_id = os.getpgid(self.subproc.pid)
-            os.killpg(process_group_id, sig)
-        except OSError as exc:
+            command = f"kill -{sig.value} -{process_group_id}"
+            if self.run_as_user:
+                command = f"sudo -i -u {self.run_as_user} {command}"
+
+            subprocess.run(command, check=True, shell=True)
+        except subprocess.CalledProcessError as exc:
             raise RuntimeError(
                 (f"Failed to send signal {sig} "
                  f"to process group {self.subproc.pid}")) from exc
