@@ -54,4 +54,4 @@ class TaskExecutionFailed(TaskEvent):
 
 
 class ObserverTriggered(TaskEvent):
-    observer_id: str
+    observer_id: uuid.UUID

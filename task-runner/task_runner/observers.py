@@ -1,12 +1,13 @@
 import os
 import re
 import threading
+import uuid
 from enum import Enum
-from typing import Dict, Union
+from typing import Dict, Literal, Optional
 
 from absl import logging
 from inductiva_api import events
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 import task_runner
 
@@ -16,27 +17,13 @@ class ObserverType(str, Enum):
     FILE_REGEX = "FileRegexObserver"
 
 
-class FileExistObserver(BaseModel):
-    path: str
-
-
-class FileRegexObserver(BaseModel):
-    path: str
-    regex: str
-
-    @validator('regex')
-    def valid_regex(cls, v: str) -> str:  # noqa: N805
-        try:
-            re.compile(v)
-            return v
-        except re.error as e:
-            raise ValueError(f"Invalid regex: {v} - {e}")
-
-
 class Observer(BaseModel):
-    observer_id: str
+    trigger_type: Literal["observer"]
+    observer_id: uuid.UUID
     observer_type: ObserverType
-    observer: Union[FileExistObserver, FileRegexObserver]
+    task_id: str
+    file_path: Optional[str] = None
+    regex: Optional[str] = None
 
 
 class ObserverManager:
@@ -62,21 +49,20 @@ class ObserverManager:
         if observer_id in self._observers:
             del self._observers[observer_id]
 
-    def _check_file_exists(self, sim_dir: str,
-                           config: FileExistObserver) -> bool:
+    def _check_file_exists(self, sim_dir: str, file_path: str) -> bool:
         """Checks if the file specified exists."""
 
-        return os.path.exists(os.path.join(sim_dir, config.path))
+        return os.path.exists(os.path.join(sim_dir, file_path))
 
-    def _check_file_regex(self, sim_dir: str,
-                          config: FileRegexObserver) -> bool:
+    def _check_file_regex(self, sim_dir: str, file_path: str,
+                          regex: str) -> bool:
         """Checks if the file exists and its content matches the regex."""
-        path = os.path.join(sim_dir, config.path)
+        path = os.path.join(sim_dir, file_path)
         if os.path.exists(path):
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    return re.search(config.regex, content) is not None
+                    return re.search(regex, content) is not None
             except Exception:  # noqa: BLE001
                 return False
 
@@ -93,14 +79,15 @@ class ObserverManager:
                 )
 
                 if observer_type == ObserverType.FILE_EXISTS:
-                    if self._check_file_exists(sim_dir, observer.observer):
+                    if self._check_file_exists(sim_dir, observer.file_path):
                         self.stop_observing(observer_id)
                         self._event_logger.log(
                             events.ObserverTriggered(id=task_id,
                                                      observer_id=observer_id))
 
                 elif observer_type == ObserverType.FILE_REGEX:
-                    if self._check_file_regex(sim_dir, observer.observer):
+                    if self._check_file_regex(sim_dir, observer.file_path,
+                                              observer.regex):
                         self.stop_observing(observer_id)
                         self._event_logger.log(
                             events.ObserverTriggered(id=task_id,
