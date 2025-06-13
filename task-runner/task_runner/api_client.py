@@ -98,7 +98,7 @@ class ApiClient:
         logging.debug("Request: %s %s", method, url)
         timeout = timeout or self._request_timeout_s
         response = None
- 
+
         while attempts > 0:
             try:
                 response = requests.request(
