@@ -117,8 +117,8 @@ class ApiClient:
                     raise RuntimeError(error_message)
                 logging.error(error_message)
 
-            if (success_status is None
-                    or response and response.status_code == success_status):
+            if (success_status is None or
+                    response and response.status_code == success_status):
                 break
 
             time.sleep(retry_interval)
