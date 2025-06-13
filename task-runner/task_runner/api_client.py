@@ -87,28 +87,74 @@ class ApiClient:
         method: str,
         path: str,
         raise_exception: bool = False,
+        timeout: Optional[int] = None,
+        success_status: Optional[int] = None,
+        attempts: int = 1,
+        retry_interval: int = 1,
+        exponential_backoff_multiplier: float = 2.0,
         **kwargs,
     ):
         url = f"{self._url}/{path.lstrip('/')}"
         logging.debug("Request: %s %s", method, url)
-        resp = requests.request(
-            method,
-            url,
-            **kwargs,
-            timeout=self._request_timeout_s,
-            headers=self._headers,
-        )
-        self._log_response(resp)
+        timeout = timeout or self._request_timeout_s
+        response = None
+ 
+        while attempts > 0:
+            try:
+                response = requests.request(
+                    method,
+                    url,
+                    timeout=timeout,
+                    headers=self._headers,
+                    **kwargs,
+                )
+                self._log_response(response)
+            except Exception as e:  # noqa: BLE001
+                response = None
+                error_message = (
+                    f"Failed to send request: {method} {url}, error: {str(e)}")
+                if attempts == 1:
+                    raise RuntimeError(error_message)
+                logging.error(error_message)
+
+            if (success_status is None
+                    or response and response.status_code == success_status):
+                break
+
+            time.sleep(retry_interval)
+            retry_interval *= exponential_backoff_multiplier
+            attempts -= 1
 
         if raise_exception:
-            resp.raise_for_status()
+            response.raise_for_status()
 
-        return resp
+        return response
 
-    def _request_task_runner_api(self, method: str, path: str, **kwargs):
+    def _request_task_runner_api(
+        self,
+        method: str,
+        path: str,
+        raise_exception: bool = False,
+        timeout: Optional[int] = None,
+        success_status: Optional[int] = None,
+        attempts: int = 1,
+        retry_interval: float = 1.0,
+        exponential_backoff_multiplier: float = 2.0,
+        **kwargs,
+    ):
         full_path = f"/task-runner/{path.lstrip('/')}"
 
-        return self._request(method, full_path, **kwargs)
+        return self._request(
+            method,
+            full_path,
+            raise_exception,
+            timeout,
+            success_status,
+            attempts,
+            retry_interval,
+            exponential_backoff_multiplier,
+            **kwargs,
+        )
 
     def register_task_runner(self, data: dict) -> TaskRunnerAccessInfo:
         resp = self._request_task_runner_api(
@@ -206,6 +252,9 @@ class ApiClient:
         resp = self._request(
             method="GET",
             path="/storage/signed-urls",
+            raise_exception=True,
+            success_status=HTTPStatus.SUCCESS.value,
+            attempts=5,
             params={
                 "paths": paths,
                 "operation": operation,
@@ -278,29 +327,14 @@ class ApiClient:
         data = {"metric": metric, "value": value}
         logging.info("Posting task metric: %s", data)
 
-        max_retries = 5
-        retry_interval = 2
-        sent = False
-
-        while max_retries > 0 and sent is False:
-            resp = self._request_task_runner_api(
-                HTTPMethod.POST.value,
-                f"{self._task_runner_uuid}/task/{task_id}/metric",
-                json=data,
-            )
-
-            if resp.status_code == HTTPStatus.ACCEPTED.value:
-                sent = True
-            else:
-                logging.error(
-                    "Failed to post task metric: %s, retrying in %s seconds",
-                    metric,
-                    retry_interval,
-                )
-                self._log_response(resp)
-                time.sleep(retry_interval)
-
-            max_retries -= 1
+        self._request_task_runner_api(
+            method=HTTPMethod.POST.value,
+            path=f"{self._task_runner_uuid}/task/{task_id}/metric",
+            success_status=HTTPStatus.ACCEPTED.value,
+            attempts=5,
+            retry_interval=2,
+            json=data,
+        )
 
     def create_operation(
         self,
