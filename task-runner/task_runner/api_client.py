@@ -3,13 +3,13 @@ import dataclasses
 import datetime
 import enum
 import os
-import time
 import urllib
 import uuid
 from collections import namedtuple
 from typing import Any, List, Literal, Optional
 
 import requests
+import tenacity
 from absl import logging
 from inductiva_api import events
 from inductiva_api.task_status import TaskRunnerTerminationReason
@@ -77,10 +77,33 @@ class ApiClient:
             user_api_key=os.getenv("USER_API_KEY"),
         )
 
-    def _log_response(self, resp: requests.Response):
+    def _single_request(
+        self,
+        method: str,
+        path: str,
+        raise_exception: bool = False,
+        timeout: Optional[int] = None,
+        **kwargs,
+    ):
+        url = f"{self._url}/{path.lstrip('/')}"
+        logging.debug("Request: %s %s", method, url)
+        timeout = timeout or self._request_timeout_s
+
+        response = requests.request(
+            method,
+            url,
+            timeout=timeout,
+            headers=self._headers,
+            **kwargs,
+        )
         logging.debug("Response:")
-        logging.debug(" > status code: %s", resp.status_code)
-        logging.debug(" > body: %s", resp.text)
+        logging.debug(" > status code: %s", response.status_code)
+        logging.debug(" > body: %s", response.text)
+
+        if raise_exception:
+            response.raise_for_status()
+
+        return response
 
     def _request(
         self,
@@ -88,47 +111,26 @@ class ApiClient:
         path: str,
         raise_exception: bool = False,
         timeout: Optional[int] = None,
-        success_status: Optional[int] = None,
         attempts: int = 1,
-        retry_interval: int = 1,
         exponential_backoff_multiplier: float = 2.0,
         **kwargs,
     ):
-        url = f"{self._url}/{path.lstrip('/')}"
-        logging.debug("Request: %s %s", method, url)
-        timeout = timeout or self._request_timeout_s
-        response = None
-
-        while attempts > 0:
-            try:
-                response = requests.request(
-                    method,
-                    url,
+        for attempt in tenacity.Retrying(
+                stop=tenacity.stop_after_attempt(attempts),
+                wait=tenacity.wait_exponential(
+                    multiplier=exponential_backoff_multiplier),
+                retry=tenacity.retry_if_exception_type(
+                    (requests.RequestException, RuntimeError)),
+                reraise=raise_exception,
+        ):
+            with attempt:
+                return self._single_request(
+                    method=method,
+                    path=path,
+                    raise_exception=raise_exception,
                     timeout=timeout,
-                    headers=self._headers,
                     **kwargs,
                 )
-                self._log_response(response)
-            except Exception as e:  # noqa: BLE001
-                response = None
-                error_message = (
-                    f"Failed to send request: {method} {url}, error: {str(e)}")
-                if attempts == 1:
-                    raise RuntimeError(error_message)
-                logging.error(error_message)
-
-            if (success_status is None or
-                    response and response.status_code == success_status):
-                break
-
-            time.sleep(retry_interval)
-            retry_interval *= exponential_backoff_multiplier
-            attempts -= 1
-
-        if raise_exception:
-            response.raise_for_status()
-
-        return response
 
     def _request_task_runner_api(
         self,
@@ -136,9 +138,7 @@ class ApiClient:
         path: str,
         raise_exception: bool = False,
         timeout: Optional[int] = None,
-        success_status: Optional[int] = None,
         attempts: int = 1,
-        retry_interval: float = 1.0,
         exponential_backoff_multiplier: float = 2.0,
         **kwargs,
     ):
@@ -149,17 +149,15 @@ class ApiClient:
             full_path,
             raise_exception,
             timeout,
-            success_status,
             attempts,
-            retry_interval,
             exponential_backoff_multiplier,
             **kwargs,
         )
 
     def register_task_runner(self, data: dict) -> TaskRunnerAccessInfo:
         resp = self._request_task_runner_api(
-            HTTPMethod.POST.value,
-            "/register",
+            method=HTTPMethod.POST.value,
+            path="/register",
             json=data,
         )
         if resp.status_code != HTTPStatus.ACCEPTED.value:
@@ -177,8 +175,8 @@ class ApiClient:
 
     def kill_machine(self) -> int:
         resp = self._request_task_runner_api(
-            "DELETE",
-            f"/{self._task_runner_uuid}",
+            method=HTTPMethod.DELETE.value,
+            path=f"/{self._task_runner_uuid}",
         )
         return resp.status_code
 
@@ -188,8 +186,8 @@ class ApiClient:
         block_s: int,
     ) -> Optional[dict]:
         resp = self._request_task_runner_api(
-            "GET",
-            f"/{task_runner_id}/task?block_s={block_s}",
+            method=HTTPMethod.GET.value,
+            path=f"/{task_runner_id}/task?block_s={block_s}",
         )
         if resp.status_code == HTTPStatus.NO_CONTENT.value:
             return HTTPResponse(HTTPStatus.NO_CONTENT, None)
@@ -210,8 +208,9 @@ class ApiClient:
         event: events.Event,
     ):
         return self._request_task_runner_api(
-            "POST",
-            f"/{task_runner_id}/event",
+            method=HTTPMethod.POST.value,
+            path=f"/{task_runner_id}/event",
+            attempts=5,
             json=events.parse.to_dict(event),
             raise_exception=True,
         )
@@ -223,8 +222,8 @@ class ApiClient:
         block_s: int = 30,
     ) -> Optional[str]:
         resp = self._request_task_runner_api(
-            "GET",
-            f"/{task_runner_id}/task/{task_id}/message?block_s={block_s}",
+            method=HTTPMethod.GET.value,
+            path=f"/{task_runner_id}/task/{task_id}/message?block_s={block_s}",
         )
         if resp.status_code == HTTPStatus.NO_CONTENT.value:
             return HTTPResponse(HTTPStatus.NO_CONTENT, None)
@@ -240,8 +239,8 @@ class ApiClient:
         task_id: str,
     ):
         return self._request_task_runner_api(
-            "POST",
-            f"/{task_runner_id}/task/{task_id}/message/unblock",
+            method=HTTPMethod.POST.value,
+            path=f"/{task_runner_id}/task/{task_id}/message/unblock",
         )
 
     def get_signed_urls(
@@ -253,7 +252,6 @@ class ApiClient:
             method="GET",
             path="/storage/signed-urls",
             raise_exception=True,
-            success_status=HTTPStatus.SUCCESS.value,
             attempts=5,
             params={
                 "paths": paths,
@@ -283,8 +281,8 @@ class ApiClient:
         machine_group_name: Optional[str] = None,
     ) -> uuid.UUID:
         resp = self._request(
-            "POST",
-            "/compute/group",
+            method=HTTPMethod.POST.value,
+            path="/compute/group",
             json={
                 "provider_id":
                     "LOCAL",
@@ -311,8 +309,8 @@ class ApiClient:
     def get_started_machine_group_id_by_name(
             self, machine_group_name: str) -> Optional[uuid.UUID]:
         resp = self._request(
-            "GET",
-            f"/compute/group/{machine_group_name}",
+            method="GET",
+            path=f"/compute/group/{machine_group_name}",
         )
 
         if resp.status_code != HTTPStatus.SUCCESS.value:
@@ -330,9 +328,7 @@ class ApiClient:
         self._request_task_runner_api(
             method=HTTPMethod.POST.value,
             path=f"{self._task_runner_uuid}/task/{task_id}/metric",
-            success_status=HTTPStatus.ACCEPTED.value,
             attempts=5,
-            retry_interval=2,
             json=data,
         )
 
@@ -348,8 +344,8 @@ class ApiClient:
         timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
 
         resp = self._request_task_runner_api(
-            "POST",
-            f"{self._task_runner_uuid}/task/{task_id}/operation",
+            method=HTTPMethod.POST.value,
+            path=f"{self._task_runner_uuid}/task/{task_id}/operation",
             json={
                 "time": timestamp.isoformat(),
                 "elapsed_time_s": elapsed_time_s,
@@ -374,7 +370,8 @@ class ApiClient:
         timestamp = timestamp or datetime.datetime.now(datetime.timezone.utc)
 
         resp = self._request_task_runner_api(
-            "POST",
+            method=HTTPMethod.POST.value,
+            path=
             f"{self._task_runner_uuid}/task/{task_id}/operation/{operation_id}/done",
             json={
                 "time": timestamp.isoformat(),
