@@ -119,8 +119,11 @@ class ApiClient:
                 stop=tenacity.stop_after_attempt(attempts),
                 wait=tenacity.wait_exponential(
                     multiplier=exponential_backoff_multiplier),
-                retry=tenacity.retry_if_exception_type(
-                    (requests.RequestException, RuntimeError)),
+                retry=tenacity.retry_if_exception_type((
+                    requests.RequestException,
+                    requests.ConnectionError,
+                    RuntimeError,
+                )),
                 reraise=raise_exception,
         ):
             with attempt:
