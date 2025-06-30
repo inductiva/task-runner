@@ -74,6 +74,8 @@ class SubprocessTracker:
                 self.run_as_user,
             ]
 
+        logging.info("Env vars: %s", self.env)
+
         args = [*user_args, *self.args]
 
         try:

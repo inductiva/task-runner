@@ -222,6 +222,7 @@ class BaseExecuter(ABC):
                            f"# Working directory: {working_dir}\n")
             log_message += "\n"
             stdout.write(log_message)
+            stdout.write(f"Env: {env}\n")
             stderr.write(log_message)
             stdout.flush()
             stderr.flush()
