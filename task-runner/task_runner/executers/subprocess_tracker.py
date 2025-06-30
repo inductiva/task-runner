@@ -49,6 +49,7 @@ class SubprocessTracker:
         stderr,
         stdin,
         run_as_user=None,
+        env=None,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
@@ -58,6 +59,7 @@ class SubprocessTracker:
         self.stdin = stdin
         self.threads = []
         self.run_as_user = run_as_user
+        self.env = env
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
@@ -84,6 +86,7 @@ class SubprocessTracker:
                 stderr=subprocess.PIPE,
                 stdin=self.stdin,
                 shell=False,
+                env=self.env,
             )
             logging.info("Started process with PID %d.", self.subproc.pid)
 

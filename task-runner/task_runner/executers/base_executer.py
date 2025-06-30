@@ -8,7 +8,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import namedtuple
-from typing import Any
+from typing import Any, Optional, Dict
 
 import psutil
 from absl import logging
@@ -172,6 +172,7 @@ class BaseExecuter(ABC):
         self,
         cmd: command.Command,
         working_dir: str = "",
+        env: Optional[Dict[str, str]] = None,
     ):
         """Run a command as a subprocess.
 
@@ -201,6 +202,8 @@ class BaseExecuter(ABC):
         with self._lock:
             if self.is_shutting_down.is_set():
                 raise ExecuterKilledError()
+
+        env = env or {}
 
         self.system_monitor.change_command(" ".join(cmd.args))
 
@@ -269,6 +272,7 @@ class BaseExecuter(ABC):
                 stderr=stderr,
                 stdin=stdin,
                 run_as_user=self.commands_user,
+                env=env,
             )
             self.exec_command_logger.log_command_started(
                 command=" ".join(command_args),

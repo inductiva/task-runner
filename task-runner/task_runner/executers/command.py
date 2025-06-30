@@ -1,7 +1,7 @@
 """Generic shell commands class."""
 import dataclasses
 import shlex
-from typing import Optional
+from typing import Optional, Dict
 
 
 @dataclasses.dataclass
@@ -50,6 +50,7 @@ class Command():
         prompts: Optional[list[str]] = None,
         is_mpi: bool = False,
         mpi_config: Optional[MPICommandConfig] = None,
+        env: Optional[Dict[str, str]] = None,
     ):
 
         if prompts is None:
@@ -59,6 +60,7 @@ class Command():
         self.prompts = prompts
         self.is_mpi = is_mpi
         self.mpi_config = mpi_config
+        self.env = env or {}
         _check_format(self.args, prompts)
 
     @classmethod
@@ -73,6 +75,7 @@ class Command():
             prompts=data.get("prompts", []),
             is_mpi=mpi_config is not None,
             mpi_config=mpi_config,
+            env=data.get("env"),
         )
 
     def _tokenize(self, cmd) -> list[str]:
