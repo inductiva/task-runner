@@ -1,7 +1,7 @@
 """Generic shell commands class."""
 import dataclasses
 import shlex
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 
 @dataclasses.dataclass

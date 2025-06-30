@@ -8,7 +8,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import namedtuple
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
 
 import psutil
 from absl import logging
