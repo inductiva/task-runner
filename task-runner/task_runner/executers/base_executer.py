@@ -219,10 +219,10 @@ class BaseExecuter(ABC):
             open(self.stderr_logs_path, "a", encoding="UTF-8") as stderr, \
                 open(stdin_path, "r", encoding="UTF-8") as stdin:
             log_message = (f"# COMMAND: {cmd.args}\n"
-                           f"# Working directory: {working_dir}\n")
+                           f"# Working directory: {working_dir}\n"
+                           f"# Env: {env}\n")
             log_message += "\n"
             stdout.write(log_message)
-            stdout.write(f"Env: {env}\n")
             stderr.write(log_message)
             stdout.flush()
             stderr.flush()
