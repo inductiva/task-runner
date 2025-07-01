@@ -75,8 +75,8 @@ class SubprocessTracker:
             user_args = [
                 "sudo",
                 "-u",
-                *env_flags,
                 self.run_as_user,
+                *env_flags,
             ]
             logging.info("User args: %s", user_args)
 
