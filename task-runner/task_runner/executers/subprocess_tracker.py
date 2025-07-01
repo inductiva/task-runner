@@ -59,7 +59,7 @@ class SubprocessTracker:
         self.stdin = stdin
         self.threads = []
         self.run_as_user = run_as_user
-        self.env = env
+        self.env = env or {}
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
@@ -79,6 +79,11 @@ class SubprocessTracker:
 
         args = [*user_args, *self.args]
 
+        env = {
+            **os.environ,
+            **self.env,
+        }
+
         try:
             # pylint: disable=consider-using-with
             self.subproc = subprocess.Popen(
@@ -89,7 +94,7 @@ class SubprocessTracker:
                 stderr=subprocess.PIPE,
                 stdin=self.stdin,
                 shell=False,
-                env=self.env,
+                env=env,
             )
             logging.info("Started process with PID %d.", self.subproc.pid)
 
