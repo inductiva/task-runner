@@ -49,6 +49,7 @@ class SubprocessTracker:
         stderr,
         stdin,
         run_as_user=None,
+        env=None,
     ):
         logging.info("Creating task tracker for \"%s\".", args)
         self.args = args
@@ -58,6 +59,7 @@ class SubprocessTracker:
         self.stdin = stdin
         self.threads = []
         self.run_as_user = run_as_user
+        self.env = env or {}
 
     def run(self):
         """This is the main loop, where we execute the command and wait."""
@@ -68,11 +70,19 @@ class SubprocessTracker:
         if self.run_as_user is not None:
             user_args = [
                 "sudo",
+                "-E",
                 "-u",
                 self.run_as_user,
             ]
 
+        logging.info("Env vars: %s", self.env)
+
         args = [*user_args, *self.args]
+
+        env = {
+            **os.environ,
+            **self.env,
+        }
 
         try:
             # pylint: disable=consider-using-with
@@ -84,6 +94,7 @@ class SubprocessTracker:
                 stderr=subprocess.PIPE,
                 stdin=self.stdin,
                 shell=False,
+                env=env,
             )
             logging.info("Started process with PID %d.", self.subproc.pid)
 
