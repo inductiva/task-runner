@@ -68,11 +68,15 @@ class SubprocessTracker:
 
         user_args = []
         if self.run_as_user is not None:
+            env_flags = [
+                f"--preserve-env={env_var}" for env_var in self.env.keys()
+            ]
+
             user_args = [
                 "sudo",
-                "-E",
                 "-u",
                 self.run_as_user,
+                *env_flags,
             ]
 
         logging.info("Env vars: %s", self.env)
