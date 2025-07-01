@@ -70,7 +70,7 @@ class SubprocessTracker:
         if self.run_as_user is not None:
             user_args = [
                 "sudo",
-                "-E",
+                #             "-E",
                 "-u",
                 self.run_as_user,
             ]
