@@ -18,6 +18,8 @@ import task_runner
 from task_runner.cleanup import TaskRunnerTerminationError
 from task_runner.utils import INPUT_ZIP_FILENAME, OUTPUT_ZIP_FILENAME, host
 
+HTTP_REQUEST_MAX_ATTEMPTS = 5
+
 
 class HTTPMethod(enum.Enum):
     GET = "GET"
@@ -208,7 +210,7 @@ class ApiClient:
         return self._request_task_runner_api(
             method=HTTPMethod.POST.value,
             path=f"/{task_runner_id}/event",
-            attempts=5,
+            attempts=HTTP_REQUEST_MAX_ATTEMPTS,
             json=events.parse.to_dict(event),
             raise_exception=True,
         )
@@ -250,7 +252,7 @@ class ApiClient:
             method="GET",
             path="/storage/signed-urls",
             raise_exception=True,
-            attempts=5,
+            attempts=HTTP_REQUEST_MAX_ATTEMPTS,
             params={
                 "paths": paths,
                 "operation": operation,
@@ -326,7 +328,7 @@ class ApiClient:
         self._request_task_runner_api(
             method=HTTPMethod.POST.value,
             path=f"{self._task_runner_uuid}/task/{task_id}/metric",
-            attempts=5,
+            attempts=HTTP_REQUEST_MAX_ATTEMPTS,
             json=data,
         )
 
