@@ -12,6 +12,12 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
     """Concrete implementation of an Executer to run arbitrary commands."""
 
     def execute(self):
+
+        if "env" in self.args._fields:
+            global_env = self.args.env
+        else:
+            global_env = {}
+
         input_dir = os.path.join(self.working_dir, self.args.sim_dir)
 
         run_subprocess_dir = self.artifacts_dir_container
@@ -35,7 +41,15 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
         try:
             for command in self.args.commands:
                 cmd = executers.Command.from_dict(command)
-                self.run_subprocess(cmd, working_dir=run_subprocess_dir)
+
+                env = {
+                    **global_env,
+                    **cmd.env,
+                }
+
+                self.run_subprocess(cmd,
+                                    working_dir=run_subprocess_dir,
+                                    env=env)
         finally:
             # Remove files that were not modified or created
             if not timestamp:
