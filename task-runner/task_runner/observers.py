@@ -3,7 +3,7 @@ import re
 import threading
 import uuid
 from enum import Enum
-from typing import Dict, Literal, Optional
+from typing import Dict, Optional
 
 from absl import logging
 from inductiva_api import events
@@ -13,12 +13,11 @@ import task_runner
 
 
 class ObserverType(str, Enum):
-    FILE_EXISTS = "FileExistsObserver"
-    FILE_REGEX = "FileRegexObserver"
+    FILE_EXISTS = "file_exists_observer"
+    FILE_REGEX = "file_regex_observer"
 
 
 class Observer(BaseModel):
-    trigger_type: Literal["observer"]
     observer_id: uuid.UUID
     observer_type: ObserverType
     task_id: str
