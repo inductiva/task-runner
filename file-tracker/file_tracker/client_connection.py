@@ -33,7 +33,7 @@ class ClientConnection:
         channel_closed = asyncio.Event()
 
         @self.pc.on("datachannel")
-        def on_datachannel(channel):
+        async def on_datachannel(channel):
 
             @channel.on("message")
             async def on_message(message):
@@ -50,7 +50,7 @@ class ClientConnection:
                 operation.path = self.path
                 while not channel_closed.is_set():
                     try:
-                        response.message = operation.execute()
+                        response.message = await operation.execute()
                     except OperationError as e:
                         response = OperationResponse(
                             status=OperationStatus.ERROR, message=str(e))
