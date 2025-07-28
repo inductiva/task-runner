@@ -5,10 +5,10 @@ import threading
 import traceback
 
 from absl import logging
-from task_runner import events
-from task_runner.task_status import TaskRunnerTerminationReason
 
 import task_runner
+from task_runner import events
+from task_runner.task_status import TaskRunnerTerminationReason
 
 
 class TaskRunnerTerminationError(Exception):

@@ -11,11 +11,11 @@ from typing import Any, List, Literal, Optional
 import requests
 import tenacity
 from absl import logging
-from task_runner import events
-from task_runner.task_status import TaskRunnerTerminationReason
 
 import task_runner
+from task_runner import events
 from task_runner.cleanup import TaskRunnerTerminationError
+from task_runner.task_status import TaskRunnerTerminationReason
 from task_runner.utils import INPUT_ZIP_FILENAME, OUTPUT_ZIP_FILENAME, host
 
 HTTP_REQUEST_MAX_ATTEMPTS = 5

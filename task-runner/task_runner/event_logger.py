@@ -1,10 +1,10 @@
 import abc
 
 from absl import logging
-from task_runner.events.schemas import Event
 from typing_extensions import override
 
 from task_runner import utils
+from task_runner.events.schemas import Event
 
 
 class BaseEventLogger(abc.ABC):

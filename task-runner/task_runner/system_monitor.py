@@ -6,9 +6,8 @@ from typing import List, Literal, Optional, Tuple
 from uuid import UUID
 
 import psutil
-from task_runner import events
 
-from task_runner import BaseEventLogger, utils
+from task_runner import BaseEventLogger, events, utils
 
 
 class SystemMetrics(enum.Enum):
