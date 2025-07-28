@@ -1,7 +1,5 @@
 -r ./task-runner/requirements.txt
 -e ./task-runner
--e ./common/events
--e ./common/task_status
 absl-py
 pytest
 yapf
