@@ -1,7 +1,7 @@
 import abc
 
 from absl import logging
-from inductiva_api.events.schemas import Event
+from task_runner.events.schemas import Event
 from typing_extensions import override
 
 from task_runner import utils

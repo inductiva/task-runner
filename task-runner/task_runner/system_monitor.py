@@ -6,7 +6,7 @@ from typing import List, Literal, Optional, Tuple
 from uuid import UUID
 
 import psutil
-from inductiva_api import events
+from task_runner import events
 
 from task_runner import BaseEventLogger, utils
 

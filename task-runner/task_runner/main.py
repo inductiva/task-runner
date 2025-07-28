@@ -20,7 +20,7 @@ import uuid
 
 import socks
 from absl import app, logging
-from inductiva_api.task_status import TaskRunnerTerminationReason
+from task_runner.task_status import TaskRunnerTerminationReason
 
 import task_runner
 from task_runner import (

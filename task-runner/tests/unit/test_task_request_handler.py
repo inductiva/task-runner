@@ -12,7 +12,7 @@ from typing import Dict, Optional
 from unittest import mock
 
 import pytest
-from inductiva_api import events
+from task_runner import events
 from task_runner import (
     apptainer_utils,
     executers,

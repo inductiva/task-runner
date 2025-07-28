@@ -5,8 +5,8 @@ import threading
 import traceback
 
 from absl import logging
-from inductiva_api import events
-from inductiva_api.task_status import TaskRunnerTerminationReason
+from task_runner import events
+from task_runner.task_status import TaskRunnerTerminationReason
 
 import task_runner
 

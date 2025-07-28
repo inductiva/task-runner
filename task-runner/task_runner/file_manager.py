@@ -8,7 +8,7 @@ import uuid
 
 import requests
 import tenacity
-from inductiva_api import events
+from task_runner import events
 from typing_extensions import override
 
 import task_runner
