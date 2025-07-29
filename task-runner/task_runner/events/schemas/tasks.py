@@ -3,7 +3,7 @@ import datetime
 import uuid
 from typing import Optional
 
-import inductiva_api.events.schemas as event_schemas
+import task_runner.events.schemas as event_schemas
 
 
 class TaskEvent(event_schemas.Event):

@@ -2,8 +2,8 @@
 import uuid
 from typing import Optional
 
-import inductiva_api.events.schemas as event_schemas
-from inductiva_api import task_status
+import task_runner.events.schemas as event_schemas
+from task_runner import task_status
 
 
 # Shared properties of task-runner events.

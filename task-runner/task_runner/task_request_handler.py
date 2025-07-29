@@ -19,8 +19,6 @@ from typing import Optional
 from uuid import UUID
 
 from absl import logging
-from inductiva_api import events
-from inductiva_api.task_status import task_status
 
 import task_runner
 from task_runner import (
@@ -28,12 +26,14 @@ from task_runner import (
     SystemMonitor,
     api_methods_config,
     apptainer_utils,
+    events,
     executers,
     observers,
     task_message_listener,
     utils,
 )
 from task_runner.operations_logger import OperationName, OperationsLogger
+from task_runner.task_status import task_status
 from task_runner.utils import files
 
 KILL_MESSAGE = "kill"
