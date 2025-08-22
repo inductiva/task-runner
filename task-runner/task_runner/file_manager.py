@@ -5,9 +5,11 @@ import traceback
 import urllib
 import urllib.request
 import uuid
+import zlib
 
 import requests
 import tenacity
+import urllib3
 from typing_extensions import override
 
 import task_runner
@@ -194,6 +196,37 @@ class WebApiFileManager(BaseFileManager):
 
         return size, zip_duration, upload_time
 
+    @staticmethod
+    def _download_file(url,
+                       download_path,
+                       pool_manager,
+                       range_start=None,
+                       range_end=None):
+        headers = {}
+        is_range = range_start is not None and range_end is not None
+
+        if is_range:
+            headers["Range"] = f"bytes={range_start}-{range_end}"
+        response = pool_manager.urlopen("GET",
+                                        url,
+                                        headers=headers,
+                                        preload_content=False)
+
+        compressed_path = download_path + ".tmp"
+        os.makedirs(os.path.dirname(compressed_path), exist_ok=True)
+        with open(compressed_path, "wb") as file:
+            for chunk in response.stream():
+                file.write(chunk)
+        response.release_conn()
+
+        with open(compressed_path, "rb") as f:
+            compressed_data = f.read()
+        decompressed_data = zlib.decompress(compressed_data, -zlib.MAX_WBITS)
+
+        with open(download_path, "wb") as f:
+            f.write(decompressed_data)
+        os.remove(compressed_path)
+
     @utils.execution_time
     @override
     def download_input_resources(
@@ -202,21 +235,57 @@ class WebApiFileManager(BaseFileManager):
         dest_path: str,
         workdir: str,
     ):
-        files_url = self._api_client.get_download_urls(input_resources)
+        zip_paths = []
+        normal_paths = []
 
-        for file_url in files_url:
-            url = file_url["url"]
-            base_path = file_url["file_path"]
-            unzip = file_url["unzip"]
-            file_path = os.path.join(dest_path, base_path)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            urllib.request.urlretrieve(url, file_path)
+        for input_resource in input_resources:
+            normalized = input_resource.rstrip("/")
 
-            if unzip:
-                extract_to = os.path.join(dest_path, os.path.dirname(file_path))
-                files.extract_subfolder_and_cleanup(
-                    zip_path=file_path,
-                    subfolder="artifacts/",
-                    extract_to=extract_to,
-                    workdir=workdir,
+            if ".zip/" in normalized or normalized.endswith(".zip"):
+                zip_file, inner_path = normalized.split(".zip/", 1)
+                zip_paths.append({
+                    "zip_file": zip_file + ".zip",
+                    "inner_path": inner_path
+                })
+            else:
+                normal_paths.append(normalized)
+
+        if zip_paths:
+            zip_urls = self._api_client.get_download_urls(
+                [z["zip_file"] for z in zip_paths])
+
+            pool_manager = urllib3.PoolManager()
+            for zip_path, zip_url in zip(zip_paths, zip_urls):
+                range_start, range_end, _ = self._api_client.get_zip_file_range(
+                    filename=zip_path["inner_path"],
+                    path=zip_path["zip_file"],
+                    zip_relative_path="artifacts/",
                 )
+                self._download_file(
+                    url=zip_url["url"],
+                    download_path=os.path.join(dest_path,
+                                               zip_path["inner_path"]),
+                    pool_manager=pool_manager,
+                    range_start=range_start,
+                    range_end=range_end,
+                )
+
+        if normal_paths:
+            files_url = self._api_client.get_download_urls(normal_paths)
+            for file_url in files_url:
+                url = file_url["url"]
+                base_path = file_url["file_path"]
+                unzip = file_url["unzip"]
+                file_path = os.path.join(dest_path, base_path)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                urllib.request.urlretrieve(url, file_path)
+
+                if unzip:
+                    extract_to = os.path.join(dest_path,
+                                              os.path.dirname(file_path))
+                    files.extract_subfolder_and_cleanup(
+                        zip_path=file_path,
+                        subfolder="artifacts/",
+                        extract_to=extract_to,
+                        workdir=workdir,
+                    )

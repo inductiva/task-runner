@@ -260,6 +260,37 @@ class ApiClient:
         )
         return resp.json()
 
+    def get_zip_file_range(
+        self,
+        filename: str,
+        path: str,
+        zip_relative_path: Optional[str] = None,
+    ):
+        """
+        Get the byte range (start and end) of a file inside a ZIP archive.
+
+        :param filename: The file inside the ZIP.
+        :param path: Full path of the ZIP file in storage.
+        :param zip_relative_path: Relative path inside the zip.
+        """
+        params = {"filename": filename, "path": path}
+        if zip_relative_path is not None:
+            params["zip_relative_path"] = zip_relative_path
+
+        resp = self._request(
+            method="GET",
+            path="/storage/zip-file-range",
+            raise_exception=True,
+            attempts=HTTP_REQUEST_MAX_ATTEMPTS,
+            params=params,
+        )
+        data = resp.json()
+        return (
+            data["range_start"],
+            data["range_end"],
+            data["compress_type"],
+        )
+
     def get_download_input_url(self, storage_dir: str) -> str:
         return self.get_signed_urls(
             paths=[f"{storage_dir}/{INPUT_ZIP_FILENAME}"],
