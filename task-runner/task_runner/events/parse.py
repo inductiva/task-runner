@@ -7,7 +7,7 @@ from .schemas import Event
 
 EVENT_TYPE_KEY = "type"
 EVENT_BODY_KEY = "json"
-EVENTS_MODULE_NAME = "inductiva_api.events"
+EVENTS_MODULE_NAME = "task_runner.events"
 
 
 def to_dict(event: Event) -> dict:

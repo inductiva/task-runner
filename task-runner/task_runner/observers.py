@@ -6,10 +6,10 @@ from enum import Enum
 from typing import Dict, Optional
 
 from absl import logging
-from inductiva_api import events
 from pydantic import BaseModel
 
 import task_runner
+from task_runner import events
 
 
 class ObserverType(str, Enum):

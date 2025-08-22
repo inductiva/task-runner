@@ -37,11 +37,6 @@ COPY /task-runner /task-runner
 WORKDIR /task-runner
 RUN pip install .
 
-COPY ./common/events /common/events
-RUN pip install --no-cache-dir --upgrade /common/events
-COPY ./common/task_status /common/task_status
-RUN pip install --no-cache-dir --upgrade /common/task_status
-
 RUN useradd -m -s /bin/bash task-runner
 RUN mkdir /workdir
 RUN mkdir /executer-images
