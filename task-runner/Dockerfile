@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.9-bookworm
 
 ENV LOCAL_MODE=true
 ENV EXECUTER_IMAGES_DIR=/executer-images
