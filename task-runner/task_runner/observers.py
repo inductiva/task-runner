@@ -53,16 +53,15 @@ class ObserverManager:
 
         return os.path.exists(os.path.join(sim_dir, file_path))
 
-    def _check_file_regex(self, sim_dir: str, file_path: str, regex: str):
+    def _check_file_regex(self, sim_dir: str, file_path: str,
+                          regex: str) -> list[str]:
         """Checks if the file exists and its content matches the regex."""
         path = os.path.join(sim_dir, file_path)
-        if os.path.exists(path):
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    return re.findall(regex, content)
-            except Exception:  # noqa: BLE001
-                return []
+        if not os.path.exists(path):
+            return []
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            return re.findall(regex, content)
         return []
 
     def run(self, sim_dir, task_id):
