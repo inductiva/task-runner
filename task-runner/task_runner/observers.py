@@ -62,7 +62,6 @@ class ObserverManager:
         with open(path, 'r', encoding='utf-8') as f:
             content = f.read()
             return re.findall(regex, content)
-        return []
 
     def run(self, sim_dir, task_id):
         """The main loop for checking observers."""
