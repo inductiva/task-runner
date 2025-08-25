@@ -53,17 +53,17 @@ class ObserverManager:
 
         return os.path.exists(os.path.join(sim_dir, file_path))
 
-    def _check_file_regex(self, sim_dir: str, file_path: str,
-                          regex: str) -> bool:
+    def _check_file_regex(self, sim_dir: str, file_path: str, regex: str):
         """Checks if the file exists and its content matches the regex."""
         path = os.path.join(sim_dir, file_path)
         if os.path.exists(path):
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    return re.search(regex, content) is not None
+                    return re.findall(regex, content)
             except Exception:  # noqa: BLE001
-                return False
+                return []
+        return []
 
     def run(self, sim_dir, task_id):
         """The main loop for checking observers."""
@@ -85,12 +85,16 @@ class ObserverManager:
                                                      observer_id=observer_id))
 
                 elif observer_type == ObserverType.FILE_REGEX:
-                    if self._check_file_regex(sim_dir, observer.file_path,
-                                              observer.regex):
+                    matches = self._check_file_regex(sim_dir,
+                                                     observer.file_path,
+                                                     observer.regex)
+                    if matches:
                         self.stop_observing(observer_id)
+                        extra_params = {"captured": matches}
                         self._event_logger.log(
                             events.ObserverTriggered(id=task_id,
-                                                     observer_id=observer_id))
+                                                     observer_id=observer_id,
+                                                     extra_params=extra_params))
 
             self._stop_event.wait(self._check_interval_seconds)
 
