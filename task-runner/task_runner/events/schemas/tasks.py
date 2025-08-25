@@ -1,7 +1,7 @@
 """Events related to tasks."""
 import datetime
 import uuid
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import task_runner.events.schemas as event_schemas
 
@@ -55,3 +55,4 @@ class TaskExecutionFailed(TaskEvent):
 
 class ObserverTriggered(TaskEvent):
     observer_id: uuid.UUID
+    extra_params: Optional[Dict[str, Any]] = None
