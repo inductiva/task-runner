@@ -333,12 +333,11 @@ class TaskRequestHandler:
 
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
 
-            # Note: ideally we would pass the sim_dir to the observer manager
-            # however commands run in path /workdir/<task_id>/output/artifacts
+            # Commands run in the path <task_workdir>/output/artifacts
             self._observer_manager_thread = threading.Thread(
                 target=self.observer_manager.run,
                 args=(
-                    os.path.join("/workdir", self.task_id, "output/artifacts"),
+                    os.path.join(self.task_workdir, "output", "artifacts"),
                     self.task_id,
                 ),
                 daemon=True,
