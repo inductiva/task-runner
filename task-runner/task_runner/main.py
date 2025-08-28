@@ -156,6 +156,7 @@ def main(_):
     termination_handler = cleanup.TerminationHandler(
         task_runner_id=task_runner_uuid,
         request_handler=request_handler,
+        local_mode=local_mode,
     )
 
     cleanup.setup_cleanup_handlers(termination_handler)

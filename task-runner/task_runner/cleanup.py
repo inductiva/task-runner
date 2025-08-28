@@ -9,6 +9,7 @@ from absl import logging
 import task_runner
 from task_runner import events
 from task_runner.task_status import TaskRunnerTerminationReason
+from task_runner.utils import gcloud
 
 
 class TaskRunnerTerminationError(Exception):
@@ -36,9 +37,11 @@ class TerminationHandler:
         self,
         task_runner_id,
         request_handler,
+        local_mode,
     ):
         self.task_runner_id = task_runner_id
         self.request_handler = request_handler
+        self.local_mode = local_mode
         self._lock = threading.Lock()
         self._termination_logged = False
 
@@ -98,12 +101,15 @@ class TerminationHandler:
         return True
 
 
-def get_signal_handler(termination_handler):
+def get_signal_handler(termination_handler: TerminationHandler):
 
     def handler(signum, _):
         logging.info("Caught signal %s.", signal.Signals(signum).name)
 
         reason = TaskRunnerTerminationReason.INTERRUPTED
+
+        if not termination_handler.local_mode and gcloud.is_vm_preempted():
+            reason = TaskRunnerTerminationReason.VM_PREEMPTED
 
         logged_termination = termination_handler.log_termination(reason)
         if logged_termination:
