@@ -82,6 +82,7 @@ class TerminationHandler:
 
         event = events.TaskRunnerTerminated(
             uuid=self.task_runner_id,
+            issuer="task-runner",
             reason=reason,
             stopped_tasks=stopped_tasks,
             detail=detail,
