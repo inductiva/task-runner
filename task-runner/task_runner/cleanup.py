@@ -4,8 +4,9 @@ import sys
 import threading
 import traceback
 
-import task_runner
 from absl import logging
+
+import task_runner
 from task_runner import events
 from task_runner.task_status import TaskRunnerTerminationReason
 from task_runner.utils import gcloud

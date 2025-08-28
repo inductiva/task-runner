@@ -3,6 +3,7 @@
 from typing import Optional
 
 import requests
+
 from task_runner.utils import bool_string_to_bool
 
 METADATA_SERVER_URL = "http://metadata.google.internal"
