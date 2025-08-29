@@ -113,7 +113,7 @@ def get_signal_handler(termination_handler: TerminationHandler):
             reason = TaskRunnerTerminationReason.VM_PREEMPTED
             detail += " VM is being preempted."
 
-        logged_termination = termination_handler.log_termination(reason)
+        logged_termination = termination_handler.log_termination(reason, detail)
         if logged_termination:
             sys.exit()
 
