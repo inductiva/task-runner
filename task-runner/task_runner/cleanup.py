@@ -104,10 +104,10 @@ class TerminationHandler:
 def get_signal_handler(termination_handler: TerminationHandler):
 
     def handler(signum, _):
-        logging.info("Caught signal %s.", signal.Signals(signum).name)
+        detail = f"Caught signal: {signal.Signals(signum).name}"
+        logging.info(detail)
 
         reason = TaskRunnerTerminationReason.INTERRUPTED
-        detail = f"Caught signal: {signum}."
 
         if not termination_handler.local_mode and gcloud.is_vm_preempted():
             reason = TaskRunnerTerminationReason.VM_PREEMPTED
