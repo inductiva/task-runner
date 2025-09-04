@@ -8,6 +8,7 @@ import uuid
 
 import requests
 import tenacity
+from absl import logging
 from typing_extensions import override
 
 import task_runner
@@ -89,6 +90,11 @@ class WebApiFileManager(BaseFileManager):
             data=data,
             timeout=WebApiFileManager.REQUEST_TIMEOUT_S,
             headers={"Content-Type": "application/octet-stream"},
+        )
+        logging.info(
+            "Upload Response. Status: %s, Body: %s",
+            response.status_code,
+            response.text,
         )
         response.raise_for_status()
         return response
