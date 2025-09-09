@@ -441,6 +441,3 @@ def mount_disk(device_path: str, mount_path: str) -> None:
     subprocess.run(mkdir, check=True)
     mount = ["sudo", "mount", "-o", "discard,defaults", device_path, mount_path]
     subprocess.run(mount, check=True)
-    login = os.getlogin()
-    chown = ["sudo", "chown", f"{login}:{login}", mount_path]
-    subprocess.run(chown, check=True)
