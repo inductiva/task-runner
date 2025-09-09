@@ -261,7 +261,7 @@ class TaskRequestHandler:
         if request.get("operation"):
             self._execute_task_operation(request)
             return
-        
+
         self.task_id = request["id"]
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
