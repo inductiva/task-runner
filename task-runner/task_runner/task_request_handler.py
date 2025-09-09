@@ -250,10 +250,18 @@ class TaskRequestHandler:
         is set to poll the API, in which a "kill" message may be
         received. If the message is received, then the subprocess running the
         requested task is killed.
+    
+        If the request includes a specific operation, only that operation will
+        be executed, and the method will return immediately afterwards.
 
         Args:
             request: Request describing the task to be executed.
         """
+
+        if request.get("operation"):
+            self._execute_task_operation(request)
+            return
+        
         self.task_id = request["id"]
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
@@ -684,3 +692,61 @@ class TaskRequestHandler:
             ),
             extra_params=extra_params,
         )
+
+    def _upload_outputs(
+        self,
+        disk_name: str,
+        task_id: str,
+        mount: bool,
+        task_dir_remote: str,
+        stream_zip: bool,
+        compress_with: str,
+    ) -> None:
+        """
+        Upload the outputs of a task, optionally mounting the disk first.
+
+        Args:
+            disk_name: Name of the GCP disk that contains the task data.
+            task_id: Unique identifier of the task whose outputs are being
+                uploaded.
+            mount: Whether the disk should be mounted before accessing outputs.
+            task_dir_remote: Remote directory path where outputs will be
+                uploaded.
+            stream_zip: Whether outputs should be streamed as a zip archive.
+            compress_with: Compression method to use for packaging outputs.
+        """
+        if mount:
+            device_path = files.get_linux_device_from_gcp_disk(disk_name)
+            mount_path = f"/mnt/data-disk-{task_id}"
+            files.mount_disk(device_path, mount_path)
+
+        self.task_id = task_id
+        self.task_workdir = os.path.join(mount_path, self.workdir, self.task_id)
+        self.task_dir_remote = task_dir_remote
+        self.stream_zip = stream_zip
+        self.compress_with = compress_with
+        self._pack_output()
+
+    def _execute_task_operation(self, request: dict[str, str]) -> None:
+        """
+        Execute a task operation based on a request.
+
+        Args:
+            request: Dictionary describing the operation. Must contain the key
+                "operation", and operation-specific parameters.
+
+        Raises:
+            RuntimeError: If the request specifies an invalid operation.
+        """
+        operation = request["operation"]
+        if operation == "upload-outputs":
+            self._upload_outputs(
+                task_id=request["id"],
+                disk_name=request["disk"],
+                mount=request["mount"] == "t",
+                task_dir_remote=request["task_dir"],
+                stream_zip=request["stream_zip"] == "t",
+                compress_with=request["compress_with"],
+            )
+        else:
+            raise RuntimeError("Invalid operation: %s", operation)
