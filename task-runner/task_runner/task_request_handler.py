@@ -567,7 +567,7 @@ class TaskRequestHandler:
 
         return exit_code, exit_reason
 
-    def _pack_output(self) -> int:
+    def _pack_output(self, output_filename: Optional[str] = None) -> int:
         """Compress outputs and store them in the shared drive."""
         if self.task_workdir is None:
             logging.error("Working directory not found.")
@@ -594,12 +594,13 @@ class TaskRequestHandler:
             self.file_manager.upload_output(
                 self.task_id,
                 self.task_dir_remote,
-                output_dir,
+                local_path=output_dir,
                 stream_zip=self.stream_zip,
                 compress_with=self.compress_with,
                 operations_logger=self._operations_logger,
                 event_logger=self.event_logger,
                 task_runner_uuid=self.task_runner_uuid,
+                output_filename=output_filename,
             )
 
         logging.info("Output zipped in: %s seconds", zip_duration)
@@ -725,7 +726,9 @@ class TaskRequestHandler:
         self.task_dir_remote = task_dir_remote
         self.stream_zip = stream_zip
         self.compress_with = compress_with
-        self._pack_output()
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        output_filename = f"output-{timestamp}.zip"
+        self._pack_output(output_filename)
 
     def _execute_task_operation(self, request: dict[str, str]) -> None:
         """
