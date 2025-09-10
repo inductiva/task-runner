@@ -191,8 +191,13 @@ class TaskRequestHandler:
 
         self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
 
-    def save_output(self, new_task_status=None, force=False):
-        _ = self._pack_output()
+    def save_output(
+        self,
+        new_task_status=None,
+        force=False,
+        output_filename=None,
+    ):
+        _ = self._pack_output(output_filename=output_filename)
         self._publish_event(events.TaskOutputUploaded(
             id=self.task_id,
             machine_id=self.task_runner_uuid,
@@ -758,7 +763,7 @@ class TaskRequestHandler:
         self.compress_with = compress_with
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         output_filename = f"output-{timestamp}.zip"
-        self._pack_output(output_filename)
+        self.save_output(output_filename=output_filename)
 
     def _execute_task_operation(self, request: dict[str, str]) -> None:
         """
