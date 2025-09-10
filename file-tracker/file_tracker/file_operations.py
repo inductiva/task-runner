@@ -1,4 +1,5 @@
 import abc
+import asyncio
 import os
 import subprocess
 import time
@@ -28,7 +29,7 @@ class Operation:
             raise OperationError(f"Unknown operation type: {type}")
 
     @abc.abstractmethod
-    def execute(self):
+    async def execute(self):
         raise NotImplementedError("Subclasses must implement this method")
 
 
@@ -37,7 +38,7 @@ class List(Operation):
     def __init__(self):
         self.path = None
 
-    def execute(self):
+    async def execute(self):
         return self.ls(self.path)
 
     def ls(self, path):
@@ -55,7 +56,7 @@ class List(Operation):
 class Top(Operation):
     """Class for the Top Operation."""
 
-    def execute(self):
+    async def execute(self):
         return self.top()
 
     def top(self) -> str:
@@ -77,7 +78,7 @@ METRICS_FILE_PATH_SUFFIX = "output/artifacts/system_metrics.csv"
 class LastModifiedFile(Operation):
     """Class for the LastModifiedFile Operation."""
 
-    def execute(self):
+    async def execute(self):
         return self.last_modified_file()
 
     def last_modified_file(self) -> str:
@@ -122,21 +123,29 @@ class LastModifiedFile(Operation):
 
 class Tail(Operation):
 
-    def __init__(self, filename, lines=10):
+    def __init__(self, filename, lines=10, wait=False):
         self.filename = filename
         self.lines = lines
         self.path = None
         self.last_updated_at = None
         self.cursor = None
+        self.wait = wait
 
-    def execute(self):
+    async def _wait_for_file(self, file, interval=1):
+        while not os.path.exists(file):
+            await asyncio.sleep(interval)
+
+    async def execute(self):
         if self.cursor:
             return self.get_appended(self.path, self.filename)
-        return self.tail(self.path, self.filename, self.lines)
+        return await self.tail(self.path, self.filename, self.lines)
 
-    def tail(self, path_to_file, filename, lines=10):
+    async def tail(self, path_to_file, filename, lines=10, interval=1):
         file = os.path.join(path_to_file, filename)
-        if not os.path.exists(file):
+
+        if self.wait:
+            await self._wait_for_file(file, interval)
+        elif not os.path.exists(file):
             raise OperationError(f"File not found: {filename}")
 
         self.last_updated_at = os.path.getmtime(file)

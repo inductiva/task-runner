@@ -9,11 +9,11 @@ from typing import Optional
 
 import requests
 import tenacity
-from inductiva_api import events
+from absl import logging
 from typing_extensions import override
 
 import task_runner
-from task_runner import utils
+from task_runner import events, utils
 from task_runner.operations_logger import OperationName, OperationsLogger
 from task_runner.utils import files
 
@@ -92,6 +92,11 @@ class WebApiFileManager(BaseFileManager):
             data=data,
             timeout=WebApiFileManager.REQUEST_TIMEOUT_S,
             headers={"Content-Type": "application/octet-stream"},
+        )
+        logging.info(
+            "Upload Response. Status: %s, Body: %s",
+            response.status_code,
+            response.text,
         )
         response.raise_for_status()
         return response

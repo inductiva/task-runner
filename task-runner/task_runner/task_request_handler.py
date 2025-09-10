@@ -19,8 +19,6 @@ from typing import Optional
 from uuid import UUID
 
 from absl import logging
-from inductiva_api import events
-from inductiva_api.task_status import task_status
 
 import task_runner
 from task_runner import (
@@ -28,11 +26,14 @@ from task_runner import (
     SystemMonitor,
     api_methods_config,
     apptainer_utils,
+    events,
     executers,
+    observers,
     task_message_listener,
     utils,
 )
 from task_runner.operations_logger import OperationName, OperationsLogger
+from task_runner.task_status import task_status
 from task_runner.utils import files
 
 KILL_MESSAGE = "kill"
@@ -52,6 +53,7 @@ def task_message_listener_loop(
     listener: task_message_listener.BaseTaskMessageListener,
     task_id: str,
     kill_task_thread_queue: queue.Queue,
+    observer_manager: observers.ObserverManager,
 ) -> None:
     """Function to handle the kill request for the running task.
 
@@ -74,6 +76,15 @@ def task_message_listener_loop(
 
         elif message == KILL_MESSAGE:
             kill_task_thread_queue.put(KILL_MESSAGE)
+
+        # Must be a observer message
+        else:
+            try:
+                observation_task = observers.Observer.parse_obj(
+                    json.loads(message))
+                observer_manager.start_observing(observation_task)
+            except Exception:  # noqa: BLE001
+                logging.error("Could not parse message: %s", message)
 
 
 def interrupt_task_ttl_exceeded(
@@ -274,6 +285,9 @@ class TaskRequestHandler:
         self.cleaning_up = False
         self._kill_task_thread_queue = queue.Queue()
 
+        self.observer_manager = observers.ObserverManager(
+            self.event_logger, check_interval_seconds=5)
+
         self._log_task_picked_up()
         safely_delete = False
 
@@ -284,6 +298,7 @@ class TaskRequestHandler:
                     self.message_listener,
                     self.task_id,
                     self._kill_task_thread_queue,
+                    self.observer_manager,
                 ),
                 daemon=True,
             )
@@ -325,6 +340,17 @@ class TaskRequestHandler:
                 return
 
             self.task_workdir = self._setup_working_dir(self.task_dir_remote)
+
+            # Commands run in the path <task_workdir>/output/artifacts
+            self._observer_manager_thread = threading.Thread(
+                target=self.observer_manager.run,
+                args=(
+                    os.path.join(self.task_workdir, "output", "artifacts"),
+                    self.task_id,
+                ),
+                daemon=True,
+            )
+            self._observer_manager_thread.start()
 
             if self._check_task_killed():
                 self._publish_event(
@@ -380,6 +406,10 @@ class TaskRequestHandler:
             if self._message_listener_thread:
                 self._message_listener_thread.join()
                 logging.info("Message listener thread stopped.")
+
+            self.observer_manager.stop()
+            self._observer_manager_thread.join()
+            logging.info("Observer manager thread stopped.")
 
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001

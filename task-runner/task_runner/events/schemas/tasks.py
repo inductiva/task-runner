@@ -1,9 +1,9 @@
 """Events related to tasks."""
 import datetime
 import uuid
-from typing import Optional
+from typing import Any, Dict, Optional
 
-import inductiva_api.events.schemas as event_schemas
+import task_runner.events.schemas as event_schemas
 
 
 class TaskEvent(event_schemas.Event):
@@ -51,3 +51,8 @@ class TaskExecutionFailed(TaskEvent):
     error_message: str
     machine_id: uuid.UUID
     traceback: Optional[str] = None
+
+
+class ObserverTriggered(TaskEvent):
+    observer_id: uuid.UUID
+    extra_params: Optional[Dict[str, Any]] = None

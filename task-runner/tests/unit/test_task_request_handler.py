@@ -8,13 +8,13 @@ import threading
 import time
 import uuid
 from collections.abc import Iterator
-from typing import Optional
+from typing import Dict, Optional
 from unittest import mock
 
 import pytest
-from inductiva_api import events
 from task_runner import (
     apptainer_utils,
+    events,
     executers,
     task_message_listener,
     task_request_handler,
@@ -29,7 +29,10 @@ class MockExecuter(
     to run the command without using apptainer.
     """
 
-    def run_subprocess(self, cmd: executers.Command, working_dir: str = ""):
+    def run_subprocess(self,
+                       cmd: executers.Command,
+                       working_dir: str = "",
+                       env: Optional[Dict[str, str]] = None):
         with self._lock:
             if self.is_shutting_down.is_set():
                 raise executers.base_executer.ExecuterKilledError()
