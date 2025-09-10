@@ -52,7 +52,7 @@ class ClientConnection:
                     try:
                         # DownloadFile uses direct streaming to support large
                         # files and avoid memory issues and WebRTC message size
-                        # limits. Other operations return small data.
+                        # limits
                         if isinstance(operation, DownloadFile):
                             response.message = await operation.execute(channel)
                         else:
