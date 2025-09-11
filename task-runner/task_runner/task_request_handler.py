@@ -759,7 +759,7 @@ class TaskRequestHandler:
             logging.info("Mounted device %s at %s.", device_path, mount_path)
 
         self.task_id = task_id
-        self.task_workdir = os.path.join(mount_path, self.workdir, self.task_id)
+        self.task_workdir = os.path.join(mount_path, "workdir", self.task_id)
         self.task_dir_remote = task_dir_remote
         self.stream_zip = stream_zip
         self.compress_with = compress_with
