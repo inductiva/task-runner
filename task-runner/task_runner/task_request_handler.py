@@ -274,7 +274,7 @@ class TaskRequestHandler:
             request: Request describing the task to be executed.
         """
 
-        if request.get("operation"):
+        if "operation" in request:
             self._execute_task_operation(request)
             return
 
@@ -751,10 +751,12 @@ class TaskRequestHandler:
             stream_zip: Whether outputs should be streamed as a zip archive.
             compress_with: Compression method to use for packaging outputs.
         """
+        mount_path = f"/mnt/data-disk-{task_id}"
+
         if mount:
             device_path = files.get_linux_device_from_gcp_disk(disk_name)
-            mount_path = f"/mnt/data-disk-{task_id}"
             files.mount_disk(device_path, mount_path)
+            logging.info("Mounted device %s at %s.", device_path, mount_path)
 
         self.task_id = task_id
         self.task_workdir = os.path.join(mount_path, self.workdir, self.task_id)
@@ -763,6 +765,12 @@ class TaskRequestHandler:
         self.compress_with = compress_with
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         output_filename = f"output-{timestamp}.zip"
+        logging.info(
+            "Uploading outputs from local %s to remote %s/%s.",
+            self.task_workdir,
+            self.task_dir_remote,
+            output_filename,
+        )
         self.save_output(output_filename=output_filename)
 
     def _execute_task_operation(self, request: dict[str, str]) -> None:
