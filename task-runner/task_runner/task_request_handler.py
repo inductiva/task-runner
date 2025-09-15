@@ -620,7 +620,6 @@ class TaskRequestHandler:
                 stream_zip=self.stream_zip,
                 compress_with=self.compress_with,
                 operations_logger=self._operations_logger,
-                event_logger=self.event_logger,
                 task_runner_uuid=self.task_runner_uuid,
             )
 

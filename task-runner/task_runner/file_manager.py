@@ -12,7 +12,7 @@ from absl import logging
 from typing_extensions import override
 
 import task_runner
-from task_runner import events, utils
+from task_runner import utils
 from task_runner.operations_logger import OperationName, OperationsLogger
 from task_runner.utils import files
 
@@ -36,7 +36,6 @@ class BaseFileManager(abc.ABC):
         local_path: str,
         task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
-        event_logger: task_runner.BaseEventLogger,
         stream_zip: bool = True,
         compress_with: str = "AUTO",
     ):
@@ -100,40 +99,38 @@ class WebApiFileManager(BaseFileManager):
         return response
 
     @staticmethod
-    def make_fail_upload_hook(task_id: str, task_runner_uuid: uuid.UUID,
-                              event_logger: task_runner.BaseEventLogger):
+    def before_sleep(retry_state: tenacity.RetryCallState, task_id: str,
+                     task_runner_uuid: uuid.UUID) -> None:
+        error = retry_state.outcome.exception()
+        if error is None:
+            return
 
-        def fail_upload_hook(retry_state: tenacity.RetryCallState):
-            error = retry_state.outcome.exception()
-            if error is None:
-                return
-
-            message = utils.get_exception_root_cause_message(error)
-
-            event_logger.log(
-                events.TaskOutputUploadFailed(
-                    id=task_id,
-                    machine_id=task_runner_uuid,
-                    error_message=message,
-                    traceback=traceback.format_exc(),
-                ))
-
-        return fail_upload_hook
+        message = utils.get_exception_root_cause_message(error)
+        logging.error(
+            "Output upload failed for task %s on runner %s (retry %d): %s\n%s",
+            task_id,
+            task_runner_uuid,
+            retry_state.attempt_number,
+            message,
+            traceback.format_exc(),
+        )
 
     @staticmethod
     @utils.execution_time_with_result
     def retry_upload(
-            method: str, url: str, data, task_id: str,
-            task_runner_uuid: uuid.UUID,
-            event_logger: task_runner.BaseEventLogger) -> requests.Response:
+        method: str,
+        url: str,
+        data,
+        task_id: str,
+        task_runner_uuid: uuid.UUID,
+        max_attempt_number: int = 5,
+        multiplier: int = 10,
+    ) -> requests.Response:
         for attempt in tenacity.Retrying(
-                stop=tenacity.stop_after_attempt(5),
-                wait=tenacity.wait_exponential(multiplier=10),
-                before_sleep=WebApiFileManager.make_fail_upload_hook(
-                    task_id=task_id,
-                    task_runner_uuid=task_runner_uuid,
-                    event_logger=event_logger,
-                ),
+                stop=tenacity.stop_after_attempt(max_attempt_number),
+                wait=tenacity.wait_exponential(multiplier),
+                before_sleep=lambda retry_state: WebApiFileManager.before_sleep(
+                    retry_state, task_id, task_runner_uuid),
                 reraise=True,
         ):
             with attempt:
@@ -147,7 +144,6 @@ class WebApiFileManager(BaseFileManager):
         local_path: str,
         task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
-        event_logger: task_runner.BaseEventLogger,
         stream_zip: bool = True,
         compress_with: str = "AUTO",
     ):
@@ -181,7 +177,6 @@ class WebApiFileManager(BaseFileManager):
             data=data,
             task_id=task_id,
             task_runner_uuid=task_runner_uuid,
-            event_logger=event_logger,
         )
 
         operation.end(attributes={"execution_time_s": upload_time})
