@@ -729,7 +729,7 @@ class TaskRequestHandler:
             extra_params=extra_params,
         )
 
-    def _upload_outputs(
+    def _output_recovery(
         self,
         disk_name: str,
         task_id: str,
@@ -785,8 +785,8 @@ class TaskRequestHandler:
             RuntimeError: If the request specifies an invalid operation.
         """
         operation = request["operation"]
-        if operation == "upload-outputs":
-            self._upload_outputs(
+        if operation == "output_recovery":
+            self._output_recovery(
                 task_id=request["id"],
                 disk_name=request["disk"],
                 mount=request["mount"] == "t",
