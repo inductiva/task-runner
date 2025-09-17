@@ -191,8 +191,13 @@ class TaskRequestHandler:
 
         self._kill_task_thread_queue.put(INTERRUPT_MESSAGE)
 
-    def save_output(self, new_task_status=None, force=False):
-        _ = self._pack_output()
+    def save_output(
+        self,
+        new_task_status=None,
+        force=False,
+        output_filename=None,
+    ):
+        _ = self._pack_output(output_filename=output_filename)
         self._publish_event(events.TaskOutputUploaded(
             id=self.task_id,
             machine_id=self.task_runner_uuid,
@@ -261,10 +266,18 @@ class TaskRequestHandler:
         is set to poll the API, in which a "kill" message may be
         received. If the message is received, then the subprocess running the
         requested task is killed.
+    
+        If the request includes a specific operation, only that operation will
+        be executed, and the method will return immediately afterwards.
 
         Args:
             request: Request describing the task to be executed.
         """
+
+        if "operation" in request:
+            self._execute_task_operation(request)
+            return
+
         self.task_id = request["id"]
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
@@ -589,7 +602,7 @@ class TaskRequestHandler:
 
         return exit_code, exit_reason
 
-    def _pack_output(self) -> int:
+    def _pack_output(self, output_filename: Optional[str] = None) -> int:
         """Compress outputs and store them in the shared drive."""
         if self.task_workdir is None:
             logging.error("Working directory not found.")
@@ -616,11 +629,12 @@ class TaskRequestHandler:
             self.file_manager.upload_output(
                 self.task_id,
                 self.task_dir_remote,
-                output_dir,
+                local_path=output_dir,
                 stream_zip=self.stream_zip,
                 compress_with=self.compress_with,
                 operations_logger=self._operations_logger,
                 task_runner_uuid=self.task_runner_uuid,
+                output_filename=output_filename,
             )
 
         logging.info("Output zipped in: %s seconds", zip_duration)
@@ -713,3 +727,71 @@ class TaskRequestHandler:
             ),
             extra_params=extra_params,
         )
+
+    def _output_recovery(
+        self,
+        disk_name: str,
+        task_id: str,
+        mount: bool,
+        task_dir_remote: str,
+        stream_zip: bool,
+        compress_with: str,
+    ) -> None:
+        """
+        Upload the outputs of a task, optionally mounting the disk first.
+
+        Args:
+            disk_name: Name of the GCP disk that contains the task data.
+            task_id: Unique identifier of the task whose outputs are being
+                uploaded.
+            mount: Whether the disk should be mounted before accessing outputs.
+            task_dir_remote: Remote directory path where outputs will be
+                uploaded.
+            stream_zip: Whether outputs should be streamed as a zip archive.
+            compress_with: Compression method to use for packaging outputs.
+        """
+        mount_path = f"/mnt/data-disk-{task_id}"
+
+        if mount:
+            device_path = files.get_linux_device_from_gcp_disk(disk_name)
+            files.mount_disk(device_path, mount_path)
+            logging.info("Mounted device %s at %s.", device_path, mount_path)
+
+        self.task_id = task_id
+        self.task_workdir = os.path.join(mount_path, "workdir", self.task_id)
+        self.task_dir_remote = task_dir_remote
+        self.stream_zip = stream_zip
+        self.compress_with = compress_with
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        output_filename = f"output-{timestamp}.zip"
+        logging.info(
+            "Uploading outputs from local %s to remote %s/%s.",
+            self.task_workdir,
+            self.task_dir_remote,
+            output_filename,
+        )
+        self.save_output(output_filename=output_filename)
+
+    def _execute_task_operation(self, request: dict[str, str]) -> None:
+        """
+        Execute a task operation based on a request.
+
+        Args:
+            request: Dictionary describing the operation. Must contain the key
+                "operation", and operation-specific parameters.
+
+        Raises:
+            RuntimeError: If the request specifies an invalid operation.
+        """
+        operation = request["operation"]
+        if operation == "output_recovery":
+            self._output_recovery(
+                task_id=request["id"],
+                disk_name=request["disk"],
+                mount=request["mount"] == "t",
+                task_dir_remote=request["task_dir"],
+                stream_zip=request["stream_zip"] == "t",
+                compress_with=request["compress_with"],
+            )
+        else:
+            raise RuntimeError("Invalid operation: %s", operation)

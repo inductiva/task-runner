@@ -397,3 +397,47 @@ def get_last_modified_before_time(directory: str, reference_time_ns: float):
         result.append(file)
 
     return result
+
+
+def get_linux_device_from_gcp_disk(disk_name: str) -> str:
+    """
+    Returns the Linux device path for a GCP disk attached to the VM.
+
+    Args:
+        disk_name: Name of the disk in GCP (e.g., "my-disk-2").
+
+    Returns:
+        Linux device path (e.g., "/dev/sdc").
+
+    Raises:
+        FileNotFoundError: If the disk is not found.
+    """
+    by_id_path = "/dev/disk/by-id"
+    if not os.path.exists(by_id_path):
+        raise FileNotFoundError(f"Path '{by_id_path}' not found.")
+
+    symlink_name = f"google-{disk_name}"
+    symlink_path = os.path.join(by_id_path, symlink_name)
+
+    if not os.path.exists(symlink_path):
+        raise FileNotFoundError(f"GCP disk '{disk_name}' not found.")
+
+    real_path = os.path.realpath(symlink_path)
+    return real_path
+
+
+def mount_disk(device_path: str, mount_path: str) -> None:
+    """
+    Mount a disk to the specified mount point using discard and default options.
+
+    Args:
+        device_path: Linux device path (e.g., '/dev/sdc').
+        mount_path: Directory to mount the disk (e.g., '/mnt/data_disk').
+
+    Raises:
+        subprocess.CalledProcessError: If the mount command fails.
+    """
+    mkdir = ["sudo", "mkdir", "-p", mount_path]
+    subprocess.run(mkdir, check=True)
+    mount = ["sudo", "mount", "-o", "discard,defaults", device_path, mount_path]
+    subprocess.run(mount, check=True)

@@ -266,9 +266,13 @@ class ApiClient:
             operation="download",
         )[0]
 
-    def get_upload_output_url(self, storage_dir: str) -> UploadUrlInfo:
+    def get_upload_output_url(
+            self,
+            storage_dir: str,
+            output_filename: Optional[str] = None) -> UploadUrlInfo:
+        output_filename = output_filename or OUTPUT_ZIP_FILENAME
         url = self.get_signed_urls(
-            paths=[f"{storage_dir}/{OUTPUT_ZIP_FILENAME}"],
+            paths=[f"{storage_dir}/{output_filename}"],
             operation="upload",
         )[0]
         return UploadUrlInfo(
