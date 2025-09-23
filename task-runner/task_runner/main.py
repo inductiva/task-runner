@@ -32,6 +32,7 @@ from task_runner import (
 from task_runner.register_task_runner import register_task_runner
 from task_runner.task_request_handler import TaskRequestHandler
 from task_runner.task_status import TaskRunnerTerminationReason
+from task_runner.utils import files
 
 
 def _log_task_runner_id(path, task_runner_id: uuid.UUID):
@@ -154,7 +155,7 @@ def main(_):
     )
 
     logging.info("Checking if %s contains task data...", workdir)
-    if task_id := utils.files.has_task_data(path=workdir):
+    if task_id := files.has_task_data(path=workdir):
         logging.info("%s contains data for task %s.", workdir, task_id)
         request_handler.upload_task_data(path=workdir, task_id=task_id)
 
