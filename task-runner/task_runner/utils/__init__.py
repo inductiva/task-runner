@@ -13,6 +13,8 @@ from functools import wraps
 
 from task_runner.utils.retries import retry
 
+from . import files
+
 INPUT_ZIP_FILENAME = "input.zip"
 OUTPUT_ZIP_FILENAME = "output.zip"
 OUTPUT_DIR = "output"

@@ -441,3 +441,14 @@ def mount_disk(device_path: str, mount_path: str) -> None:
     subprocess.run(mkdir, check=True)
     mount = ["sudo", "mount", "-o", "discard,defaults", device_path, mount_path]
     subprocess.run(mount, check=True)
+
+def has_task_data(path: str) -> Optional[str]:
+    """
+    Checks if a given path contains exactly one task folder.
+    Returns the task id if found, otherwise None.
+    """
+    if (os.path.exists(path) and os.path.isdir(path) and 
+        (files := os.listdir(path))):
+        assert len(files) == 1, f"Expected 1 task directory, got {files}."
+        return files[0]
+    return None

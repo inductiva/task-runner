@@ -795,3 +795,19 @@ class TaskRequestHandler:
             )
         else:
             raise RuntimeError("Invalid operation: %s", operation)
+
+    def upload_task_data(self, path: str, task_id: str) -> None:
+        self.task_id = task_id
+        self.task_workdir = os.path.join(path, self.task_id)
+        self.task_dir_remote = task_id
+        self.stream_zip = True
+        self.compress_with = "AUTO"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        output_filename = f"output-{timestamp}.zip"
+        logging.info(
+            "Uploading outputs from local %s to remote %s/%s.",
+            self.task_workdir,
+            self.task_dir_remote,
+            output_filename,
+        )
+        self.save_output(output_filename=output_filename)
