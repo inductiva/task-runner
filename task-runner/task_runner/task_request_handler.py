@@ -281,7 +281,7 @@ class TaskRequestHandler:
 
         # Save the task request to use during output recovery
         with open(self.request_path, "w", encoding="utf-8") as request_file:
-            json.dump(request, request_file)
+            json.dump(request, request_file, default=str)
 
         self.task_id = request["id"]
         self.project_id = request["project_id"]
