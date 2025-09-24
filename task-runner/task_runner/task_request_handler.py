@@ -799,7 +799,7 @@ class TaskRequestHandler:
     def upload_task_data(self, path: str, task_id: str) -> None:
         self.task_id = task_id
         self.task_workdir = os.path.join(path, self.task_id)
-        
+
         # TODO: Fetch the task from the web API and use its values
         self.task_dir_remote = task_id
         self.stream_zip = True
