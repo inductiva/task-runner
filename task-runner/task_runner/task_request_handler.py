@@ -280,7 +280,7 @@ class TaskRequestHandler:
             return
 
         # Save the task request to use during output recovery
-        with open(self.request_path, "w") as request_file:
+        with open(self.request_path, "w", encoding="utf-8") as request_file:
             json.dump(request, request_file)
 
         self.task_id = request["id"]
@@ -802,7 +802,7 @@ class TaskRequestHandler:
             raise RuntimeError("Invalid operation: %s", operation)
 
     def upload_task_data(self) -> None:
-        with open(self.request_path, "r") as request_file:
+        with open(self.request_path, "r", encoding="utf-8") as request_file:
             request = json.load(request_file)
 
         self.task_id = request["id"]
