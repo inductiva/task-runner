@@ -176,6 +176,7 @@ class TaskRequestHandler:
         self._kill_task_thread_queue = None
         self._shutting_down = False
         self._operations_logger = OperationsLogger(self.api_client)
+        self.request_path = f"{self.workdir}/request.json"
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -277,6 +278,10 @@ class TaskRequestHandler:
         if "operation" in request:
             self._execute_task_operation(request)
             return
+
+        # Save the task request to use during output recovery
+        with open(self.request_path, "w") as request_file:
+            json.dump(request, request_file)
 
         self.task_id = request["id"]
         self.project_id = request["project_id"]
@@ -796,14 +801,15 @@ class TaskRequestHandler:
         else:
             raise RuntimeError("Invalid operation: %s", operation)
 
-    def upload_task_data(self, path: str, task_id: str) -> None:
-        self.task_id = task_id
-        self.task_workdir = os.path.join(path, self.task_id)
+    def upload_task_data(self) -> None:
+        with open(self.request_path, "r") as request_file:
+            request = json.load(request_file)
 
-        # TODO: Fetch the task from the web API and use its values
-        self.task_dir_remote = task_id
-        self.stream_zip = True
-        self.compress_with = "AUTO"
+        self.task_id = request["id"]
+        self.task_workdir = os.path.join(self.workdir, self.task_id)
+        self.task_dir_remote = request["task_dir"]
+        self.stream_zip = request.get("stream_zip", "t") == "t"
+        self.compress_with = request.get("compress_with", "AUTO")
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         output_filename = f"output-{timestamp}.zip"

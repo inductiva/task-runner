@@ -155,9 +155,9 @@ def main(_):
     )
 
     logging.info("Checking if %s contains task data...", workdir)
-    if task_id := files.has_task_data(path=workdir):
-        logging.info("%s contains data for task %s.", workdir, task_id)
-        request_handler.upload_task_data(path=workdir, task_id=task_id)
+    if os.path.exists(request_handler.request_path):
+        logging.info("%s contains task data.", workdir)
+        request_handler.upload_task_data()
 
     termination_handler = cleanup.TerminationHandler(
         task_runner_id=task_runner_uuid,
