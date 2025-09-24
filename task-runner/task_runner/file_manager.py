@@ -68,8 +68,7 @@ class WebApiFileManager(BaseFileManager):
     def _get_storage_dir(self, task_dir_remote: str) -> str:
         """Removes the user bucket prefix from `task_dir_remote`"""
         task_path = pathlib.Path(task_dir_remote)
-        storage_dir = task_path.relative_to(task_path.parts[0]) \
-            if len(task_path.parts) > 1 else task_path
+        storage_dir = task_path.relative_to(task_path.parts[0])
         return str(storage_dir)
 
     @utils.execution_time
