@@ -479,7 +479,7 @@ class TaskRequestHandler:
             OperationName.DOWNLOAD_INPUT,
             self.task_id,
         )
-        download_duration = self.file_manager.download_input(
+        download_duration += self.file_manager.download_input(
             self.task_id,
             task_dir_remote,
             tmp_zip_path,
