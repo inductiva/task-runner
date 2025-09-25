@@ -18,6 +18,7 @@ from task_runner import (
     executers,
     task_message_listener,
     task_request_handler,
+    utils,
 )
 
 
@@ -76,6 +77,7 @@ def download_input_side_effect(
         unblock_download_input: Optional[threading.Event] = None):
     """Get function to use as side_effect for file_manager.download_input."""
 
+    @utils.execution_time
     def _side_effect(task_id, task_dir_remote, tmp_zip_path):
         del task_id, task_dir_remote  # unused
 
