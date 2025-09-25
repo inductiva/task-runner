@@ -204,7 +204,7 @@ class TaskRequestHandler:
             machine_id=self.task_runner_uuid,
             new_status=new_task_status),
                             force=force)
-        # Remove the request JSON file to prevent multiple uploads 
+        # Remove the request JSON file to prevent multiple uploads
         # after a successful task data upload
         if os.path.exists(self.request_path):
             os.remove(self.request_path)
