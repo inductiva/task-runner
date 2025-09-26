@@ -176,6 +176,7 @@ class TaskRequestHandler:
         self._kill_task_thread_queue = None
         self._shutting_down = False
         self._operations_logger = OperationsLogger(self.api_client)
+        self.request_path = f"{self.workdir}/request.json"
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
@@ -203,6 +204,10 @@ class TaskRequestHandler:
             machine_id=self.task_runner_uuid,
             new_status=new_task_status),
                             force=force)
+        # Remove the request JSON file to prevent multiple uploads
+        # after a successful task data upload
+        if os.path.exists(self.request_path):
+            os.remove(self.request_path)
         return True
 
     def is_task_running(self) -> bool:
@@ -270,6 +275,10 @@ class TaskRequestHandler:
         Args:
             request: Request describing the task to be executed.
         """
+        # Save the task request to use during output recovery
+        with open(self.request_path, "w", encoding="utf-8") as request_file:
+            json.dump(request, request_file, default=str)
+
         self.task_id = request["id"]
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
@@ -459,6 +468,8 @@ class TaskRequestHandler:
         os.makedirs(task_workdir)
         os.makedirs(sim_workdir)
 
+        download_duration = 0
+
         # Download input resources first so they can be overwriten
         # by the task files
         if self.input_resources:
@@ -471,7 +482,7 @@ class TaskRequestHandler:
             OperationName.DOWNLOAD_INPUT,
             self.task_id,
         )
-        download_duration = self.file_manager.download_input(
+        download_duration += self.file_manager.download_input(
             self.task_id,
             task_dir_remote,
             tmp_zip_path,
@@ -719,3 +730,36 @@ class TaskRequestHandler:
             ),
             extra_params=extra_params,
         )
+
+    def recover_task_data(self) -> None:
+        """
+        Recovers and uploads the task's output data after a VM repair due to 
+        preemption.
+
+        This method reads the saved task request from `self.request_path`, 
+        reconstructs the local and remote task directories, and uploads the 
+        task outputs as a timestamped ZIP file. It supports optional streaming
+        and compression settings specified in the original task request.
+        """
+        with open(self.request_path, "r", encoding="utf-8") as request_file:
+            request = json.load(request_file)
+
+        extra_params = json.loads(request.get("extra_params", {}))
+        if not extra_params.get("save_on_preemption"):
+            return
+
+        self.task_id = request["id"]
+        self.task_workdir = os.path.join(self.workdir, self.task_id)
+        self.task_dir_remote = request["task_dir"]
+        self.stream_zip = request.get("stream_zip", "t") == "t"
+        self.compress_with = request.get("compress_with", "AUTO")
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        output_filename = f"output-{timestamp}.zip"
+        logging.info(
+            "Uploading outputs from local %s to remote %s/%s.",
+            self.task_workdir,
+            self.task_dir_remote,
+            output_filename,
+        )
+        self.save_output(output_filename=output_filename)
