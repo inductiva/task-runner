@@ -805,7 +805,16 @@ class TaskRequestHandler:
         else:
             raise RuntimeError("Invalid operation: %s", operation)
 
-    def upload_task_data(self) -> None:
+    def recover_task_data(self) -> None:
+        """
+        Recovers and uploads the task's output data after a VM repair due to 
+        preemption.
+
+        This method reads the saved task request from `self.request_path`, 
+        reconstructs the local and remote task directories, and uploads the 
+        task outputs as a timestamped ZIP file. It supports optional streaming
+        and compression settings specified in the original task request.
+        """
         with open(self.request_path, "r", encoding="utf-8") as request_file:
             request = json.load(request_file)
 
