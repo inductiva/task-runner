@@ -818,6 +818,10 @@ class TaskRequestHandler:
         with open(self.request_path, "r", encoding="utf-8") as request_file:
             request = json.load(request_file)
 
+        extra_params = json.loads(request.get("extra_params", {}))
+        if not extra_params.get("save_on_preemption"):
+            return
+        
         self.task_id = request["id"]
         self.task_workdir = os.path.join(self.workdir, self.task_id)
         self.task_dir_remote = request["task_dir"]
