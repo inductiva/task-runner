@@ -176,11 +176,11 @@ class TaskRequestHandler:
         self._kill_task_thread_queue = None
         self._shutting_down = False
         self._operations_logger = OperationsLogger(self.api_client)
-        self.request_path = f"{self.workdir}/request.json"
 
         # If a share path for MPI is set, use it as the working directory.
         if self.mpi_config.share_path is not None:
             self.workdir = self.mpi_config.share_path
+        self.request_path = f"{self.workdir}/request.json"
 
     def set_shutting_down(self):
         logging.info("Stopping task...")
