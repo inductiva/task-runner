@@ -467,6 +467,8 @@ class TaskRequestHandler:
         os.makedirs(task_workdir)
         os.makedirs(sim_workdir)
 
+        download_duration = 0
+
         # Download input resources first so they can be overwriten
         # by the task files
         if self.input_resources:
@@ -479,7 +481,7 @@ class TaskRequestHandler:
             OperationName.DOWNLOAD_INPUT,
             self.task_id,
         )
-        download_duration = self.file_manager.download_input(
+        download_duration += self.file_manager.download_input(
             self.task_id,
             task_dir_remote,
             tmp_zip_path,
