@@ -31,14 +31,6 @@ class ScaleDownTimeoutError(TaskRunnerTerminationError):
         super().__init__(TaskRunnerTerminationReason.IDLE_TIMEOUT)
 
 
-class MachineGroupTimeoutError(TaskRunnerTerminationError):
-    """Exception raised when the timeout is reached for machines where
-    the Machine Group should be deleted instead of scaled down."""
-
-    def __init__(self):
-        super().__init__(TaskRunnerTerminationReason.IDLE_TIMEOUT)
-
-
 class TerminationHandler:
 
     def __init__(

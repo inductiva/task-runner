@@ -29,7 +29,6 @@ from task_runner import (
     task_execution_loop,
     utils,
 )
-from task_runner.cleanup import MachineGroupTimeoutError
 from task_runner.register_task_runner import register_task_runner
 from task_runner.task_request_handler import TaskRequestHandler
 from task_runner.task_status import TaskRunnerTerminationReason
@@ -174,17 +173,7 @@ def main(_):
                 task_fetcher=task_fetcher,
                 request_handler=request_handler,
                 max_idle_timeout=max_idle_timeout,
-                local_mode=local_mode,
             )
-            monitoring_flag = False
-        except MachineGroupTimeoutError as e:
-            logging.exception("Caught exception: %s", str(e))
-            logging.info("Terminating machine and deleting machine group...")
-
-            status_code = api_client.delete_machine_group(machine_group_id)
-            logging.info("Machine group deletion status code: %s", status_code)
-
-            termination_handler.log_termination(e.reason, e.detail)
             monitoring_flag = False
         except cleanup.ScaleDownTimeoutError as e:
             logging.exception("Caught exception: %s", str(e))
@@ -192,10 +181,19 @@ def main(_):
             status_code = api_client.kill_machine()
 
             if status_code == 422:
-                logging.warn(
-                    "Received 422 status code, cannot terminate due to minimum"
-                    " VM constraint. Restarting monitoring process.")
-                monitoring_flag = True
+                if local_mode:
+                    logging.info(
+                        "Terminating machine and deleting machine group...")
+                    status_code = api_client.delete_machine_group(
+                        machine_group_id)
+                    logging.info("Machine group deletion status code: %s",
+                                 status_code)
+                    monitoring_flag = False
+                else:
+                    logging.warn(
+                        "Received 422 status code, cannot terminate due to "
+                        "minimum VM constraint. Restarting monitoring process.")
+                    monitoring_flag = True
             else:
                 termination_handler.log_termination(e.reason, e.detail)
                 monitoring_flag = False
