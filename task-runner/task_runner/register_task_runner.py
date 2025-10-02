@@ -73,7 +73,5 @@ def register_task_runner(
     logging.info("Registered with following info:")
     logging.info(" > Task Runner ID: %s", access_info.id)
     logging.info(" > machine group ID: %s", access_info.machine_group_id)
-    if access_info.max_idle_time is not None:
-        logging.info(" > max idle time: %s seconds", access_info.max_idle_time)
 
     return access_info

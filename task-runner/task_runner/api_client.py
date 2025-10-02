@@ -169,11 +169,9 @@ class ApiClient:
 
         self._task_runner_uuid = uuid.UUID(resp_body["task_runner_id"])
 
-        return TaskRunnerAccessInfo(
-            id=self._task_runner_uuid,
-            machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
-            max_idle_time=resp_body.get("max_idle_time"),
-        )
+        return TaskRunnerAccessInfo(id=self._task_runner_uuid,
+                                    machine_group_id=uuid.UUID(
+                                        resp_body["machine_group_id"]))
 
     def kill_machine(self) -> int:
         resp = self._request_task_runner_api(
@@ -330,8 +328,8 @@ class ApiClient:
         )
         return resp.status_code
 
-    def get_started_machine_group_id_by_name(
-            self, machine_group_name: str) -> Optional[uuid.UUID]:
+    def get_started_machine_group_by_name(
+            self, machine_group_name: str) -> Optional[dict]:
         resp = self._request(
             method="GET",
             path=f"/compute/group/{machine_group_name}",
@@ -340,10 +338,14 @@ class ApiClient:
         if resp.status_code != HTTPStatus.SUCCESS.value:
             return None
 
-        if resp.json()["status"] != "started":
+        machine_group_data = resp.json()
+        if machine_group_data["status"] != "started":
             return None
 
-        return resp.json().get("id")
+        return {
+            "id": machine_group_data.get("id"),
+            "max_idle_time": machine_group_data.get("max_idle_time")
+        }
 
     def post_task_metric(self, task_id: str, metric: str, value: float):
         data = {"metric": metric, "value": value}
