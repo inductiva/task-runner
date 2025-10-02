@@ -6,7 +6,7 @@ from requests.exceptions import ConnectionError, ReadTimeout
 
 from task_runner import BaseTaskFetcher, TaskRequestHandler
 from task_runner.api_client import HTTPStatus
-from task_runner.cleanup import ScaleDownTimeoutError
+from task_runner.cleanup import MachineGroupTimeoutError, ScaleDownTimeoutError
 
 
 def start_loop(
@@ -14,6 +14,7 @@ def start_loop(
     request_handler: TaskRequestHandler,
     block_s: int = 0,
     max_idle_timeout: Optional[int] = None,
+    local_mode: bool = False,
 ):
     logging.info("Starting execution loop ...")
 
@@ -22,7 +23,10 @@ def start_loop(
         try:
             if max_idle_timeout and time.time(
             ) - idle_timestamp >= max_idle_timeout:
-                raise ScaleDownTimeoutError()
+                if local_mode:
+                    raise MachineGroupTimeoutError()
+                else:
+                    raise ScaleDownTimeoutError()
 
             logging.info("Waiting for requests...")
             request = task_fetcher.get_task(block_s=block_s)

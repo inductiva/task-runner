@@ -29,6 +29,7 @@ from task_runner import (
     task_execution_loop,
     utils,
 )
+from task_runner.cleanup import MachineGroupTimeoutError
 from task_runner.register_task_runner import register_task_runner
 from task_runner.task_request_handler import TaskRequestHandler
 from task_runner.task_status import TaskRunnerTerminationReason
@@ -90,11 +91,6 @@ def main(_):
     logging.info("  > available versions: %s",
                  ", ".join(mpi_config.list_available_versions()))
 
-    max_idle_timeout = None
-
-    max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
-    max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
-
     api_client = task_runner.ApiClient.from_env()
     api_file_tracker = task_runner.ApiFileTracker.from_env()
 
@@ -116,6 +112,11 @@ def main(_):
         num_mpi_hosts=mpi_config.num_hosts,
         local_mode=local_mode,
     )
+
+    max_idle_timeout = (os.getenv("MAX_IDLE_TIMEOUT") or
+                        task_runner_access_info.max_idle_time)
+    max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
+
     task_runner_uuid = task_runner_access_info.id
     _log_task_runner_id(task_runner_id_path, task_runner_uuid)
 
@@ -173,7 +174,17 @@ def main(_):
                 task_fetcher=task_fetcher,
                 request_handler=request_handler,
                 max_idle_timeout=max_idle_timeout,
+                local_mode=local_mode,
             )
+            monitoring_flag = False
+        except MachineGroupTimeoutError as e:
+            logging.exception("Caught exception: %s", str(e))
+            logging.info("Terminating machine and deleting machine group...")
+
+            status_code = api_client.delete_machine_group(machine_group_id)
+            logging.info("Machine group deletion status code: %s", status_code)
+
+            termination_handler.log_termination(e.reason, e.detail)
             monitoring_flag = False
         except cleanup.ScaleDownTimeoutError as e:
             logging.exception("Caught exception: %s", str(e))

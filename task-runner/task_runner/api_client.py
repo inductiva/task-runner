@@ -44,6 +44,7 @@ HTTPResponse = namedtuple("HTTPResponse", ["status", "data"])
 class TaskRunnerAccessInfo:
     id: uuid.UUID
     machine_group_id: uuid.UUID
+    max_idle_time: Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -171,6 +172,7 @@ class ApiClient:
         return TaskRunnerAccessInfo(
             id=self._task_runner_uuid,
             machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
+            max_idle_time=resp_body.get("max_idle_time"),
         )
 
     def kill_machine(self) -> int:
@@ -302,6 +304,8 @@ class ApiClient:
                     host.get_gpu_info().count if host.get_gpu_info() else None,
                 "gpu_name":
                     host.get_gpu_info().name if host.get_gpu_info() else None,
+                "max_idle_time": (int(os.getenv("MAX_IDLE_TIMEOUT"))
+                                  if os.getenv("MAX_IDLE_TIMEOUT") else None)
             },
         )
 
@@ -309,6 +313,22 @@ class ApiClient:
             raise RuntimeError(
                 f"Failed to create local machine group: {resp.json()}")
         return resp.json()["id"]
+
+    def delete_machine_group(self, machine_group_id: uuid.UUID) -> int:
+        """Delete a machine group.
+        
+        Args:
+            machine_group_id: UUID of the machine group to delete
+            
+        Returns:
+            HTTP status code of the delete request
+        """
+        resp = self._request(
+            method=HTTPMethod.DELETE.value,
+            path="/compute/group",
+            params={"machine_group_id": str(machine_group_id)},
+        )
+        return resp.status_code
 
     def get_started_machine_group_id_by_name(
             self, machine_group_name: str) -> Optional[uuid.UUID]:
