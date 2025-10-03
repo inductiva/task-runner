@@ -44,7 +44,6 @@ HTTPResponse = namedtuple("HTTPResponse", ["status", "data"])
 class TaskRunnerAccessInfo:
     id: uuid.UUID
     machine_group_id: uuid.UUID
-    max_idle_time: Optional[int] = None
 
 
 @dataclasses.dataclass
