@@ -169,9 +169,10 @@ class ApiClient:
 
         self._task_runner_uuid = uuid.UUID(resp_body["task_runner_id"])
 
-        return TaskRunnerAccessInfo(id=self._task_runner_uuid,
-                                    machine_group_id=uuid.UUID(
-                                        resp_body["machine_group_id"]))
+        return TaskRunnerAccessInfo(
+            id=self._task_runner_uuid,
+            machine_group_id=uuid.UUID(resp_body["machine_group_id"]),
+        )
 
     def kill_machine(self) -> int:
         resp = self._request_task_runner_api(
