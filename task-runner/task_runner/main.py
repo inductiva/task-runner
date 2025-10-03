@@ -112,8 +112,7 @@ def main(_):
         local_mode=local_mode,
     )
 
-    max_idle_timeout = (os.getenv("MAX_IDLE_TIMEOUT") or
-                        task_runner_access_info.max_idle_time)
+    max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
     max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
 
     task_runner_uuid = task_runner_access_info.id

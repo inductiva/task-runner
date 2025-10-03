@@ -44,7 +44,6 @@ HTTPResponse = namedtuple("HTTPResponse", ["status", "data"])
 class TaskRunnerAccessInfo:
     id: uuid.UUID
     machine_group_id: uuid.UUID
-    max_idle_time: Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -329,7 +328,7 @@ class ApiClient:
         )
         return resp.status_code
 
-    def get_started_machine_group_by_name(
+    def get_started_machine_group_id_by_name(
             self, machine_group_name: str) -> Optional[dict]:
         resp = self._request(
             method="GET",
@@ -339,14 +338,10 @@ class ApiClient:
         if resp.status_code != HTTPStatus.SUCCESS.value:
             return None
 
-        machine_group_data = resp.json()
-        if machine_group_data["status"] != "started":
+        if resp.json()["status"] != "started":
             return None
 
-        return {
-            "id": machine_group_data.get("id"),
-            "max_idle_time": machine_group_data.get("max_idle_time")
-        }
+        return resp.json().get("id")
 
     def post_task_metric(self, task_id: str, metric: str, value: float):
         data = {"metric": metric, "value": value}
