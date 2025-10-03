@@ -44,6 +44,7 @@ HTTPResponse = namedtuple("HTTPResponse", ["status", "data"])
 class TaskRunnerAccessInfo:
     id: uuid.UUID
     machine_group_id: uuid.UUID
+    max_idle_time: Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -302,6 +303,8 @@ class ApiClient:
                     host.get_gpu_info().count if host.get_gpu_info() else None,
                 "gpu_name":
                     host.get_gpu_info().name if host.get_gpu_info() else None,
+                "max_idle_time": (int(os.getenv("MAX_IDLE_TIMEOUT"))
+                                  if os.getenv("MAX_IDLE_TIMEOUT") else None)
             },
         )
 
@@ -310,8 +313,24 @@ class ApiClient:
                 f"Failed to create local machine group: {resp.json()}")
         return resp.json()["id"]
 
-    def get_started_machine_group_id_by_name(
-            self, machine_group_name: str) -> Optional[uuid.UUID]:
+    def delete_machine_group(self, machine_group_id: uuid.UUID) -> int:
+        """Delete a machine group.
+        
+        Args:
+            machine_group_id: UUID of the machine group to delete
+            
+        Returns:
+            HTTP status code of the delete request
+        """
+        resp = self._request(
+            method=HTTPMethod.DELETE.value,
+            path="/compute/group",
+            params={"machine_group_id": str(machine_group_id)},
+        )
+        return resp.status_code
+
+    def get_started_machine_group_by_name(
+            self, machine_group_name: str) -> Optional[dict]:
         resp = self._request(
             method="GET",
             path=f"/compute/group/{machine_group_name}",
@@ -320,10 +339,14 @@ class ApiClient:
         if resp.status_code != HTTPStatus.SUCCESS.value:
             return None
 
-        if resp.json()["status"] != "started":
+        machine_group_data = resp.json()
+        if machine_group_data["status"] != "started":
             return None
 
-        return resp.json().get("id")
+        return {
+            "id": machine_group_data.get("id"),
+            "max_idle_time": machine_group_data.get("max_idle_time")
+        }
 
     def post_task_metric(self, task_id: str, metric: str, value: float):
         data = {"metric": metric, "value": value}
