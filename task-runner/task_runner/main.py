@@ -178,25 +178,19 @@ def main(_):
         except cleanup.ScaleDownTimeoutError as e:
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")
-            status_code = api_client.kill_machine()
-
-            if status_code == 422:
-                if local_mode:
-                    logging.info(
-                        "Terminating machine and deleting machine group...")
-                    status_code = api_client.delete_machine_group(
-                        machine_group_id)
-                    logging.info("Machine group deletion status code: %s",
-                                 status_code)
-                    monitoring_flag = False
-                else:
+            if local_mode:
+                termination_handler.log_termination(e.reason, e.detail)
+                monitoring_flag = False
+            else:
+                status_code = api_client.kill_machine()
+                if status_code == 422:
                     logging.warn(
                         "Received 422 status code, cannot terminate due to "
                         "minimum VM constraint. Restarting monitoring process.")
                     monitoring_flag = True
-            else:
-                termination_handler.log_termination(e.reason, e.detail)
-                monitoring_flag = False
+                else:
+                    termination_handler.log_termination(e.reason, e.detail)
+                    monitoring_flag = False
         except cleanup.TaskRunnerTerminationError as e:
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")
