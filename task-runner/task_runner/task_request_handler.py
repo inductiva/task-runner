@@ -282,7 +282,7 @@ class TaskRequestHandler:
         self.task_id = request["id"]
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
-        self.storage_region = request["storage_region"]
+        self.storage_region = request.get("storage_region")
         self.submitted_timestamp = request.get("submitted_timestamp")
         self.input_resources = json.loads(request.get("input_resources", "[]"))
         # convert to bool because stream_zip is either 't' or 'f'
@@ -326,8 +326,7 @@ class TaskRequestHandler:
                     image_uri,
                     self.workdir,
                     self.storage_region,
-                )
-            )
+                ))
 
             operation.end(attributes={
                 "execution_time_s": download_time,
