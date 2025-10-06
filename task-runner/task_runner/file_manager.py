@@ -5,7 +5,6 @@ import traceback
 import urllib
 import urllib.request
 import uuid
-from typing import Optional
 
 import requests
 import tenacity
@@ -39,7 +38,6 @@ class BaseFileManager(abc.ABC):
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
         compress_with: str = "AUTO",
-        output_filename: Optional[str] = None,
     ):
         pass
 
@@ -148,7 +146,6 @@ class WebApiFileManager(BaseFileManager):
         operations_logger: OperationsLogger,
         stream_zip: bool = True,
         compress_with: str = "AUTO",
-        output_filename: Optional[str] = None,
     ):
         if stream_zip:
             if compress_with == "SEVEN_Z":
@@ -170,8 +167,7 @@ class WebApiFileManager(BaseFileManager):
             data = open(zip_path, "rb")
 
         storage_dir = self._get_storage_dir(task_dir_remote)
-        upload_info = self._api_client.get_upload_output_url(
-            storage_dir, output_filename)
+        upload_info = self._api_client.get_upload_output_url(storage_dir)
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)

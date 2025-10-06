@@ -3,7 +3,7 @@ Task Runner allows you to run simulations locally via the Inductiva API.
 
 ## How to Run
 
-Refer to [this tutorial](https://inductiva.ai/guides/expand/use-local-task-runner/index) to learn
+Refer to [this tutorial](https://tutorials.inductiva.ai/how_to/use-local-task-runner.html) to learn
 how to easily run your simulations locally using the Inductiva API and the Task Runner.
 
 ## Contributing

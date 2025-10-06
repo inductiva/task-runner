@@ -266,13 +266,9 @@ class ApiClient:
             operation="download",
         )[0]
 
-    def get_upload_output_url(
-            self,
-            storage_dir: str,
-            output_filename: Optional[str] = None) -> UploadUrlInfo:
-        output_filename = output_filename or OUTPUT_ZIP_FILENAME
+    def get_upload_output_url(self, storage_dir: str) -> UploadUrlInfo:
         url = self.get_signed_urls(
-            paths=[f"{storage_dir}/{output_filename}"],
+            paths=[f"{storage_dir}/{OUTPUT_ZIP_FILENAME}"],
             operation="upload",
         )[0]
         return UploadUrlInfo(
@@ -302,8 +298,6 @@ class ApiClient:
                     host.get_gpu_info().count if host.get_gpu_info() else None,
                 "gpu_name":
                     host.get_gpu_info().name if host.get_gpu_info() else None,
-                "max_idle_time": (int(os.getenv("MAX_IDLE_TIMEOUT"))
-                                  if os.getenv("MAX_IDLE_TIMEOUT") else None)
             },
         )
 
@@ -312,24 +306,8 @@ class ApiClient:
                 f"Failed to create local machine group: {resp.json()}")
         return resp.json()["id"]
 
-    def delete_machine_group(self, machine_group_id: uuid.UUID) -> int:
-        """Delete a machine group.
-        
-        Args:
-            machine_group_id: UUID of the machine group to delete
-            
-        Returns:
-            HTTP status code of the delete request
-        """
-        resp = self._request(
-            method=HTTPMethod.DELETE.value,
-            path="/compute/group",
-            params={"machine_group_id": str(machine_group_id)},
-        )
-        return resp.status_code
-
     def get_started_machine_group_id_by_name(
-            self, machine_group_name: str) -> Optional[dict]:
+            self, machine_group_name: str) -> Optional[uuid.UUID]:
         resp = self._request(
             method="GET",
             path=f"/compute/group/{machine_group_name}",
