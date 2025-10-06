@@ -90,11 +90,6 @@ def main(_):
     logging.info("  > available versions: %s",
                  ", ".join(mpi_config.list_available_versions()))
 
-    max_idle_timeout = None
-
-    max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
-    max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
-
     api_client = task_runner.ApiClient.from_env()
     api_file_tracker = task_runner.ApiFileTracker.from_env()
 
@@ -116,6 +111,10 @@ def main(_):
         num_mpi_hosts=mpi_config.num_hosts,
         local_mode=local_mode,
     )
+
+    max_idle_timeout = os.getenv("MAX_IDLE_TIMEOUT")
+    max_idle_timeout = int(max_idle_timeout) if max_idle_timeout else None
+
     task_runner_uuid = task_runner_access_info.id
     _log_task_runner_id(task_runner_id_path, task_runner_uuid)
 
@@ -153,6 +152,11 @@ def main(_):
         api_file_tracker=api_file_tracker,
     )
 
+    logging.info("Checking if %s contains task data...", workdir)
+    if os.path.exists(request_handler.request_path):
+        logging.info("%s contains task data.", workdir)
+        request_handler.recover_task_data()
+
     termination_handler = cleanup.TerminationHandler(
         task_runner_id=task_runner_uuid,
         request_handler=request_handler,
@@ -173,16 +177,19 @@ def main(_):
         except cleanup.ScaleDownTimeoutError as e:
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")
-            status_code = api_client.kill_machine()
-
-            if status_code == 422:
-                logging.warn(
-                    "Received 422 status code, cannot terminate due to minimum"
-                    " VM constraint. Restarting monitoring process.")
-                monitoring_flag = True
-            else:
+            if local_mode:
                 termination_handler.log_termination(e.reason, e.detail)
                 monitoring_flag = False
+            else:
+                status_code = api_client.kill_machine()
+                if status_code == 422:
+                    logging.warn(
+                        "Received 422 status code, cannot terminate due to "
+                        "minimum VM constraint. Restarting monitoring process.")
+                    monitoring_flag = True
+                else:
+                    termination_handler.log_termination(e.reason, e.detail)
+                    monitoring_flag = False
         except cleanup.TaskRunnerTerminationError as e:
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")
