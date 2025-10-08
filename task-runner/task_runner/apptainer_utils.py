@@ -164,7 +164,7 @@ class ApptainerImagesManager:
     def _download_inductiva_image(
         self,
         image_path: str,
-        region: str,
+        region: Optional[str],
         sif_local_path: str,
         workdir: str,
     ) -> bool:
@@ -217,8 +217,8 @@ class ApptainerImagesManager:
         self,
         image: str,
         workdir: str,
-        region: str,
-    ) -> tuple[str, float, ApptainerImageSource]:
+        region: Optional[str] = None,
+    ) -> tuple[str, float, ApptainerImageSource, int]:
         """Fetches the requested Apptainer image and makes it available locally.
 
         If the image is an Inductiva image, it is downloaded via a signed URL.

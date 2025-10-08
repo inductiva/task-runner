@@ -247,22 +247,30 @@ class ApiClient:
         self,
         paths: List[str],
         operation: Literal["upload", "download"],
-        region: str,
+        region: Optional[str] = None,
     ) -> List[str]:
+        params = {
+            "paths": paths,
+            "operation": operation,
+        }
+
+        if region is not None:
+            params["region"] = region
+
         resp = self._request(
             method="GET",
             path="/storage/signed-urls",
             raise_exception=True,
             attempts=HTTP_REQUEST_MAX_ATTEMPTS,
-            params={
-                "paths": paths,
-                "operation": operation,
-                "region": region,
-            },
+            params=params,
         )
         return resp.json()
 
-    def get_download_input_url(self, storage_dir: str, region: str) -> str:
+    def get_download_input_url(
+        self,
+        storage_dir: str,
+        region: Optional[str],
+    ) -> str:
         return self.get_signed_urls(
             paths=[f"{storage_dir}/{INPUT_ZIP_FILENAME}"],
             operation="download",
@@ -272,7 +280,7 @@ class ApiClient:
     def get_upload_output_url(
         self,
         storage_dir: str,
-        region: str,
+        region: Optional[str],
         output_filename: Optional[str] = None,
     ) -> UploadUrlInfo:
         output_filename = output_filename or OUTPUT_ZIP_FILENAME
@@ -411,7 +419,11 @@ class ApiClient:
         )
         resp.raise_for_status()
 
-    def get_download_urls(self, input_resources: list[str], region: str) -> str:
+    def get_download_urls(
+        self,
+        input_resources: list[str],
+        region: Optional[str],
+    ) -> str:
 
         def _signed_url_info(signed_url):
             parsed_url = urllib.parse.urlparse(signed_url)

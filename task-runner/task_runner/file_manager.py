@@ -24,7 +24,7 @@ class BaseFileManager(abc.ABC):
     def download_input(
         self,
         task_dir_remote: str,
-        region: str,
+        region: Optional[str],
         dest_path: str,
     ):
         pass
@@ -34,7 +34,7 @@ class BaseFileManager(abc.ABC):
         self,
         task_id: str,
         task_dir_remote: str,
-        region: str,
+        region: Optional[str],
         local_path: str,
         task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
@@ -48,7 +48,7 @@ class BaseFileManager(abc.ABC):
     def download_input_resources(
         self,
         input_resources: list[str],
-        region: str,
+        region: Optional[str],
         dest_path: str,
         workdir: str,
     ):
@@ -77,7 +77,7 @@ class WebApiFileManager(BaseFileManager):
     def download_input(
         self,
         task_dir_remote: str,
-        region: str,
+        region: Optional[str],
         dest_path: str,
     ):
         """Download input zip from remote storage.
@@ -151,7 +151,7 @@ class WebApiFileManager(BaseFileManager):
         self,
         task_id: str,
         task_dir_remote: str,
-        region: str,
+        region: Optional[str],
         local_path: str,
         task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
@@ -229,7 +229,7 @@ class WebApiFileManager(BaseFileManager):
     def download_input_resources(
         self,
         input_resources: list[str],
-        region: str,
+        region: Optional[str],
         dest_path: str,
         workdir: str,
     ):
