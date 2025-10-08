@@ -164,6 +164,7 @@ class ApptainerImagesManager:
     def _download_inductiva_image(
         self,
         image_path: str,
+        region: Optional[str],
         sif_local_path: str,
         workdir: str,
     ) -> bool:
@@ -171,17 +172,19 @@ class ApptainerImagesManager:
 
         Args:
             image_path: The file path within the bucket.
+            region: Remote storage region.
             sif_local_path: Local path where the image will be stored.
-            workdir: The working directory
+            workdir: The working directory.
 
         Returns:
             True if the image was successfully downloaded; False otherwise.
         """
         try:
             self._file_manager.download_input_resources(
-                [image_path],
-                sif_local_path,
-                workdir,
+                input_resources=[image_path],
+                region=region,
+                dest_path=sif_local_path,
+                workdir=workdir,
             )
             return True
         except Exception:  # noqa BLE001
@@ -214,7 +217,8 @@ class ApptainerImagesManager:
         self,
         image: str,
         workdir: str,
-    ) -> tuple[str, float, ApptainerImageSource]:
+        region: Optional[str] = None,
+    ) -> tuple[str, float, ApptainerImageSource, int]:
         """Fetches the requested Apptainer image and makes it available locally.
 
         If the image is an Inductiva image, it is downloaded via a signed URL.
@@ -224,6 +228,7 @@ class ApptainerImagesManager:
         Args:
             image: The image URI or file name.
             workdir: The working directory.
+            region: Remote storage region.
 
         Returns:
             A tuple containing:
@@ -242,7 +247,7 @@ class ApptainerImagesManager:
             sif_local_path = self._get_local_sif_path(image_path)
             image_source = ApptainerImageSource.USER_STORAGE
             fetch_method = self._download_inductiva_image
-            fetch_args = (image_path, self._local_cache_dir, workdir)
+            fetch_args = (image_path, region, self._local_cache_dir, workdir)
         else:
             image_uri = self._normalize_image_uri(image)
             sif_local_path = os.path.join(

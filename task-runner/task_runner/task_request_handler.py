@@ -282,6 +282,7 @@ class TaskRequestHandler:
         self.task_id = request["id"]
         self.project_id = request["project_id"]
         self.task_dir_remote = request["task_dir"]
+        self.storage_region = request.get("storage_region")
         self.submitted_timestamp = request.get("submitted_timestamp")
         self.input_resources = json.loads(request.get("input_resources", "[]"))
         # convert to bool because stream_zip is either 't' or 'f'
@@ -321,7 +322,11 @@ class TaskRequestHandler:
             )
 
             image_path, download_time, container_source, image_size = (
-                self.apptainer_images_manager.get(image_uri, self.workdir))
+                self.apptainer_images_manager.get(
+                    image_uri,
+                    self.workdir,
+                    self.storage_region,
+                ))
 
             operation.end(attributes={
                 "execution_time_s": download_time,
@@ -345,7 +350,7 @@ class TaskRequestHandler:
                     ))
                 return
 
-            self.task_workdir = self._setup_working_dir(self.task_dir_remote)
+            self.task_workdir = self._setup_working_dir()
 
             # Commands run in the path <task_workdir>/output/artifacts
             self._observer_manager_thread = threading.Thread(
@@ -447,7 +452,7 @@ class TaskRequestHandler:
             self.cleaning_up = True
             self._cleanup(safely_delete)
 
-    def _setup_working_dir(self, task_dir_remote) -> str:
+    def _setup_working_dir(self) -> str:
         """Setup the working directory for the task.
 
         Returns:
@@ -474,7 +479,11 @@ class TaskRequestHandler:
         # by the task files
         if self.input_resources:
             download_duration = self.file_manager.download_input_resources(
-                self.input_resources, sim_workdir, self.workdir)
+                input_resources=self.input_resources,
+                region=self.storage_region,
+                dest_path=sim_workdir,
+                workdir=self.workdir,
+            )
 
         tmp_zip_path = os.path.join(self.workdir, "file.zip")
 
@@ -483,9 +492,9 @@ class TaskRequestHandler:
             self.task_id,
         )
         download_duration += self.file_manager.download_input(
-            self.task_id,
-            task_dir_remote,
-            tmp_zip_path,
+            task_dir_remote=self.task_dir_remote,
+            region=self.storage_region,
+            dest_path=tmp_zip_path,
         )
         operation.end(attributes={"execution_time_s": download_duration})
         logging.info(
@@ -630,8 +639,9 @@ class TaskRequestHandler:
 
         output_zipped_bytes, zip_duration, upload_duration = \
             self.file_manager.upload_output(
-                self.task_id,
-                self.task_dir_remote,
+                task_id=self.task_id,
+                task_dir_remote=self.task_dir_remote,
+                region=self.storage_region,
                 local_path=output_dir,
                 stream_zip=self.stream_zip,
                 compress_with=self.compress_with,

@@ -78,16 +78,16 @@ def download_input_side_effect(
     """Get function to use as side_effect for file_manager.download_input."""
 
     @utils.execution_time
-    def _side_effect(task_id, task_dir_remote, tmp_zip_path):
-        del task_id, task_dir_remote  # unused
+    def _side_effect(task_dir_remote, region, dest_path):
+        del task_dir_remote, region  # unused
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             os.makedirs(os.path.join(tmp_dir, "sim_dir"), exist_ok=True)
 
-            if tmp_zip_path.endswith(".zip"):
-                tmp_zip_path = tmp_zip_path[:-len(".zip")]
+            if dest_path.endswith(".zip"):
+                dest_path = dest_path[:-len(".zip")]
 
-            shutil.make_archive(tmp_zip_path, "zip", tmp_dir)
+            shutil.make_archive(dest_path, "zip", tmp_dir)
 
         if unblock_download_input is not None:
             unblock_download_input.wait()
