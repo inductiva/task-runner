@@ -178,6 +178,9 @@ def main(_):
             logging.exception("Caught exception: %s", str(e))
             logging.info("Terminating task runner...")
             if local_mode:
+                logging.info(
+                    "Terminating machine and deleting machine group...")
+                status_code = api_client.delete_machine_group(machine_group_id)
                 termination_handler.log_termination(e.reason, e.detail)
                 monitoring_flag = False
             else:
