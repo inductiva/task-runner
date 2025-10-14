@@ -23,8 +23,8 @@ class BaseFileManager(abc.ABC):
     @abc.abstractmethod
     def download_input(
         self,
-        task_id: str,
         task_dir_remote: str,
+        region: Optional[str],
         dest_path: str,
     ):
         pass
@@ -34,6 +34,7 @@ class BaseFileManager(abc.ABC):
         self,
         task_id: str,
         task_dir_remote: str,
+        region: Optional[str],
         local_path: str,
         task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
@@ -47,8 +48,8 @@ class BaseFileManager(abc.ABC):
     def download_input_resources(
         self,
         input_resources: list[str],
+        region: Optional[str],
         dest_path: str,
-        task_runner_id: uuid.UUID,
         workdir: str,
     ):
         pass
@@ -75,12 +76,19 @@ class WebApiFileManager(BaseFileManager):
     @override
     def download_input(
         self,
-        task_id: str,
         task_dir_remote: str,
+        region: Optional[str],
         dest_path: str,
     ):
+        """Download input zip from remote storage.
+
+        Args:
+            task_dir_remote: Input remote path.
+            region: Remote storage region.
+            dest_path: Local path where the files will be stored.
+        """
         storage_dir = self._get_storage_dir(task_dir_remote)
-        url = self._api_client.get_download_input_url(storage_dir)
+        url = self._api_client.get_download_input_url(storage_dir, region)
         urllib.request.urlretrieve(url, dest_path)
 
     @staticmethod
@@ -143,6 +151,7 @@ class WebApiFileManager(BaseFileManager):
         self,
         task_id: str,
         task_dir_remote: str,
+        region: Optional[str],
         local_path: str,
         task_runner_uuid: uuid.UUID,
         operations_logger: OperationsLogger,
@@ -150,6 +159,22 @@ class WebApiFileManager(BaseFileManager):
         compress_with: str = "AUTO",
         output_filename: Optional[str] = None,
     ):
+        """Upload output zip to remote storage.
+
+        Args:
+            task_id: Task ID.
+            task_dir_remote: Remote path where the output will be stored.
+            region: Remote storage region.
+            local_path: Local path where the output files are stored.
+            task_runner_uuid: Task-runner UUID.
+            operations_logger: Operations logger instance.
+            stream_zip: If True, the output will be streamed as it is being
+                compressed. If False, the output will be compressed first, and
+                then uploaded.
+            compress_with: Compression method to use.
+            output_filename: Name of the output file. If None, the default
+                value will be used.
+        """
         if stream_zip:
             if compress_with == "SEVEN_Z":
                 stream_process = files.get_seven_zip_stream_process(local_path)
@@ -171,7 +196,7 @@ class WebApiFileManager(BaseFileManager):
 
         storage_dir = self._get_storage_dir(task_dir_remote)
         upload_info = self._api_client.get_upload_output_url(
-            storage_dir, output_filename)
+            storage_dir, region, output_filename)
 
         operation = operations_logger.start_operation(
             OperationName.UPLOAD_OUTPUT, task_id)
@@ -204,10 +229,19 @@ class WebApiFileManager(BaseFileManager):
     def download_input_resources(
         self,
         input_resources: list[str],
+        region: Optional[str],
         dest_path: str,
         workdir: str,
     ):
-        files_url = self._api_client.get_download_urls(input_resources)
+        """Download input resources from remote storage.
+
+        Args:
+            input_resources: List of files to download.
+            region: Remote storage region.
+            dest_path: Local path where the files will be stored.
+            workdir: The working directory.
+        """
+        files_url = self._api_client.get_download_urls(input_resources, region)
 
         for file_url in files_url:
             url = file_url["url"]
