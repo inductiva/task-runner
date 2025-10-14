@@ -761,6 +761,7 @@ class TaskRequestHandler:
         self.task_id = request["id"]
         self.task_workdir = os.path.join(self.workdir, self.task_id)
         self.task_dir_remote = request["task_dir"]
+        self.storage_region = request.get("storage_region")
         self.stream_zip = request.get("stream_zip", "t") == "t"
         self.compress_with = request.get("compress_with", "AUTO")
 
