@@ -9,7 +9,7 @@ from aiortc import (
     RTCPeerConnection,
     RTCSessionDescription,
 )
-from file_operations import Operation, OperationError
+from file_operations import DownloadFile, Operation, OperationError
 from operation_response import OperationResponse, OperationStatus
 
 
@@ -50,7 +50,13 @@ class ClientConnection:
                 operation.path = self.path
                 while not channel_closed.is_set():
                     try:
-                        response.message = await operation.execute()
+                        # DownloadFile uses direct streaming to support large
+                        # files and avoid memory issues and WebRTC message size
+                        # limits
+                        if isinstance(operation, DownloadFile):
+                            response.message = await operation.execute(channel)
+                        else:
+                            response.message = await operation.execute()
                     except OperationError as e:
                         response = OperationResponse(
                             status=OperationStatus.ERROR, message=str(e))
@@ -58,7 +64,8 @@ class ClientConnection:
                         if response.message is not None:
                             channel.send(response.to_json_string())
 
-                    if message.get("follow", False):
+                    follow_mode = message.get("follow", False)
+                    if follow_mode and not isinstance(operation, DownloadFile):
                         await asyncio.sleep(1)
                     else:
                         break
