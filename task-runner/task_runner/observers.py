@@ -78,6 +78,12 @@ class ObserverManager:
         'dir/*' matches files directly under sim_dir/dir.
         Otherwise, file_path is treated as a literal relative path.
         """
+        if not file_path:
+            return []
+
+        # Reject absolute paths
+        if os.path.isabs(file_path):
+            return []
 
         if '*' in file_path:
             pattern = os.path.join(sim_dir, file_path)
