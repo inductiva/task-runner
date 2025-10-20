@@ -1,3 +1,4 @@
+import glob
 import os
 import re
 import threading
@@ -51,17 +52,39 @@ class ObserverManager:
     def _check_file_exists(self, sim_dir: str, file_path: str) -> bool:
         """Checks if the file specified exists."""
 
-        return os.path.exists(os.path.join(sim_dir, file_path))
+        for path in self._resolve_paths(sim_dir, file_path):
+            if os.path.exists(path):
+                return True
+        return False
 
     def _check_file_regex(self, sim_dir: str, file_path: str,
                           regex: str) -> list[str]:
         """Checks if the file exists and its content matches the regex."""
-        path = os.path.join(sim_dir, file_path)
-        if not os.path.exists(path):
-            return []
-        with open(path, 'r', encoding='utf-8') as f:
-            content = f.read()
-            return re.findall(regex, content)
+        matches: list[str] = []
+        for path in self._resolve_paths(sim_dir, file_path):
+            if not os.path.exists(path):
+                continue
+            with open(path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                matches.extend(re.findall(regex, content))
+        return matches
+
+    def _resolve_paths(self, sim_dir: str, file_path: str) -> list[str]:
+        """Resolve file_path which may be a literal path or use '*' wildcard.
+
+        If file_path contains '*', it uses shell-style wildcard expansion
+        (glob) relative to sim_dir. Matching is non-recursive: '*' does not
+        cross directory boundaries; e.g., '*' matches files in sim_dir, and
+        'dir/*' matches files directly under sim_dir/dir.
+        Otherwise, file_path is treated as a literal relative path.
+        """
+
+        if '*' in file_path:
+            pattern = os.path.join(sim_dir, file_path)
+            matches = glob.glob(pattern)
+            return [p for p in matches if os.path.isfile(p)]
+
+        return [os.path.join(sim_dir, file_path)]
 
     def run(self, sim_dir, task_id):
         """The main loop for checking observers."""
