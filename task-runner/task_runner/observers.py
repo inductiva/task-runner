@@ -52,10 +52,8 @@ class ObserverManager:
     def _check_file_exists(self, sim_dir: str, file_path: str) -> bool:
         """Checks if the file specified exists."""
 
-        for path in self._resolve_paths(sim_dir, file_path):
-            if os.path.exists(path):
-                return True
-        return False
+        return any(
+            os.path.exists(p) for p in self._resolve_paths(sim_dir, file_path))
 
     def _check_file_regex(self, sim_dir: str, file_path: str,
                           regex: str) -> list[str]:
