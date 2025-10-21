@@ -2,7 +2,7 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="inductiva-api-task-runner",
+    name="inductiva-api-file-tracker",
     packages=find_packages(),
     version="0.1.0",
 )
