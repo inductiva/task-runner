@@ -60,6 +60,13 @@ Build and run the Task Runner with CUDA support:
 make task-runner-cuda-up
 ```
 
+#### Combined mode
+Build and run the Task Runner with file-tracker combined in a single container:
+
+```
+make task-runner-combined-up
+```
+
 ### Run Simulations
 
 You can now run simulations locally by passing a local machine when you call the `run` function. Try out the following example:
