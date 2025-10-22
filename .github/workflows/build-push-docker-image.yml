@@ -1,6 +1,8 @@
 name: Build Docker images and push to Docker Hub
 
 on:
+  workflow_dispatch:
+
   push:
     branches:
       - main
@@ -60,10 +62,9 @@ jobs:
         id: meta-task-runner-unified
         uses: docker/metadata-action@v5
         with:
-          images: inductiva/task-runner-unified
+          images: inductiva/task-runner
           tags: |
-            type=ref,event=branch
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,value=unified_${{ github.ref_name }}
           labels: |
             org.opencontainers.image.url=https://inductiva.ai/
             org.opencontainers.image.source=${{ github.repository }}
