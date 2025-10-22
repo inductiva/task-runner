@@ -34,7 +34,8 @@ jobs:
         with:
           images: inductiva/task-runner
           tags: |
-            type=raw,value=unified_${{ github.ref_name }}
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
           labels: |
             org.opencontainers.image.url=https://inductiva.ai/
             org.opencontainers.image.source=${{ github.repository }}
@@ -63,8 +64,7 @@ jobs:
         with:
           images: inductiva/task-runner
           tags: |
-            type=ref,event=branch
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=raw,value=unified_${{ github.ref_name }}
           labels: |
             org.opencontainers.image.url=https://inductiva.ai/
             org.opencontainers.image.source=${{ github.repository }}
