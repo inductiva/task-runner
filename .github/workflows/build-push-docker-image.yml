@@ -9,6 +9,7 @@ on:
     paths:
       - 'task-runner/**'
       - 'file-tracker/**'
+      - 'unified/**'
 
 jobs:
   build-publish-docker-images:
@@ -54,6 +55,21 @@ jobs:
             org.opencontainers.image.title=File Tracker
             org.opencontainers.image.description=File tracker for the Inductiva API
 
+      # Metadata for task-runner-unified
+      - name: Docker meta for task-runner-unified
+        id: meta-task-runner-unified
+        uses: docker/metadata-action@v5
+        with:
+          images: inductiva/task-runner-unified
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+          labels: |
+            org.opencontainers.image.url=https://inductiva.ai/
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.title=Task Runner Unified
+            org.opencontainers.image.description=Task runner with file-tracker unified for the Inductiva API
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -82,6 +98,20 @@ jobs:
           tags: ${{ steps.meta-file-tracker.outputs.tags }}
           labels: |
             ${{ steps.meta-file-tracker.outputs.labels }}
+          build-args: |
+            API_URL=${{ github.ref == 'refs/heads/main' && 'https://api.inductiva.ai' || 'https://api-dev.inductiva.ai' }}
+
+      # Build and push task-runner-unified
+      - name: Build and push task-runner-unified to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./unified/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta-task-runner-unified.outputs.tags }}
+          labels: |
+            ${{ steps.meta-task-runner-unified.outputs.labels }}
           build-args: |
             API_URL=${{ github.ref == 'refs/heads/main' && 'https://api.inductiva.ai' || 'https://api-dev.inductiva.ai' }}
 
