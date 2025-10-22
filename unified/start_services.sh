@@ -3,6 +3,7 @@
 # Function to handle cleanup on exit
 cleanup() {
     echo "Shutting down services..."
+    # Kill background processes
     jobs -p | xargs -r kill
     exit 0
 }
@@ -10,7 +11,7 @@ cleanup() {
 # Set up signal handlers
 trap cleanup SIGTERM SIGINT
 
-echo "Starting combined task-runner and file-tracker services..."
+echo "Starting unified task-runner and file-tracker services..."
 
 # Start file-tracker in the background
 echo "Starting file-tracker..."
@@ -31,5 +32,6 @@ echo "  - Task-runner PID: $TASK_RUNNER_PID"
 # Wait for either process to exit
 wait $FILE_TRACKER_PID $TASK_RUNNER_PID
 
+# If we get here, one of the services exited
 echo "One of the services exited. Cleaning up..."
 cleanup

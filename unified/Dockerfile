@@ -17,7 +17,7 @@ EXPOSE 5000
 
 # Create startup script
 WORKDIR /
-COPY /start_services.sh /start_services.sh
+COPY /unified/start_services.sh /start_services.sh
 RUN chmod +x /start_services.sh
 RUN chown task-runner:task-runner /start_services.sh
 

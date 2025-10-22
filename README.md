@@ -60,11 +60,11 @@ Build and run the Task Runner with CUDA support:
 make task-runner-cuda-up
 ```
 
-#### Combined mode
-Build and run the Task Runner with file-tracker combined in a single container:
+#### Unified mode
+Build and run the Task Runner with file-tracker unified in a single container:
 
 ```
-make task-runner-combined-up
+make task-runner-unified-up
 ```
 
 ### Run Simulations

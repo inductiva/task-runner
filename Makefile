@@ -23,10 +23,10 @@ DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE=\
 	-p task-runner-lite-$(UID) \
 	-f docker-compose.lite.yml
 
-DOCKER_COMPOSE_COMMAND_TASK_RUNNER_COMBINED=\
+DOCKER_COMPOSE_COMMAND_TASK_RUNNER_UNIFIED=\
 	$(DOCKER_COMPOSE_COMMAND) \
-	-p task-runner-combined-$(UID) \
-	-f docker-compose.combined.yml
+	-p task-runner-unified-$(UID) \
+	-f docker-compose.unified.yml
 
 .PHONY: %
 
@@ -37,11 +37,11 @@ help:
 	@echo "  make task-runner-up: starts task-runner building from source"
 	@echo "  make task-runner-lite-up: starts task-runner in lite mode (faster)"
 	@echo "  make task-runner-cuda-up: starts task-runner with CUDA support"
-	@echo "  make task-runner-combined-up: starts task-runner with file-tracker combined"
+	@echo "  make task-runner-unified-up: starts task-runner with file-tracker unified"
 	@echo "  make task-runner-down stops task-runner building from source"
 	@echo "  make task-runner-lite-down stops task-runner in lite mode"
 	@echo "  make task-runner-cuda-down stops task-runner with CUDA support"
-	@echo "  make task-runner-combined-down stops task-runner with file-tracker combined"
+	@echo "  make task-runner-unified-down stops task-runner with file-tracker unified"
 	@echo Utils:
 	@echo "  make lint-fix: run linter and fix issues"
 	@echo "  make format: run formatter"
@@ -60,8 +60,8 @@ task-runner-lite-up:setup-apptainer-folder
 task-runner-cuda-up:setup-apptainer-folder
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_CUDA) up --build
 
-task-runner-combined-up:setup-apptainer-folder
-	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_COMBINED) up --build
+task-runner-unified-up:setup-apptainer-folder
+	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_UNIFIED) up --build
 
 task-runner-down:
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER) down
@@ -72,8 +72,8 @@ task-runner-lite-down:
 task-runner-cuda-down:
 	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_CUDA) down
 
-task-runner-combined-down:
-	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_COMBINED) down
+task-runner-unified-down:
+	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_UNIFIED) down
 
 lint-fix:
 	ruff check --config=./pyproject.toml --fix

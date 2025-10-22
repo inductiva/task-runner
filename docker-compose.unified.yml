@@ -1,8 +1,8 @@
 services:
-  task-runner-combined:
+  task-runner-unified:
       build:
         context: .
-        dockerfile: combined/Dockerfile
+        dockerfile: unified/Dockerfile
       environment:
         EXECUTER_IMAGES_DIR: /executer-images
         API_URL: ${INDUCTIVA_API_URL}
