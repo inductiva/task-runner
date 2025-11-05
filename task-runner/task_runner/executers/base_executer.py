@@ -97,7 +97,7 @@ class BaseExecuter(ABC):
         # already contains the inputs, avoiding the need for copying
         shutil.move(
             src=f"{self.working_dir}/{self.args.sim_dir}",
-            dest=self.artifacts_dir,
+            dst=self.artifacts_dir,
         )
 
         logging.info("Created output directory: %s", self.output_dir)
