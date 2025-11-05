@@ -28,7 +28,7 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
                                               self.args.run_subprocess_dir)
 
         # Copy the input files to the artifacts directory
-        shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
+        shutil.move(src=input_dir, dst=self.artifacts_dir)
 
         original_username = None
         if self.commands_user:

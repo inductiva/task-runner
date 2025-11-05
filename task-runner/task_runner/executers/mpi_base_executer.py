@@ -63,4 +63,4 @@ class MPIExecuter(executers.BaseExecuter):
                                 is_mpi=True)
         self.run_subprocess(cmd, working_dir=sim_dir)
 
-        shutil.copytree(sim_dir, self.artifacts_dir, dirs_exist_ok=True)
+        shutil.move(src=sim_dir, dst=self.artifacts_dir)
