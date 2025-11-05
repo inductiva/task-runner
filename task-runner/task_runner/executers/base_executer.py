@@ -92,7 +92,7 @@ class BaseExecuter(ABC):
         self.args = named_tuple_constructor(**extra_params)
 
         logging.info("Working directory: %s", self.working_dir)
-        
+
         # Move the inputs from sim_dir/ to artifacts_dir/ so that artifacts_dir/
         # already contains the inputs, avoiding the need for copying
         shutil.move(
