@@ -4,6 +4,7 @@ Check the `BaseExecuter` docstring for more information on the class and
 its usage.
 """
 import os
+import shutil
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -91,8 +92,14 @@ class BaseExecuter(ABC):
         self.args = named_tuple_constructor(**extra_params)
 
         logging.info("Working directory: %s", self.working_dir)
+        
+        # Move the inputs from sim_dir/ to artifacts_dir/ so that artifacts_dir/
+        # already contains the inputs, avoiding the need for copying
+        shutil.move(
+            src=f"{self.working_dir}/{self.args.sim_dir}",
+            dest=self.artifacts_dir,
+        )
 
-        os.makedirs(self.artifacts_dir)
         logging.info("Created output directory: %s", self.output_dir)
         logging.info("Created artifacts directory: %s", self.artifacts_dir)
 
