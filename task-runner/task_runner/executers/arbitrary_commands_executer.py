@@ -2,7 +2,6 @@
 
 import getpass
 import os
-import shutil
 
 from task_runner import executers
 from task_runner.utils import files
@@ -18,17 +17,12 @@ class ArbitraryCommandsExecuter(executers.BaseExecuter):
         else:
             global_env = {}
 
-        input_dir = os.path.join(self.working_dir, self.args.sim_dir)
-
         run_subprocess_dir = self.artifacts_dir_container
 
         if hasattr(self.args,
                    'run_subprocess_dir') and self.args.run_subprocess_dir:
             run_subprocess_dir = os.path.join(self.artifacts_dir_container,
                                               self.args.run_subprocess_dir)
-
-        # Copy the input files to the artifacts directory
-        shutil.copytree(input_dir, self.artifacts_dir, dirs_exist_ok=True)
 
         original_username = None
         if self.commands_user:
