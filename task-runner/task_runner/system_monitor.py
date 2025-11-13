@@ -5,9 +5,40 @@ import os
 from typing import List, Literal, Optional, Tuple
 from uuid import UUID
 
+import GPUtil
 import psutil
 
 from task_runner import BaseEventLogger, events, utils
+
+
+def _get_gpu_utilization_percent() -> Optional[float]:
+    """Average GPU utilization across GPUs, or None if no GPU."""
+    try:
+        gpus = GPUtil.getGPUs()
+    except Exception:  # noqa: BLE001
+        return None
+
+    if not gpus:
+        return None
+
+    # GPUtil.gpu.load is in [0,1]
+    avg_load = sum(gpu.load for gpu in gpus) / len(gpus)
+    return avg_load * 100.0
+
+
+def _get_gpu_memory_utilization_percent() -> Optional[float]:
+    """Average GPU memory utilization across GPUs, or None if no GPU."""
+    try:
+        gpus = GPUtil.getGPUs()
+    except Exception:  # noqa: BLE001
+        return None
+
+    if not gpus:
+        return None
+
+    # GPUtil.gpu.memoryUtil is in [0,1]
+    avg_mem_util = sum(gpu.memoryUtil for gpu in gpus) / len(gpus)
+    return avg_mem_util * 100.0
 
 
 class SystemMetrics(enum.Enum):
@@ -15,13 +46,17 @@ class SystemMetrics(enum.Enum):
     MEMORY_USAGE = "memory"
     DISK_INPUT = "disk-input"
     DISK_OUTPUT = "disk-output"
+    GPU_USAGE = "gpu-usage"
+    GPU_MEMORY = "gpu-memory"
 
 
 SYSTEM_METRICS_TO_FUNC = {
     SystemMetrics.CPU_USAGE: psutil.cpu_percent,
     SystemMetrics.MEMORY_USAGE: lambda: psutil.virtual_memory().percent,
     SystemMetrics.DISK_INPUT: lambda: psutil.disk_io_counters().read_bytes,
-    SystemMetrics.DISK_OUTPUT: lambda: psutil.disk_io_counters().write_bytes
+    SystemMetrics.DISK_OUTPUT: lambda: psutil.disk_io_counters().write_bytes,
+    SystemMetrics.GPU_USAGE: _get_gpu_utilization_percent,
+    SystemMetrics.GPU_MEMORY: _get_gpu_memory_utilization_percent,
 }
 
 
