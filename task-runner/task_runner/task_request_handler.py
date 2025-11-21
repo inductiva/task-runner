@@ -642,9 +642,8 @@ class TaskRequestHandler:
         logging.info("Output size: %s bytes", output_size_bytes)
 
         if output_size_bytes is None:
-            logging.error(
-                "Failed to determine size for output directory: %s", output_dir
-            )
+            logging.error("Failed to determine size for output directory: %s",
+                          output_dir)
             output_size_bytes == 0
 
         if output_size_bytes == 0:
