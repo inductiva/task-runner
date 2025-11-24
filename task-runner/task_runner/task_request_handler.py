@@ -197,17 +197,26 @@ class TaskRequestHandler:
         new_task_status=None,
         force=False,
         output_filename=None,
-    ):
-        _ = self._pack_output(output_filename=output_filename)
-        self._publish_event(events.TaskOutputUploaded(
-            id=self.task_id,
-            machine_id=self.task_runner_uuid,
-            new_status=new_task_status),
-                            force=force)
+    ) -> bool:
+        output_size_bytes = self._pack_output(output_filename=output_filename)
+
+        if output_size_bytes == 0:
+            return False
+
+        self._publish_event(
+            events.TaskOutputUploaded(
+                id=self.task_id,
+                machine_id=self.task_runner_uuid,
+                new_status=new_task_status,
+            ),
+            force=force,
+        )
+
         # Remove the request JSON file to prevent multiple uploads
         # after a successful task data upload
         if os.path.exists(self.request_path):
             os.remove(self.request_path)
+
         return True
 
     def is_task_running(self) -> bool:
@@ -615,21 +624,32 @@ class TaskRequestHandler:
         return exit_code, exit_reason
 
     def _pack_output(self, output_filename: Optional[str] = None) -> int:
-        """Compress outputs and store them in the shared drive."""
+        """Compress and upload outputs. If the output size is 0 or not
+        determined (which may happen during unusual conditions) the upload is
+        aborted."""
+        output_size_bytes = 0
+
         if self.task_workdir is None:
             logging.error("Working directory not found.")
-            return
+            return output_size_bytes
 
         output_dir = os.path.join(self.task_workdir, utils.OUTPUT_DIR)
         if not os.path.exists(output_dir):
             logging.error("Output directory not found: %s", output_dir)
-            return
+            return output_size_bytes
 
         output_size_bytes = files.get_dir_size(output_dir)
         logging.info("Output size: %s bytes", output_size_bytes)
 
-        if output_size_bytes is not None:
-            self._post_task_metric(utils.OUTPUT_SIZE, output_size_bytes)
+        if output_size_bytes is None:
+            logging.error("Failed to determine size for output directory: %s",
+                          output_dir)
+            output_size_bytes = 0
+
+        if output_size_bytes == 0:
+            return output_size_bytes
+
+        self._post_task_metric(utils.OUTPUT_SIZE, output_size_bytes)
 
         output_total_files = files.get_dir_total_files(output_dir)
         logging.info("Output total files: %s", output_total_files)
