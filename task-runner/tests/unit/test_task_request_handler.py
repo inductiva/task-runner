@@ -134,9 +134,9 @@ def fixture_task_request_handler(
     )
 
     with mock.patch("task_runner.api_methods_config.get_executer",
-                    return_value=MockExecuter):
-        with mock.patch.object(handler, "_pack_output", return_value=1000):
-            yield handler
+                    return_value=MockExecuter), mock.patch.object(
+                        handler, "_pack_output", return_value=1000):
+        yield handler
 
 
 def _setup_mock_task(
