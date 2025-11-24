@@ -134,11 +134,9 @@ def fixture_task_request_handler(
     )
 
     with mock.patch(
-            "task_runner.api_methods_config.get_executer") as get_executer_mock:
-        with mock.patch(
-                "task_runner.utils.files.get_dir_size") as get_dir_size_mock:
-            get_dir_size_mock.return_value = 1000
-            get_executer_mock.return_value = MockExecuter
+        "task_runner.api_methods_config.get_executer", return_value=MockExecuter
+    ):
+        with mock.patch.object(handler, "_pack_output", return_value=1000):
             yield handler
 
 

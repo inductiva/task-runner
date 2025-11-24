@@ -81,5 +81,8 @@ lint-fix:
 format:
 	yapf . --in-place --recursive --parallel --exclude=third_party
 
+test-lite:
+	$(DOCKER_COMPOSE_COMMAND_TASK_RUNNER_LITE) run --build --rm task-runner-lite \
+	pytest -q
 
 style: format lint-fix

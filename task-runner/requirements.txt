@@ -9,3 +9,4 @@ pysocks
 gputil
 pydantic~=2.11.7
 tenacity
+pytest
