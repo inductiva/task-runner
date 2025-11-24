@@ -133,9 +133,8 @@ def fixture_task_request_handler(
         file_manager=mock.MagicMock(),
     )
 
-    with mock.patch(
-        "task_runner.api_methods_config.get_executer", return_value=MockExecuter
-    ):
+    with mock.patch("task_runner.api_methods_config.get_executer",
+                    return_value=MockExecuter):
         with mock.patch.object(handler, "_pack_output", return_value=1000):
             yield handler
 
