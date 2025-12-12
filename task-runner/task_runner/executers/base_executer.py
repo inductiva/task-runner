@@ -291,6 +291,12 @@ class BaseExecuter(ABC):
             exit_code = self.subprocess.wait()
             execution_time = time.perf_counter() - start
 
+            exit_code_message = f"# EXIT CODE: {exit_code}\n\n"
+            stdout.write(exit_code_message)
+            stderr.write(exit_code_message)
+            stdout.flush()
+            stderr.flush()
+
             stdout.write("\n -------\n")
             stderr.write("\n -------\n")
 
