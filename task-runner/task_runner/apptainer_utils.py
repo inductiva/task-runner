@@ -206,9 +206,9 @@ class ApptainerImagesManager:
     def _pull_or_fetch_remote_image(self, image_uri: str,
                                     sif_local_path: str) -> bool:
         """Fetches an image from remote storage or pulls it using Apptainer."""
-        if self._get_from_remote_storage(self._image_uri_to_sif_name(image_uri),
-                                         sif_local_path):
-            return True
+        # if self._get_from_remote_storage(self._image_uri_to_sif_name(image_uri),
+        #                                  sif_local_path):
+        #     return True
         logging.info("Pulling image")
         self._apptainer_pull(image_uri, sif_local_path)
         return os.path.exists(sif_local_path)
