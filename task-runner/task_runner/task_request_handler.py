@@ -200,9 +200,9 @@ class TaskRequestHandler:
     ) -> bool:
         output_size_bytes = self._pack_output(output_filename=output_filename)
 
-        if output_size_bytes == 0:
-            return False
-
+        # NOTE: This event is published even if the output size is 0, to
+        # inform the BE that the task has finished. The TaskOutputUploadFailed
+        # event is only published if an exception occurs during upload.
         self._publish_event(
             events.TaskOutputUploaded(
                 id=self.task_id,
@@ -211,6 +211,9 @@ class TaskRequestHandler:
             ),
             force=force,
         )
+
+        if output_size_bytes == 0:
+            return False
 
         # Remove the request JSON file to prevent multiple uploads
         # after a successful task data upload
