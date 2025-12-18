@@ -1,5 +1,7 @@
 import abc
 import asyncio
+import base64
+import json
 import os
 import subprocess
 import time
@@ -17,12 +19,17 @@ class Operation:
 
     @classmethod
     def from_request(cls, request):
-        operation = cls._get_class(request["type"])
-        return operation(**request["args"])
+        operation_type = request["type"]
+        operation = cls._get_class(operation_type)
+        args = request.get("args", {})
+
+        if "follow" in request and operation == DownloadFile:
+            args["follow"] = request["follow"]
+
+        return operation(**args)
 
     @classmethod
     def _get_class(cls, type):
-
         if type in cls.SUPPORTED_OPERATIONS:
             return cls.SUPPORTED_OPERATIONS[type]
         else:
@@ -73,6 +80,7 @@ class Top(Operation):
 
 LAST_MODIFIED_FILE_PATH_SUFFIX = "output/artifacts/output_update.csv"
 METRICS_FILE_PATH_SUFFIX = "output/artifacts/system_metrics.csv"
+DEFAULT_CHUNK_SIZE = 64 * 1024  # 64KB
 
 
 class LastModifiedFile(Operation):
@@ -204,10 +212,118 @@ class Tail(Operation):
         return content.split('\n')
 
 
+class DownloadFile(Operation):
+
+    def __init__(self, file_path, chunk_size=DEFAULT_CHUNK_SIZE, follow=False):
+        self.file_path = file_path
+        self.filename = os.path.basename(file_path)
+        self.chunk_size = chunk_size
+        self.follow = follow
+        self.path = None
+
+    async def execute(self, channel):
+        try:
+            full_path = os.path.join(self.path, self.file_path)
+            if not os.path.exists(full_path):
+                raise OperationError(f"File not found: {self.file_path}")
+
+            if self.follow:
+                # Real-time streaming mode - stream file as it's being written
+                await self._stream_realtime_file(channel, full_path)
+            else:
+                # Standard download mode - download existing file
+                await self._stream_static_file(channel, full_path)
+
+        except Exception as e:  # noqa: BLE001
+            self._send_error(channel, str(e))
+
+    async def _stream_static_file(self, channel, file_path):
+        file_size = os.path.getsize(file_path)
+        self._send_file_metadata(channel, file_size)
+
+        chunk_count = 0
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(self.chunk_size)
+                if not chunk:
+                    break
+
+                chunk_count += 1
+                self._send_chunk(channel, chunk, chunk_count)
+
+        self._send_complete(channel, chunk_count, file_size)
+
+    async def _stream_realtime_file(self, channel, file_path, interval=1):
+        self._send_file_metadata(channel, None)
+
+        chunk_count = 0
+        total_size = 0
+
+        # Stream file content continuously
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(self.chunk_size)
+                if not chunk:
+                    # No more data, wait a bit
+                    await asyncio.sleep(interval)
+                    continue
+
+                chunk_count += 1
+                total_size += len(chunk)
+                self._send_chunk(channel, chunk, chunk_count)
+
+    def _send_error(self, channel, error_message):
+        message = {
+            "status": "error",
+            "message": {
+                "type": "download_error",
+                "error": error_message
+            }
+        }
+        channel.send(json.dumps(message))
+
+    def _send_file_metadata(self, channel, total_size):
+        message = {
+            "status": "success",
+            "message": {
+                "type": "download_info",
+                "filename": self.filename,
+                "total_size": total_size
+            }
+        }
+        channel.send(json.dumps(message))
+
+    def _send_chunk(self, channel, chunk, chunk_number):
+        chunk_b64 = base64.b64encode(chunk).decode('utf-8')
+        message = {
+            "status": "success",
+            "message": {
+                "type": "download_chunk",
+                "chunk_number": chunk_number,
+                "chunk_size": len(chunk),
+                "data": chunk_b64
+            }
+        }
+        channel.send(json.dumps(message))
+
+    def _send_complete(self, channel, chunk_count, total_size):
+        message = {
+            "status": "success",
+            "message": {
+                "type": "download_complete",
+                "filename": self.filename,
+                "total_chunks": chunk_count,
+                "total_size": total_size
+            }
+        }
+        channel.send(json.dumps(message))
+
+
 # Initialize SUPPORTED_OPERATIONS after defining all classes
 Operation.SUPPORTED_OPERATIONS = {
     "ls": List,
     "tail": Tail,
     "top": Top,
-    "last_modified_file": LastModifiedFile
+    "last_modified_file": LastModifiedFile,
+    "download_file": DownloadFile
 }
