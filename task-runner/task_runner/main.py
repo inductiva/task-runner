@@ -29,6 +29,7 @@ from task_runner import (
     task_execution_loop,
     utils,
 )
+from task_runner.metrics import start_metrics_server
 from task_runner.register_task_runner import register_task_runner
 from task_runner.task_request_handler import TaskRequestHandler
 from task_runner.task_status import TaskRunnerTerminationReason
@@ -66,6 +67,9 @@ def _set_socks_proxy():
 
 def main(_):
     _set_socks_proxy()
+
+    start_metrics_server()
+
     workdir = os.getenv("WORKDIR", "/workdir")
     executer_images_dir = os.getenv("EXECUTER_IMAGES_DIR", "/apptainer")
     if not executer_images_dir:

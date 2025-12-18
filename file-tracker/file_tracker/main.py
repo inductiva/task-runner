@@ -4,12 +4,15 @@ import os
 
 from cleanup import TerminationHandler, setup_cleanup_handlers
 from connection_manager import ConnectionManager
+from metrics import start_metrics_server
 from task_listener import TaskListener
 
 
 async def main():
     workdir = os.getenv("WORKDIR", "/workdir")
     os.chdir(workdir)
+
+    await start_metrics_server()
 
     connection_manager = ConnectionManager.from_env()
     file_tracker_host = os.getenv("FILE_TRACKER_HOST", "0.0.0.0")
