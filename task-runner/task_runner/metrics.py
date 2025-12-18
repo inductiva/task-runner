@@ -2,12 +2,13 @@
 import logging
 import os
 
-from prometheus_client import Counter, Histogram, Gauge, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 # Task metrics
 tasks_active = Gauge('tasks_active', 'Number of currently active tasks')
 tasks_total = Counter('tasks_total', 'Total number of tasks', ['status'])
-task_duration = Histogram('task_duration_seconds', 'Task execution duration in seconds')
+task_duration = Histogram('task_duration_seconds',
+                          'Task execution duration in seconds')
 
 
 def start_metrics_server(port=None):
