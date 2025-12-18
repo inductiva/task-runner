@@ -32,8 +32,8 @@ from task_runner import (
     task_message_listener,
     utils,
 )
+from task_runner.metrics import task_duration, tasks_active, tasks_total
 from task_runner.operations_logger import OperationName, OperationsLogger
-from task_runner.task_status import task_status
 from task_runner.utils import files
 
 KILL_MESSAGE = "kill"
@@ -287,6 +287,10 @@ class TaskRequestHandler:
         Args:
             request: Request describing the task to be executed.
         """
+        task_start_time = time.time()
+        task_status = 'failed'
+        tasks_active.inc()
+
         # Save the task request to use during output recovery
         with open(self.request_path, "w", encoding="utf-8") as request_file:
             json.dump(request, request_file, default=str)
@@ -416,12 +420,15 @@ class TaskRequestHandler:
 
             if exit_reason == TaskExitReason.KILLED:
                 new_status = task_status.TaskStatusCode.KILLED.value
+                task_status = 'killed'
             elif exit_reason == TaskExitReason.TTL_EXCEEDED:
                 new_status = task_status.TaskStatusCode.TTL_EXCEEDED.value
+                task_status = 'ttl_exceeded'
             else:
                 new_status = (task_status.TaskStatusCode.SUCCESS.value
                               if exit_code == 0 else
                               task_status.TaskStatusCode.FAILED.value)
+                task_status = 'success' if exit_code == 0 else 'failed'
 
             safely_delete = self.save_output(new_task_status=new_status)
 
@@ -436,6 +443,7 @@ class TaskRequestHandler:
 
         # Catch all exceptions to ensure that we log the error message
         except Exception as e:  # noqa: BLE001
+            task_status = 'error'
             message = utils.get_exception_root_cause_message(e)
             try:
                 self._publish_event(
@@ -461,6 +469,11 @@ class TaskRequestHandler:
                 safely_delete = False
 
         finally:
+            # Track metrics
+            task_duration.observe(time.time() - task_start_time)
+            tasks_total.labels(status=task_status).inc()
+            tasks_active.dec()
+
             self.cleaning_up = True
             self._cleanup(safely_delete)
 
